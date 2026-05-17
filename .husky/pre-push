@@ -1,0 +1,5 @@
+# Ensure types are correct
+yarn check-types
+
+# Ensure formatting is perfect and build succeeds
+yarn build

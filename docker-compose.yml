@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  api:
+    container_name: gurukul_api
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    # Optional: If your API needs a database like PostgreSQL or Redis, 
+    # you would link them here using `depends_on`.
+
+  web:
+    container_name: gurukul_web
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      # If your frontend needs to talk to the backend, you can pass the URL here
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
