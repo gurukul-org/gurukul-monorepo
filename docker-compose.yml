@@ -1,6 +1,36 @@
-version: '3.8'
-
 services:
+  # PostgreSQL Database Service
+  postgres:
+    image: postgres:16-alpine
+    container_name: gurukul_postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432" # Exposes DB port to local machine for external GUI clients
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persists database storage
+    healthcheck:
+      # Verifies PostgreSQL is ready to receive connections before starting dependent containers
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Web-based database management tool (Adminer)
+  adminer:
+    image: adminer:latest
+    container_name: gurukul_adminer
+    restart: always
+    ports:
+      - "8080:8080" # Web UI accessible at http://localhost:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # NestJS Backend API Service
   api:
     container_name: gurukul_api
     build:
@@ -10,9 +40,13 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
-    # Optional: If your API needs a database like PostgreSQL or Redis, 
-    # you would link them here using `depends_on`.
+      # Connection URL pointing to postgres Docker container hostname
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
 
+  # Next.js Frontend Web Service
   web:
     container_name: gurukul_web
     build:
@@ -22,7 +56,11 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
-      # If your frontend needs to talk to the backend, you can pass the URL here
+      # Backend API URL for frontend communication
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - api
+
+# Named volumes for persistent container data
+volumes:
+  postgres_data:

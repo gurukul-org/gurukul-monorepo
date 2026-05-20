@@ -42,15 +42,44 @@ yarn install
 
 ### 3. Environment Setup
 
-The backend API needs to know what port to run on. Create a `.env` file in the `apps/api/` directory:
+We use environment variables to keep credentials secure and prevent committing them to Git.
+
+1. **Root `.env` (for Docker Compose):**
+   Copy the root template to create your local environment file:
+   ```sh
+   cp .env.example .env
+   ```
+   *(This loads the database credentials into the Docker containers, keeping passwords out of `docker-compose.yml`)*
+
+2. **API `.env` (for local development server):**
+   Create a `.env` file in the `apps/api/` directory with the following contents:
+   ```env
+   PORT=8000
+   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/gurukul_dev
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_USERNAME=postgres
+   DB_PASSWORD=postgres
+   DB_DATABASE=gurukul_dev
+   ```
+
+### 4. Database Setup (Docker Compose)
+
+For local development, we run the database and database browser (Adminer) inside Docker, while running the application code directly on the host machine. 
+
+Before running the dev servers, spin up the database and database browser services in the background:
 
 ```sh
-echo "PORT=8000" > apps/api/.env
+docker compose up -d postgres adminer
 ```
 
-### 4. Start Development Servers
+* **PostgreSQL database port:** `localhost:5432`
+* **Adminer Web Client (Database Browser):** http://localhost:8080
+  * *To log in to Adminer, select System: `PostgreSQL`, Server: `postgres`, Username: `postgres`, Password: `postgres`, Database: `gurukul_dev`*
 
-Start both the frontend and backend simultaneously in watch mode:
+### 5. Start Development Servers
+
+Start both the frontend and backend applications simultaneously in watch mode:
 
 ```sh
 yarn dev
@@ -61,7 +90,7 @@ yarn dev
 
 _Turborepo uses an interactive Terminal UI (TUI). You can navigate between the `web` and `api` logs using your Up/Down arrow keys and pressing `Enter`._
 
-### 5. Branching & Development Workflow
+### 6. Branching & Development Workflow
 
 When starting a new feature or fixing a bug, always create a new branch from the latest `main` branch.
 
