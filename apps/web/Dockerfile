@@ -1,10 +1,11 @@
 FROM node:20-alpine AS base
+RUN corepack enable
 
 FROM base AS builder
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-RUN yarn global add turbo
+RUN npm install -g turbo
 COPY . .
 RUN turbo prune web --docker
 
@@ -17,7 +18,7 @@ WORKDIR /app
 COPY .gitignore .gitignore
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/out/yarn.lock ./yarn.lock
-RUN yarn install --frozen-lockfile
+RUN yarn install --immutable
 
 # Build the project
 COPY --from=builder /app/out/full/ .

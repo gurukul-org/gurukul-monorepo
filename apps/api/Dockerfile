@@ -1,9 +1,10 @@
 FROM node:20-alpine AS base
+RUN corepack enable
 
 FROM base AS builder
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-RUN yarn global add turbo
+RUN npm install -g turbo
 COPY . .
 RUN turbo prune api --docker
 
@@ -14,7 +15,7 @@ WORKDIR /app
 COPY .gitignore .gitignore
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/out/yarn.lock ./yarn.lock
-RUN yarn install --frozen-lockfile
+RUN yarn install --immutable
 
 COPY --from=builder /app/out/full/ .
 COPY turbo.json turbo.json
