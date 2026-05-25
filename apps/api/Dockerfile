@@ -19,6 +19,7 @@ RUN yarn install --immutable
 
 COPY --from=builder /app/out/full/ .
 COPY turbo.json turbo.json
+RUN yarn workspace api prisma generate
 RUN yarn turbo run build --filter=api...
 
 FROM base AS runner

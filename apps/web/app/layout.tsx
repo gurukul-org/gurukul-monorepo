@@ -24,6 +24,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script src="/theme-init.js" />
       </head>
       <body className="bg-background text-foreground antialiased">

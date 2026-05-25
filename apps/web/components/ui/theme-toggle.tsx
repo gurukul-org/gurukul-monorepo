@@ -26,7 +26,9 @@ export function ThemeToggle({ className }: { className?: string }) {
     document.documentElement.classList.toggle('dark', next === 'dark');
     try {
       localStorage.setItem('theme', next);
-    } catch {}
+    } catch {
+      // Ignore write errors (e.g. storage disabled)
+    }
   }
 
   return (

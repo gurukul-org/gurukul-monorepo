@@ -46,10 +46,12 @@ We use environment variables to keep credentials secure and prevent committing t
 
 1. **Root `.env` (for Docker Compose):**
    Copy the root template to create your local environment file:
+
    ```sh
    cp .env.example .env
    ```
-   *(This loads the database credentials into the Docker containers, keeping passwords out of `docker-compose.yml`)*
+
+   _(This loads the database credentials into the Docker containers, keeping passwords out of `docker-compose.yml`)_
 
 2. **API `.env` (for local development server):**
    Create a `.env` file in the `apps/api/` directory with the following contents:
@@ -65,7 +67,7 @@ We use environment variables to keep credentials secure and prevent committing t
 
 ### 4. Database Setup (Docker Compose)
 
-For local development, we run the database and database browser (Adminer) inside Docker, while running the application code directly on the host machine. 
+For local development, we run the database and database browser (Adminer) inside Docker, while running the application code directly on the host machine.
 
 Before running the dev servers, spin up the database and database browser services in the background:
 
@@ -73,9 +75,9 @@ Before running the dev servers, spin up the database and database browser servic
 docker compose up -d postgres adminer
 ```
 
-* **PostgreSQL database port:** `localhost:5432`
-* **Adminer Web Client (Database Browser):** http://localhost:8080
-  * *To log in to Adminer, select System: `PostgreSQL`, Server: `postgres`, Username: `postgres`, Password: `postgres`, Database: `gurukul_dev`*
+- **PostgreSQL database port:** `localhost:5432`
+- **Adminer Web Client (Database Browser):** http://localhost:8080
+  - _To log in to Adminer, select System: `PostgreSQL`, Server: `postgres`, Username: `postgres`, Password: `postgres`, Database: `gurukul_dev`_
 
 ### 5. Start Development Servers
 
