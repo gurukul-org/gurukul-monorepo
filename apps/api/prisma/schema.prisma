@@ -1,0 +1,368 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =====================================================
+// TENANTS
+// =====================================================
+model Tenant {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @db.VarChar(255)
+  subdomain String    @unique @db.VarChar(100)
+  type      String    @db.VarChar(50)
+  settings  Json      @db.JsonB
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  memberships      TenantMembership[]
+  roles            Role[]
+  academicTerms    AcademicTerm[]
+  programs         Program[]
+  courses          Course[]
+  classes          Class[]
+  classInstructors ClassInstructor[]
+  studentProfiles  StudentProfile[]
+  parentProfiles   ParentProfile[]
+  enrolments       Enrolment[]
+
+  @@map("tenants")
+}
+
+// =====================================================
+// GLOBAL USERS
+// =====================================================
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  firstName    String    @map("first_name") @db.VarChar(100)
+  lastName     String    @map("last_name") @db.VarChar(100)
+  phone        String?   @db.VarChar(20)
+  isSuperAdmin Boolean   @default(false) @map("is_super_admin")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  memberships         TenantMembership[] @relation("UserMemberships")
+  invitedMemberships  TenantMembership[] @relation("InvitedBy")
+  assignedRoles       MembershipRole[]   @relation("AssignedBy")
+  assignedInstructors ClassInstructor[]  @relation("InstructorAssignedBy")
+
+  // Audit Relations
+  createdAcademicTerms AcademicTerm[]   @relation("AcademicTermCreatedBy")
+  updatedAcademicTerms AcademicTerm[]   @relation("AcademicTermUpdatedBy")
+  createdPrograms      Program[]        @relation("ProgramCreatedBy")
+  updatedPrograms      Program[]        @relation("ProgramUpdatedBy")
+  createdCourses       Course[]         @relation("CourseCreatedBy")
+  updatedCourses       Course[]         @relation("CourseUpdatedBy")
+  createdClasses       Class[]          @relation("ClassCreatedBy")
+  updatedClasses       Class[]          @relation("ClassUpdatedBy")
+  createdStudents      StudentProfile[] @relation("StudentCreatedBy")
+  updatedStudents      StudentProfile[] @relation("StudentUpdatedBy")
+  createdParents       ParentProfile[]  @relation("ParentCreatedBy")
+  updatedParents       ParentProfile[]  @relation("ParentUpdatedBy")
+  createdEnrolments    Enrolment[]      @relation("EnrolmentCreatedBy")
+
+  @@map("users")
+}
+
+// =====================================================
+// TENANT MEMBERSHIP
+// =====================================================
+model TenantMembership {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  status       String    @db.VarChar(50) // INVITED, ACTIVE, SUSPENDED, REMOVED
+  joinedAt     DateTime? @map("joined_at") @db.Timestamp(6)
+  lastActiveAt DateTime? @map("last_active_at") @db.Timestamp(6)
+  invitedById  String?   @map("invited_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User              @relation("UserMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy        User?             @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+  roles            MembershipRole[]
+  classInstructors ClassInstructor[]
+  studentProfiles  StudentProfile[]
+  parentProfiles   ParentProfile[]
+
+  @@unique([tenantId, userId])
+  @@map("tenant_memberships")
+}
+
+// =====================================================
+// RBAC
+// =====================================================
+model Role {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String?   @map("tenant_id") @db.Uuid
+  name         String    @db.VarChar(100)
+  description  String?   @db.Text
+  rank         Int
+  isSystemRole Boolean   @default(false) @map("is_system_role")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant          Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions     RolePermission[]
+  membershipRoles MembershipRole[]
+
+  @@unique([tenantId, name])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  category    String   @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String   @map("role_id") @db.Uuid
+  permissionId String   @map("permission_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model MembershipRole {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantMembershipId String   @map("tenant_membership_id") @db.Uuid
+  roleId             String   @map("role_id") @db.Uuid
+  assignedById       String?  @map("assigned_by") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  membership TenantMembership @relation(fields: [tenantMembershipId], references: [id], onDelete: Cascade)
+  role       Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedBy User?            @relation("AssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@unique([tenantMembershipId, roleId])
+  @@map("membership_roles")
+}
+
+// =====================================================
+// ACADEMICS
+// =====================================================
+model AcademicTerm {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  name      String    @db.VarChar(100)
+  startDate DateTime  @map("start_date") @db.Date
+  endDate   DateTime  @map("end_date") @db.Date
+  isActive  Boolean   @default(false) @map("is_active")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedBy String?   @map("updated_by") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User?   @relation("AcademicTermCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  updater User?   @relation("AcademicTermUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  classes Class[]
+
+  @@index([tenantId, name])
+  @@map("academic_terms")
+}
+
+model Program {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  name        String    @db.VarChar(150)
+  code        String    @db.VarChar(50)
+  description String?   @db.Text
+  createdBy   String?   @map("created_by") @db.Uuid
+  updatedBy   String?   @map("updated_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User?    @relation("ProgramCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  updater User?    @relation("ProgramUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  courses Course[]
+
+  @@unique([tenantId, code])
+  @@map("programs")
+}
+
+model Course {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  programId   String    @map("program_id") @db.Uuid
+  name        String    @db.VarChar(150)
+  code        String    @db.VarChar(50)
+  description String?   @db.Text
+  credits     Int?
+  createdBy   String?   @map("created_by") @db.Uuid
+  updatedBy   String?   @map("updated_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  program Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  creator User?    @relation("CourseCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  updater User?    @relation("CourseUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  classes Class[]
+
+  @@unique([tenantId, code])
+  @@map("courses")
+}
+
+model Class {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  academicTermId String    @map("academic_term_id") @db.Uuid
+  courseId       String    @map("course_id") @db.Uuid
+  name           String    @db.VarChar(100)
+  maxCapacity    Int       @map("max_capacity")
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicTerm AcademicTerm      @relation(fields: [academicTermId], references: [id], onDelete: Cascade)
+  course       Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator      User?             @relation("ClassCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  updater      User?             @relation("ClassUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  instructors  ClassInstructor[]
+  enrolments   Enrolment[]
+
+  @@index([tenantId, academicTermId])
+  @@map("classes")
+}
+
+// =====================================================
+// CLASS INSTRUCTORS
+// =====================================================
+model ClassInstructor {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  classId            String    @map("class_id") @db.Uuid
+  tenantMembershipId String    @map("tenant_membership_id") @db.Uuid
+  isPrimary          Boolean   @default(false) @map("is_primary")
+  assignedById       String?   @map("assigned_by") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class      Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  membership TenantMembership @relation(fields: [tenantMembershipId], references: [id], onDelete: Cascade)
+  assignedBy User?            @relation("InstructorAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@unique([classId, tenantMembershipId])
+  @@map("class_instructors")
+}
+
+// =====================================================
+// STUDENT PROFILES
+// =====================================================
+model StudentProfile {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  tenantMembershipId String?   @map("tenant_membership_id") @db.Uuid
+  rollNumber         String    @map("roll_number") @db.VarChar(50)
+  admissionDate      DateTime  @map("admission_date") @db.Date
+  status             String    @db.VarChar(50) // ACTIVE, SUSPENDED, GRADUATED, INACTIVE
+  createdBy          String?   @map("created_by") @db.Uuid
+  updatedBy          String?   @map("updated_by") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membership TenantMembership? @relation(fields: [tenantMembershipId], references: [id], onDelete: Cascade)
+  creator    User?             @relation("StudentCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  updater    User?             @relation("StudentUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  parents    StudentParent[]
+  enrolments Enrolment[]
+
+  @@unique([tenantId, rollNumber])
+  @@map("student_profiles")
+}
+
+// =====================================================
+// PARENT PROFILES
+// =====================================================
+model ParentProfile {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  tenantMembershipId String?   @map("tenant_membership_id") @db.Uuid
+  emergencyPhone     String    @map("emergency_phone") @db.VarChar(20)
+  createdBy          String?   @map("created_by") @db.Uuid
+  updatedBy          String?   @map("updated_by") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membership TenantMembership? @relation(fields: [tenantMembershipId], references: [id], onDelete: Cascade)
+  creator    User?             @relation("ParentCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  updater    User?             @relation("ParentUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  students   StudentParent[]
+
+  @@map("parent_profiles")
+}
+
+// =====================================================
+// STUDENT <-> PARENT RELATION
+// =====================================================
+model StudentParent {
+  studentProfileId String   @map("student_profile_id") @db.Uuid
+  parentProfileId  String   @map("parent_profile_id") @db.Uuid
+  relationship     String   @db.VarChar(50)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  student StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  parent  ParentProfile  @relation(fields: [parentProfileId], references: [id], onDelete: Cascade)
+
+  @@id([studentProfileId, parentProfileId])
+  @@map("student_parents")
+}
+
+// =====================================================
+// ENROLMENTS
+// =====================================================
+model Enrolment {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  studentProfileId String    @map("student_profile_id") @db.Uuid
+  classId          String    @map("class_id") @db.Uuid
+  status           String    @db.VarChar(50) // ACTIVE, WITHDRAWN, COMPLETED
+  enrolledAt       DateTime  @map("enrolled_at") @db.Timestamp(6)
+  createdBy        String?   @map("created_by") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  class   Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  creator User?          @relation("EnrolmentCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([studentProfileId, classId])
+  @@map("enrolments")
+}
