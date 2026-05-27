@@ -44,6 +44,7 @@ model User {
   lastName     String    @map("last_name") @db.VarChar(100)
   phone        String?   @db.VarChar(20)
   isSuperAdmin Boolean   @default(false) @map("is_super_admin")
+  sessions     Session[]
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   deletedAt    DateTime? @map("deleted_at") @db.Timestamp(6)
@@ -112,7 +113,7 @@ model Role {
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   deletedAt    DateTime? @map("deleted_at") @db.Timestamp(6)
 
-  tenant          Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   permissions     RolePermission[]
   membershipRoles MembershipRole[]
 
@@ -219,10 +220,10 @@ model Course {
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   deletedAt   DateTime? @map("deleted_at") @db.Timestamp(6)
 
-  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  program Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
-  creator User?    @relation("CourseCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
-  updater User?    @relation("CourseUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  creator User?   @relation("CourseCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  updater User?   @relation("CourseUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
   classes Class[]
 
   @@unique([tenantId, code])
@@ -365,4 +366,16 @@ model Enrolment {
 
   @@unique([studentProfileId, classId])
   @@map("enrolments")
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @unique @db.VarChar(255)
+  userId    String   @map("user_id") @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
 }
