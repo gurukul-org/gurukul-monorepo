@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaModule } from 'nestjs-prisma';
@@ -7,9 +8,8 @@ import { Pool } from 'pg';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { UsersModule } from './users/users.module';
-import { APP_GUARD } from '@nestjs/core';
 import { AtGuard } from './common/guards/at.guard';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -40,4 +40,4 @@ import { AtGuard } from './common/guards/at.guard';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}
