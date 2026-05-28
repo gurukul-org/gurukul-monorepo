@@ -2,8 +2,33 @@ node_modules
 npm-debug.log
 yarn-error.log
 
+# Build outputs
 .next
 dist
+out
+build
+coverage
+
+# Environment files (secrets must not be baked into images)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+
+# Git
+.git
+
+# Docker files (not needed inside the build context)
+docker-compose*.yml
+Dockerfile
+
+# IDE / OS
+.vscode
+.idea
+.DS_Store
+
+# Turbo cache
+.turbo
+
+# Misc
+*.md
+LICENSE
