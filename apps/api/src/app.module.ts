@@ -9,6 +9,7 @@ import { Pool } from 'pg';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AtGuard } from './common/guards/at.guard';
+import { TenantModule } from './tenant/tenant.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -30,6 +31,7 @@ import { UsersModule } from './users/users.module';
       inject: [ConfigService],
     }),
     UsersModule,
+    TenantModule,
   ],
   controllers: [AppController],
   providers: [
