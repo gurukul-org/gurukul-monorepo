@@ -4,29 +4,43 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 
 import type { Request } from 'express';
 
+import type { JwtPayload } from '../../users/types';
+import { SKIP_TENANT_CHECK_KEY } from '../decorators/skip-tenant-check.decorator';
+
 @Injectable()
 export class TenantGuard implements CanActivate {
+  constructor(private readonly reflector: Reflector) {}
+
   canActivate(context: ExecutionContext): boolean {
+    const skip = this.reflector.getAllAndOverride<boolean>(
+      SKIP_TENANT_CHECK_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (skip) return true;
+
     const request = context.switchToHttp().getRequest<Request>();
     const tenant = request.tenant;
-    const user = request.user;
+    const user = request.user as JwtPayload | undefined;
 
-    // 1. Ensure tenant was resolved by middleware
-    if (!tenant) {
-      throw new ForbiddenException(
-        'Tenant context is required for this route.',
-      );
-    }
+    // No tenant resolved on this request (apex domain or unknown subdomain).
+    // Cross-tenant misuse only matters when there IS a tenant on the request,
+    // so allow apex-domain traffic through. Authentication is handled by AtGuard.
+    if (!tenant) return true;
 
-    // 2. Ensure user is authenticated
     if (!user) {
       throw new ForbiddenException('Authentication context is missing.');
     }
 
-    // 3. Ensure the user's token belongs to the resolved subdomain's tenant
+    if (!user.tenantId) {
+      throw new ForbiddenException(
+        'Token has no tenant context; please sign in on this tenant subdomain.',
+      );
+    }
+
     if (user.tenantId !== tenant.id) {
       throw new ForbiddenException(
         'Access Denied: Token is not valid for this subdomain.',

@@ -380,5 +380,6 @@ model Session {
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@map("sessions")
 }

@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
@@ -10,53 +6,16 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from 'nestjs-prisma';
 
-import { LoginDto, SignupDto } from './dto';
+import { LoginDto } from './dto';
 import { Tokens } from './types';
 
 @Injectable()
 export class UsersService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-    private config: ConfigService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
   ) {}
-
-  async signup(dto: SignupDto, tenantId?: string): Promise<Tokens> {
-    const hash = await this.hashData(dto.password);
-    const memberships = tenantId
-      ? {
-          create: {
-            tenantId,
-            status: 'ACTIVE',
-            joinedAt: new Date(),
-          },
-        }
-      : undefined;
-
-    try {
-      const newUser = await this.prisma.user.create({
-        data: {
-          email: dto.email,
-          passwordHash: hash,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          phone: dto.phone,
-          memberships,
-        },
-        include: {
-          memberships: true,
-        },
-      });
-
-      const tokens = await this.generateTokens(newUser.id, newUser.email);
-      return tokens;
-    } catch (error) {
-      if (error.code === 'P2002') {
-        throw new ConflictException('Email already exists');
-      }
-      throw error;
-    }
-  }
 
   async login(dto: LoginDto, tenantId?: string): Promise<Tokens> {
     const user = await this.prisma.user.findUnique({
@@ -150,7 +109,7 @@ export class UsersService {
     );
   }
 
-  private async generateTokens(
+  async generateTokens(
     userId: string,
     email: string,
     tenantId?: string,
@@ -159,7 +118,7 @@ export class UsersService {
     const accessToken = await this.jwtService.signAsync(
       { sub: userId, email, tenantId, membershipId },
       {
-        secret: this.config.get<string>('AT_SECRET') || 'at-secret',
+        secret: this.config.getOrThrow<string>('AT_SECRET'),
         expiresIn: '15m',
       },
     );
@@ -181,7 +140,7 @@ export class UsersService {
     };
   }
 
-  private hashData(data: string) {
-    return bcrypt.hash(data, 10);
+  hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
   }
 }
