@@ -21,8 +21,17 @@ export class UsersService {
     private config: ConfigService,
   ) {}
 
-  async signup(dto: SignupDto): Promise<Tokens> {
+  async signup(dto: SignupDto, tenantId?: string): Promise<Tokens> {
     const hash = await this.hashData(dto.password);
+    const memberships = tenantId
+      ? {
+          create: {
+            tenantId,
+            status: 'ACTIVE',
+            joinedAt: new Date(),
+          },
+        }
+      : undefined;
 
     try {
       const newUser = await this.prisma.user.create({
@@ -32,6 +41,10 @@ export class UsersService {
           firstName: dto.firstName,
           lastName: dto.lastName,
           phone: dto.phone,
+          memberships,
+        },
+        include: {
+          memberships: true,
         },
       });
 
@@ -45,9 +58,20 @@ export class UsersService {
     }
   }
 
-  async login(dto: LoginDto): Promise<Tokens> {
+  async login(dto: LoginDto, tenantId?: string): Promise<Tokens> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      include: {
+        memberships: tenantId
+          ? {
+              where: {
+                tenantId,
+                status: 'ACTIVE',
+                deletedAt: null,
+              },
+            }
+          : false,
+      },
     });
 
     if (!user) throw new ForbiddenException('Access Denied');
@@ -57,6 +81,13 @@ export class UsersService {
       user.passwordHash,
     );
     if (!passwordMatches) throw new ForbiddenException('Access Denied');
+    if (tenantId) {
+      const membership = user.memberships[0];
+      if (!membership) {
+        throw new ForbiddenException('Access Denied');
+      }
+      return this.generateTokens(user.id, user.email, tenantId, membership.id);
+    }
 
     return this.generateTokens(user.id, user.email);
   }
@@ -74,7 +105,13 @@ export class UsersService {
   async refreshTokens(userId: string, rt: string): Promise<Tokens> {
     const session = await this.prisma.session.findUnique({
       where: { token: rt },
-      include: { user: true },
+      include: {
+        user: {
+          include: {
+            memberships: true,
+          },
+        },
+      },
     });
 
     if (
@@ -88,14 +125,39 @@ export class UsersService {
       throw new ForbiddenException('Access Denied');
     }
 
+    let membershipId: string | undefined;
+    if (session.tenantId) {
+      const activeMembership = session.user.memberships.find(
+        (m) =>
+          m.tenantId === session.tenantId &&
+          m.status === 'ACTIVE' &&
+          m.deletedAt === null,
+      );
+      if (!activeMembership) {
+        await this.prisma.session.delete({ where: { id: session.id } });
+        throw new ForbiddenException('Access Denied');
+      }
+      membershipId = activeMembership.id;
+    }
+
     // Rotate session
     await this.prisma.session.delete({ where: { id: session.id } });
-    return this.generateTokens(session.userId, session.user.email);
+    return this.generateTokens(
+      session.userId,
+      session.user.email,
+      session.tenantId || undefined,
+      membershipId,
+    );
   }
 
-  private async generateTokens(userId: string, email: string): Promise<Tokens> {
+  private async generateTokens(
+    userId: string,
+    email: string,
+    tenantId?: string,
+    membershipId?: string,
+  ): Promise<Tokens> {
     const accessToken = await this.jwtService.signAsync(
-      { sub: userId, email },
+      { sub: userId, email, tenantId, membershipId },
       {
         secret: this.config.get<string>('AT_SECRET') || 'at-secret',
         expiresIn: '15m',
@@ -108,6 +170,7 @@ export class UsersService {
       data: {
         token: refreshToken,
         userId,
+        tenantId,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       },
     });

@@ -4,30 +4,36 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 
 import { GetCurrentUser, GetCurrentUserId, Public } from '../common/decorators';
 import { LoginDto, SignupDto } from './dto';
 import { AtGuard, RtGuard } from './guards';
-import { Tokens } from './types';
 import { UsersService } from './users.service';
 
 @Controller('users')
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private configService: ConfigService,
+  ) {}
 
   @Public()
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
   async signup(
     @Body() dto: SignupDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ accessToken: string }> {
-    const tokens = await this.usersService.signup(dto);
+    const tenantId = req.tenant?.id;
+    const tokens = await this.usersService.signup(dto, tenantId);
     this.setRefreshTokenCookie(res, tokens.refreshToken);
     return { accessToken: tokens.accessToken };
   }
@@ -37,9 +43,11 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() dto: LoginDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ accessToken: string }> {
-    const tokens = await this.usersService.login(dto);
+    const tenantId = req.tenant?.id;
+    const tokens = await this.usersService.login(dto, tenantId);
     this.setRefreshTokenCookie(res, tokens.refreshToken);
     return { accessToken: tokens.accessToken };
   }
@@ -52,10 +60,12 @@ export class UsersController {
     @GetCurrentUser('refreshToken') refreshToken: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<boolean> {
+    const cookieDomain = this.configService.get<string>('COOKIE_DOMAIN');
     res.clearCookie('refreshToken', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: this.configService.get<string>('NODE_ENV') === 'production',
+      sameSite: 'lax',
+      domain: cookieDomain || undefined,
     });
     return this.usersService.logout(userId, refreshToken);
   }
@@ -75,10 +85,12 @@ export class UsersController {
   }
 
   private setRefreshTokenCookie(res: Response, refreshToken: string) {
+    const cookieDomain = this.configService.get<string>('COOKIE_DOMAIN');
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: this.configService.get<string>('NODE_ENV') === 'production',
+      sameSite: 'lax',
+      domain: cookieDomain || undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
   }
