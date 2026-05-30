@@ -1,20 +1,31 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 
+import type { PrismaClient } from '@prisma/client';
 import type { Request } from 'express';
 import { PrismaService } from 'nestjs-prisma';
 import { Strategy } from 'passport-custom';
 
+import { JwtPayloadWithRt } from '../types';
+
+type RequestWithCookies = Request & {
+  cookies?: Record<string, string>;
+};
+
 @Injectable()
 export class RtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
-  constructor(private prisma: PrismaService) {
+  constructor(private prisma: PrismaService & PrismaClient) {
     super();
   }
 
-  async validate(req: Request): Promise<any> {
-    const refreshToken =
-      req.cookies?.['refreshToken'] ||
-      req?.get('authorization')?.replace('Bearer', '').trim();
+  async validate(req: RequestWithCookies): Promise<JwtPayloadWithRt> {
+    const cookies = req.cookies as unknown as
+      | Record<string, string>
+      | undefined;
+    const cookieRefreshToken = cookies?.['refreshToken'];
+    const authorization = req.get('authorization');
+    const bearerRefreshToken = authorization?.replace('Bearer', '').trim();
+    const refreshToken = cookieRefreshToken || bearerRefreshToken;
 
     if (!refreshToken) throw new ForbiddenException('Refresh token malformed');
 
