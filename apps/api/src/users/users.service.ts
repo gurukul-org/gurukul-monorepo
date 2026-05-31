@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
@@ -10,44 +6,31 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { PrismaService } from 'nestjs-prisma';
 
-import { LoginDto, SignupDto } from './dto';
+import { LoginDto } from './dto';
 import { Tokens } from './types';
 
 @Injectable()
 export class UsersService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-    private config: ConfigService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
   ) {}
 
-  async signup(dto: SignupDto): Promise<Tokens> {
-    const hash = await this.hashData(dto.password);
-
-    try {
-      const newUser = await this.prisma.user.create({
-        data: {
-          email: dto.email,
-          passwordHash: hash,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          phone: dto.phone,
-        },
-      });
-
-      const tokens = await this.generateTokens(newUser.id, newUser.email);
-      return tokens;
-    } catch (error) {
-      if (error.code === 'P2002') {
-        throw new ConflictException('Email already exists');
-      }
-      throw error;
-    }
-  }
-
-  async login(dto: LoginDto): Promise<Tokens> {
+  async login(dto: LoginDto, tenantId?: string): Promise<Tokens> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      include: {
+        memberships: tenantId
+          ? {
+              where: {
+                tenantId,
+                status: 'ACTIVE',
+                deletedAt: null,
+              },
+            }
+          : false,
+      },
     });
 
     if (!user) throw new ForbiddenException('Access Denied');
@@ -57,6 +40,13 @@ export class UsersService {
       user.passwordHash,
     );
     if (!passwordMatches) throw new ForbiddenException('Access Denied');
+    if (tenantId) {
+      const membership = user.memberships[0];
+      if (!membership) {
+        throw new ForbiddenException('Access Denied');
+      }
+      return this.generateTokens(user.id, user.email, tenantId, membership.id);
+    }
 
     return this.generateTokens(user.id, user.email);
   }
@@ -74,7 +64,13 @@ export class UsersService {
   async refreshTokens(userId: string, rt: string): Promise<Tokens> {
     const session = await this.prisma.session.findUnique({
       where: { token: rt },
-      include: { user: true },
+      include: {
+        user: {
+          include: {
+            memberships: true,
+          },
+        },
+      },
     });
 
     if (
@@ -88,16 +84,41 @@ export class UsersService {
       throw new ForbiddenException('Access Denied');
     }
 
+    let membershipId: string | undefined;
+    if (session.tenantId) {
+      const activeMembership = session.user.memberships.find(
+        (m) =>
+          m.tenantId === session.tenantId &&
+          m.status === 'ACTIVE' &&
+          m.deletedAt === null,
+      );
+      if (!activeMembership) {
+        await this.prisma.session.delete({ where: { id: session.id } });
+        throw new ForbiddenException('Access Denied');
+      }
+      membershipId = activeMembership.id;
+    }
+
     // Rotate session
     await this.prisma.session.delete({ where: { id: session.id } });
-    return this.generateTokens(session.userId, session.user.email);
+    return this.generateTokens(
+      session.userId,
+      session.user.email,
+      session.tenantId || undefined,
+      membershipId,
+    );
   }
 
-  private async generateTokens(userId: string, email: string): Promise<Tokens> {
+  async generateTokens(
+    userId: string,
+    email: string,
+    tenantId?: string,
+    membershipId?: string,
+  ): Promise<Tokens> {
     const accessToken = await this.jwtService.signAsync(
-      { sub: userId, email },
+      { sub: userId, email, tenantId, membershipId },
       {
-        secret: this.config.get<string>('AT_SECRET') || 'at-secret',
+        secret: this.config.getOrThrow<string>('AT_SECRET'),
         expiresIn: '15m',
       },
     );
@@ -108,6 +129,7 @@ export class UsersService {
       data: {
         token: refreshToken,
         userId,
+        tenantId,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       },
     });
@@ -118,7 +140,7 @@ export class UsersService {
     };
   }
 
-  private hashData(data: string) {
-    return bcrypt.hash(data, 10);
+  hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
   }
 }
