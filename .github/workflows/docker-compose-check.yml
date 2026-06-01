@@ -11,11 +11,6 @@ jobs:
     timeout-minutes: 15
 
     env:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: gurukul_ci
-      AT_SECRET: ci_at_secret_0000000000000000000000000000000000000000000000000000000000
-      RT_SECRET: ci_rt_secret_1111111111111111111111111111111111111111111111111111111111
       COMPOSE_FILE: docker-compose.yml
 
     steps:
@@ -24,6 +19,16 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Generate ephemeral CI credentials
+        run: |
+          {
+            echo "POSTGRES_USER=postgres"
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
+            echo "POSTGRES_DB=gurukul_ci"
+            echo "AT_SECRET=$(openssl rand -hex 32)"
+            echo "RT_SECRET=$(openssl rand -hex 32)"
+          } >> "$GITHUB_ENV"
 
       - name: Build and start the stack
         run: docker compose up --build -d
