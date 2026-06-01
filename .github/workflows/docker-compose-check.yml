@@ -1,0 +1,82 @@
+name: docker-compose-check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  docker-compose-check:
+    name: docker compose up --build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gurukul_ci
+      AT_SECRET: ci_at_secret_0000000000000000000000000000000000000000000000000000000000
+      RT_SECRET: ci_rt_secret_1111111111111111111111111111111111111111111111111111111111
+      COMPOSE_FILE: docker-compose.yml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and start the stack
+        run: docker compose up --build -d
+
+      - name: Wait for all containers to reach running state (max 60s)
+        run: |
+          set -euo pipefail
+          CONTAINERS=(gurukul_postgres gurukul_adminer gurukul_api gurukul_web)
+          DEADLINE=$((SECONDS + 60))
+          while :; do
+            bad=()
+            for c in "${CONTAINERS[@]}"; do
+              status=$(docker inspect --format '{{.State.Status}}' "$c" 2>/dev/null || echo "missing")
+              if [ "$status" != "running" ]; then
+                bad+=("$c=$status")
+              fi
+            done
+            if [ ${#bad[@]} -eq 0 ]; then
+              echo "All containers reached running state."
+              break
+            fi
+            if [ $SECONDS -ge $DEADLINE ]; then
+              echo "::error::Containers did not reach running state within 60s: ${bad[*]}"
+              exit 1
+            fi
+            echo "Still waiting (bad: ${bad[*]})"
+            sleep 5
+          done
+
+      - name: Settle for 30s and re-check (catches late crash loops)
+        run: |
+          set -euo pipefail
+          sleep 30
+          CONTAINERS=(gurukul_postgres gurukul_adminer gurukul_api gurukul_web)
+          bad=()
+          for c in "${CONTAINERS[@]}"; do
+            status=$(docker inspect --format '{{.State.Status}}' "$c" 2>/dev/null || echo "missing")
+            restarting=$(docker inspect --format '{{.State.Restarting}}' "$c" 2>/dev/null || echo "true")
+            exit_code=$(docker inspect --format '{{.State.ExitCode}}' "$c" 2>/dev/null || echo "?")
+            if [ "$status" != "running" ] || [ "$restarting" = "true" ]; then
+              bad+=("$c[status=$status,restarting=$restarting,exit=$exit_code]")
+            fi
+          done
+          if [ ${#bad[@]} -ne 0 ]; then
+            echo "::error::Containers unstable after 30s settle: ${bad[*]}"
+            exit 1
+          fi
+          echo "All containers stable after settle."
+
+      - name: Dump container logs (only on failure)
+        if: failure()
+        run: docker compose logs --tail=300 --no-color
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v --remove-orphans
