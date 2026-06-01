@@ -29,6 +29,7 @@ model Tenant {
   studentProfiles  StudentProfile[]
   parentProfiles   ParentProfile[]
   enrolments       Enrolment[]
+  sessions         Session[]
 
   @@map("tenants")
 }
@@ -375,10 +376,13 @@ model Session {
   id        String   @id @default(uuid()) @db.Uuid
   token     String   @unique @db.VarChar(255)
   userId    String   @map("user_id") @db.Uuid
+  tenantId  String?  @map("tenant_id") @db.Uuid
   expiresAt DateTime @map("expires_at") @db.Timestamp(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@map("sessions")
 }

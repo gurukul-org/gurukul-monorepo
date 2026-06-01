@@ -26,5 +26,11 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@prisma/client": "^7.8.0",
+    "@prisma/engines": "^7.8.0",
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.3.0",
+    "prisma": "^7.8.0"
+  }
 }

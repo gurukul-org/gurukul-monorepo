@@ -8,24 +8,19 @@ import { Strategy } from 'passport-custom';
 
 import { JwtPayloadWithRt } from '../types';
 
-type RequestWithCookies = Request & {
-  cookies?: Record<string, string>;
-};
-
 @Injectable()
 export class RtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
-  constructor(private prisma: PrismaService & PrismaClient) {
+  constructor(private readonly prisma: PrismaService & PrismaClient) {
     super();
   }
 
-  async validate(req: RequestWithCookies): Promise<JwtPayloadWithRt> {
-    const cookies = req.cookies as unknown as
-      | Record<string, string>
-      | undefined;
-    const cookieRefreshToken = cookies?.['refreshToken'];
-    const authorization = req.get('authorization');
-    const bearerRefreshToken = authorization?.replace('Bearer', '').trim();
-    const refreshToken = cookieRefreshToken || bearerRefreshToken;
+  async validate(req: Request): Promise<JwtPayloadWithRt> {
+    const authHeader = req?.get('authorization');
+    const bearerMatch = authHeader && /^Bearer\s+(.+)$/i.exec(authHeader);
+    const cookieToken = (req.cookies as Record<string, string> | undefined)?.[
+      'refreshToken'
+    ];
+    const refreshToken = cookieToken || (bearerMatch ? bearerMatch[1] : null);
 
     if (!refreshToken) throw new ForbiddenException('Refresh token malformed');
 

@@ -6,13 +6,22 @@ import {
   HttpStatus,
   Patch,
   Post,
+  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 
 import { GetCurrentUser, GetCurrentUserId, Public } from '../common/decorators';
+import { clearRefreshTokenCookie, setRefreshTokenCookie } from './cookies.util';
 import {
   ChangeEmailDto,
   ChangePasswordDto,
@@ -25,31 +34,42 @@ import {
 import { AtGuard, RtGuard } from './guards';
 import { UsersService } from './users.service';
 
+@ApiTags('Users')
 @Controller('users')
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Public()
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'User signup' })
+  @ApiResponse({ status: 201, description: 'User successfully signed up.' })
   async signup(
     @Body() dto: SignupDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ accessToken: string }> {
     const tokens = await this.usersService.signup(dto);
-    this.setRefreshTokenCookie(res, tokens.refreshToken);
+    setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
     return { accessToken: tokens.accessToken };
   }
 
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'User login' })
+  @ApiResponse({ status: 200, description: 'User successfully logged in.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
   async login(
     @Body() dto: LoginDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ accessToken: string }> {
-    const tokens = await this.usersService.login(dto);
-    this.setRefreshTokenCookie(res, tokens.refreshToken);
+    const tenantId = req.tenant?.id;
+    const tokens = await this.usersService.login(dto, tenantId);
+    setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
     return { accessToken: tokens.accessToken };
   }
 
@@ -109,18 +129,16 @@ export class UsersController {
   }
 
   @Post('signout')
-  @UseGuards(AtGuard)
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'User logout' })
+  @ApiResponse({ status: 200, description: 'User successfully logged out.' })
   async signout(
     @GetCurrentUserId() userId: string,
     @GetCurrentUser('refreshToken') refreshToken: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<boolean> {
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    });
+    clearRefreshTokenCookie(res, this.configService);
     return this.usersService.logout(userId, refreshToken);
   }
 
@@ -128,22 +146,15 @@ export class UsersController {
   @UseGuards(RtGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access token' })
+  @ApiResponse({ status: 200, description: 'Tokens successfully refreshed.' })
   async refreshTokens(
     @GetCurrentUserId() userId: string,
     @GetCurrentUser('refreshToken') refreshToken: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ accessToken: string }> {
     const tokens = await this.usersService.refreshTokens(userId, refreshToken);
-    this.setRefreshTokenCookie(res, tokens.refreshToken);
+    setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
     return { accessToken: tokens.accessToken };
-  }
-
-  private setRefreshTokenCookie(res: Response, refreshToken: string) {
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
   }
 }
