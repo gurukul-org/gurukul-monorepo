@@ -1,7 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 
-import type { PrismaClient } from '@prisma/client';
 import type { Request } from 'express';
 import { PrismaService } from 'nestjs-prisma';
 import { Strategy } from 'passport-custom';
@@ -10,7 +9,7 @@ import { JwtPayloadWithRt } from '../types';
 
 @Injectable()
 export class RtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
-  constructor(private readonly prisma: PrismaService & PrismaClient) {
+  constructor(private readonly prisma: PrismaService) {
     super();
   }
 

@@ -6,7 +6,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
-import type { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from 'nestjs-prisma';
@@ -29,7 +28,6 @@ type UserProfile = {
   firstName: string;
   lastName: string;
   phone: string | null;
-  isSuperAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -37,7 +35,7 @@ type UserProfile = {
 @Injectable()
 export class UsersService {
   constructor(
-    private readonly prisma: PrismaService & PrismaClient,
+    private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly emailService: EmailService,
@@ -107,9 +105,20 @@ export class UsersService {
     };
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      include: {
+        memberships: {
+          where: {
+            status: 'ACTIVE',
+            deletedAt: null,
+          },
+          select: { id: true },
+          take: 1,
+        },
+      },
     });
 
     if (!user) return response;
+    if (user.memberships.length === 0) return response;
 
     const token = randomBytes(32).toString('hex');
     const resetPasswordTokenHash = this.hashToken(token);
@@ -174,7 +183,6 @@ export class UsersService {
         firstName: true,
         lastName: true,
         phone: true,
-        isSuperAdmin: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -202,7 +210,6 @@ export class UsersService {
         firstName: true,
         lastName: true,
         phone: true,
-        isSuperAdmin: true,
         createdAt: true,
         updatedAt: true,
       },
