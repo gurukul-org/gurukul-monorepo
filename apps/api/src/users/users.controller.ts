@@ -12,7 +12,12 @@ import { ConfigService } from '@nestjs/config';
 
 import type { Request, Response } from 'express';
 
-import { GetCurrentUser, GetCurrentUserId, Public } from '../common/decorators';
+import {
+  GetCurrentUser,
+  GetCurrentUserId,
+  Public,
+  SkipTenantCheck,
+} from '../common/decorators';
 import { clearRefreshTokenCookie, setRefreshTokenCookie } from './cookies.util';
 import { LoginDto } from './dto';
 import { RtGuard } from './guards';
@@ -26,6 +31,7 @@ export class UsersController {
   ) {}
 
   @Public()
+  @SkipTenantCheck()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -51,6 +57,7 @@ export class UsersController {
   }
 
   @Public()
+  @SkipTenantCheck()
   @UseGuards(RtGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)

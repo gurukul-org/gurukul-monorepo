@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Post,
   Req,
   Res,
@@ -18,6 +20,13 @@ import { JwtPayload } from '../users/types';
 import { CreateTenantDto } from './dto';
 import { TenantsService } from './tenants.service';
 
+interface CurrentTenantResponse {
+  id: string;
+  subdomain: string;
+  name: string;
+  type: string;
+}
+
 @Controller('tenants')
 export class TenantsController {
   constructor(
@@ -25,6 +34,17 @@ export class TenantsController {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  @Public()
+  @SkipTenantCheck()
+  @Get('current')
+  getCurrent(@Req() req: Request): CurrentTenantResponse {
+    if (!req.tenant) {
+      throw new NotFoundException('Workspace not found');
+    }
+    const { id, subdomain, name, type } = req.tenant;
+    return { id, subdomain, name, type };
+  }
 
   @Public()
   @SkipTenantCheck()
