@@ -12,6 +12,7 @@ This monorepo contains the following applications and packages:
 
 - **`apps/web`**: The main frontend application built with [Next.js](https://nextjs.org/) (App Router).
 - **`apps/api`**: The backend application built with [NestJS](https://nestjs.com/).
+- **`apps/docs`**: Documentation application built with [Next.js](https://nextjs.org/) and [Tailwind v4](https://tailwindcss.com/).
 
 ### Packages
 
@@ -29,7 +30,7 @@ If you are a new developer setting up the project for the first time, follow the
 ### 1. Prerequisites
 
 - **Node.js**: v20 or higher (Required for NestJS v11+)
-- **Yarn**: `yarn@1.22.x`
+- **Yarn**: `yarn@4.x` (Corepack enabled)
 - **Docker**: (Optional, for running production containers locally)
 
 ### 2. Installation
@@ -89,6 +90,8 @@ yarn dev
 
 - **Frontend (Web):** http://localhost:3000
 - **Backend (API):** http://localhost:8000
+- **Interactive API Docs (Swagger):** http://localhost:8000/api
+- **Documentation (Guides):** http://localhost:3001
 
 _Turborepo uses an interactive Terminal UI (TUI). You can navigate between the `web` and `api` logs using your Up/Down arrow keys and pressing `Enter`._
 

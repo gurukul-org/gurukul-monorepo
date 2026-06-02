@@ -11,6 +11,12 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import type { Request, Response } from 'express';
 
@@ -27,6 +33,8 @@ interface CurrentTenantResponse {
   type: string;
 }
 
+@ApiTags('Tenants')
+@ApiBearerAuth()
 @Controller('tenants')
 export class TenantsController {
   constructor(
