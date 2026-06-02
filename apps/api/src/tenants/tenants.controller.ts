@@ -9,6 +9,12 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import type { Request, Response } from 'express';
 
@@ -18,6 +24,8 @@ import { JwtPayload } from '../users/types';
 import { CreateTenantDto } from './dto';
 import { TenantsService } from './tenants.service';
 
+@ApiTags('Tenants')
+@ApiBearerAuth()
 @Controller('tenants')
 export class TenantsController {
   constructor(
