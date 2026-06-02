@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { LandingPage } from '@/containers/LandingPage';
+import LandingPage from '@/containers/LandingPage';
 
 export const metadata: Metadata = {
   title: 'Gurukul | AI-Powered Institute Management',

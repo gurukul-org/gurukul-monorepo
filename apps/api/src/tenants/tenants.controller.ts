@@ -1,20 +1,17 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Post,
   Req,
   Res,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import type { Request, Response } from 'express';
 
@@ -23,6 +20,13 @@ import { setRefreshTokenCookie } from '../users/cookies.util';
 import { JwtPayload } from '../users/types';
 import { CreateTenantDto } from './dto';
 import { TenantsService } from './tenants.service';
+
+interface CurrentTenantResponse {
+  id: string;
+  subdomain: string;
+  name: string;
+  type: string;
+}
 
 @ApiTags('Tenants')
 @ApiBearerAuth()
@@ -33,6 +37,17 @@ export class TenantsController {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  @Public()
+  @SkipTenantCheck()
+  @Get('current')
+  getCurrent(@Req() req: Request): CurrentTenantResponse {
+    if (!req.tenant) {
+      throw new NotFoundException('Workspace not found');
+    }
+    const { id, subdomain, name, type } = req.tenant;
+    return { id, subdomain, name, type };
+  }
 
   @Public()
   @SkipTenantCheck()
