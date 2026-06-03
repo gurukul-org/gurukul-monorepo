@@ -1,0 +1,28 @@
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: postgres/Dockerfile
+
+    container_name: audit_lab_postgres
+
+    environment:
+      POSTGRES_USER: ${AUDIT_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${AUDIT_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${AUDIT_POSTGRES_DB}
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - audit_lab_postgres_data:/var/lib/postgresql/data
+    
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pgaudit
+      - -c
+      - pgaudit.log=write,ddl
+
+volumes:
+  audit_lab_postgres_data:
