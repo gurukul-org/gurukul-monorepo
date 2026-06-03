@@ -33,7 +33,6 @@ import {
   ForgotPasswordDto,
   LoginDto,
   ResetPasswordDto,
-  SignupDto,
   UpdateProfileDto,
 } from './dto';
 import { AtGuard, RtGuard } from './guards';
@@ -66,6 +65,7 @@ export class UsersController {
   }
 
   @Public()
+  @SkipTenantCheck()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(
@@ -75,6 +75,7 @@ export class UsersController {
   }
 
   @Public()
+  @SkipTenantCheck()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(

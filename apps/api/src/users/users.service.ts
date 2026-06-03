@@ -17,7 +17,6 @@ import {
   ForgotPasswordDto,
   LoginDto,
   ResetPasswordDto,
-  SignupDto,
   UpdateProfileDto,
 } from './dto';
 import { Tokens } from './types';
@@ -40,30 +39,6 @@ export class UsersService {
     private readonly config: ConfigService,
     private readonly emailService: EmailService,
   ) {}
-
-  async signup(dto: SignupDto): Promise<Tokens> {
-    const hash = await this.hashData(dto.password);
-
-    try {
-      const newUser = await this.prisma.user.create({
-        data: {
-          email: dto.email,
-          passwordHash: hash,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          phone: dto.phone,
-        },
-      });
-
-      const tokens = await this.generateTokens(newUser.id, newUser.email);
-      return tokens;
-    } catch (error) {
-      if (this.isUniqueConstraintError(error)) {
-        throw new ConflictException('Email already exists');
-      }
-      throw error;
-    }
-  }
 
   async login(dto: LoginDto, tenantId?: string): Promise<Tokens> {
     const user = await this.prisma.user.findUnique({
