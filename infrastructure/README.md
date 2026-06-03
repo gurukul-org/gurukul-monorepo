@@ -6,11 +6,11 @@ Build and verify a local PostgreSQL audit logging proof of concept using pgAudit
 
 The goal is to:
 
-* Verify pgAudit installation and configuration.
-* Verify audit log generation.
-* Understand the structure of pgAudit logs.
-* Prepare for future OpenSearch integration.
-* Keep the production/development database untouched.
+- Verify pgAudit installation and configuration.
+- Verify audit log generation.
+- Understand the structure of pgAudit logs.
+- Prepare for future OpenSearch integration.
+- Keep the production/development database untouched.
 
 ---
 
@@ -174,7 +174,7 @@ services:
       POSTGRES_DB: audit_lab
 
     ports:
-      - "5433:5432"
+      - '5433:5432'
 
     volumes:
       - audit_lab_postgres_data:/var/lib/postgresql/data
