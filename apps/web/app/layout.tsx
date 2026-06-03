@@ -4,6 +4,7 @@ import { Oxanium } from 'next/font/google';
 import { cn } from '@/lib/utils';
 
 import './globals.css';
+import { Providers } from './providers';
 
 const oxanium = Oxanium({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -28,7 +29,7 @@ export default function RootLayout({
         <script src="/theme-init.js" />
       </head>
       <body className="bg-background text-foreground antialiased">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

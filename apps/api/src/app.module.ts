@@ -5,6 +5,7 @@ import { APP_GUARD } from '@nestjs/core';
 
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaModule } from 'nestjs-prisma';
+import * as path from 'path';
 import { Pool } from 'pg';
 
 import { AppController } from './app.controller';
@@ -16,7 +17,13 @@ import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [
+        path.resolve(__dirname, '..', '.env'),
+        path.resolve(__dirname, '..', '..', '..', '.env'),
+      ],
+    }),
     CacheModule.register({
       isGlobal: true,
     }),
@@ -24,6 +31,11 @@ import { UsersModule } from './users/users.module';
       isGlobal: true,
       useFactory: (configService: ConfigService) => {
         const connectionString = configService.get<string>('DATABASE_URL');
+        if (!connectionString) {
+          throw new Error(
+            'DATABASE_URL is not set. Add it to apps/api/.env (local dev) or the container environment (Docker).',
+          );
+        }
         const pool = new Pool({ connectionString });
         const adapter = new PrismaPg(pool);
         return {

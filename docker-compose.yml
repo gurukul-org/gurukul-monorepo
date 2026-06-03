@@ -43,6 +43,8 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       - AT_SECRET=${AT_SECRET}
       - RT_SECRET=${RT_SECRET}
+      - APP_DOMAIN=${APP_DOMAIN}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN}
     depends_on:
       postgres:
         condition: service_healthy

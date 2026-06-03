@@ -10,7 +10,7 @@ import { ScrollProgress } from './ScrollProgress';
 import { SocialProof } from './SocialProof';
 import { Waitlist } from './Waitlist';
 
-export function LandingPage() {
+export default function LandingPage() {
   return (
     <main className="relative min-h-screen overflow-x-clip bg-background text-foreground">
       <ScrollProgress />

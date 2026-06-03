@@ -20,7 +20,12 @@ import {
 
 import type { Request, Response } from 'express';
 
-import { GetCurrentUser, GetCurrentUserId, Public } from '../common/decorators';
+import {
+  GetCurrentUser,
+  GetCurrentUserId,
+  Public,
+  SkipTenantCheck,
+} from '../common/decorators';
 import { clearRefreshTokenCookie, setRefreshTokenCookie } from './cookies.util';
 import {
   ChangeEmailDto,
@@ -43,20 +48,7 @@ export class UsersController {
   ) {}
 
   @Public()
-  @Post('signup')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'User signup' })
-  @ApiResponse({ status: 201, description: 'User successfully signed up.' })
-  async signup(
-    @Body() dto: SignupDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<{ accessToken: string }> {
-    const tokens = await this.usersService.signup(dto);
-    setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
-    return { accessToken: tokens.accessToken };
-  }
-
-  @Public()
+  @SkipTenantCheck()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'User login' })
@@ -143,6 +135,7 @@ export class UsersController {
   }
 
   @Public()
+  @SkipTenantCheck()
   @UseGuards(RtGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
