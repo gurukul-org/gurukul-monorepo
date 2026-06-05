@@ -117,7 +117,7 @@ export class UsersService {
 
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
     const resetPasswordTokenHash = this.hashToken(dto.token);
-    const user = await this.prisma.user.findFirst({
+    const user = await this.prisma.user.findUnique({
       where: { resetPasswordTokenHash },
     });
 

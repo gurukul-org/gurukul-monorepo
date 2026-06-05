@@ -1,15 +1,23 @@
-import { IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsNotEmpty, IsOptional, IsString, MinLength, ValidateIf } from 'class-validator';
 
 export class UpdateProfileDto {
-  @IsString()
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(1)
   firstName?: string;
 
-  @IsString()
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(1)
   lastName?: string;
 
-  @IsString()
   @IsOptional()
-  phone?: string;
+  @ValidateIf((o: UpdateProfileDto) => o.phone !== null)
+  @IsString()
+  phone?: string | null;
 }

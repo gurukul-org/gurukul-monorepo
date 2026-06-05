@@ -1,4 +1,8 @@
-import { ExecutionContext, createParamDecorator } from '@nestjs/common';
+import {
+  ExecutionContext,
+  UnauthorizedException,
+  createParamDecorator,
+} from '@nestjs/common';
 
 import { JwtPayload } from '../../users/types';
 
@@ -7,8 +11,12 @@ type RequestWithUser = {
 };
 
 export const GetCurrentUserId = createParamDecorator(
-  (_: undefined, context: ExecutionContext): string | undefined => {
+  (_: undefined, context: ExecutionContext): string => {
     const request = context.switchToHttp().getRequest<RequestWithUser>();
-    return request.user?.sub;
+    const userId = request.user?.sub;
+    if (!userId) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    return userId;
   },
 );
