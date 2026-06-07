@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   Res,
@@ -25,8 +27,15 @@ import {
   SkipTenantCheck,
 } from '../common/decorators';
 import { clearRefreshTokenCookie, setRefreshTokenCookie } from './cookies.util';
-import { LoginDto } from './dto';
-import { RtGuard } from './guards';
+import {
+  ChangeEmailDto,
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  LoginDto,
+  ResetPasswordDto,
+  UpdateProfileDto,
+} from './dto';
+import { AtGuard, RtGuard } from './guards';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
@@ -53,6 +62,63 @@ export class UsersController {
     const tokens = await this.usersService.login(dto, tenantId);
     setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
     return { accessToken: tokens.accessToken };
+  }
+
+  @Public()
+  @SkipTenantCheck()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
+    return this.usersService.forgotPassword(dto);
+  }
+
+  @Public()
+  @SkipTenantCheck()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+  ): Promise<{ message: string }> {
+    return this.usersService.resetPassword(dto);
+  }
+
+  @Get('me')
+  @UseGuards(AtGuard)
+  @HttpCode(HttpStatus.OK)
+  async getProfile(@GetCurrentUserId() userId: string) {
+    return this.usersService.getProfile(userId);
+  }
+
+  @Patch('me')
+  @UseGuards(AtGuard)
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(
+    @GetCurrentUserId() userId: string,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.usersService.updateProfile(userId, dto);
+  }
+
+  @Patch('me/password')
+  @UseGuards(AtGuard)
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @GetCurrentUserId() userId: string,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    return this.usersService.changePassword(userId, dto);
+  }
+
+  @Patch('me/email')
+  @UseGuards(AtGuard)
+  @HttpCode(HttpStatus.OK)
+  async changeEmail(
+    @GetCurrentUserId() userId: string,
+    @Body() dto: ChangeEmailDto,
+  ): Promise<{ message: string }> {
+    return this.usersService.changeEmail(userId, dto);
   }
 
   @Post('signout')
