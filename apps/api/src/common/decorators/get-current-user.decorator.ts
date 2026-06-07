@@ -1,8 +1,10 @@
 import { ExecutionContext, createParamDecorator } from '@nestjs/common';
 
-import type { Request } from 'express';
-
 import { JwtPayloadWithRt } from '../../users/types';
+
+type RequestWithUser = {
+  user?: JwtPayloadWithRt;
+};
 
 export const GetCurrentUser = createParamDecorator(
   (
@@ -12,8 +14,8 @@ export const GetCurrentUser = createParamDecorator(
     | JwtPayloadWithRt
     | JwtPayloadWithRt[keyof JwtPayloadWithRt]
     | undefined => {
-    const request = context.switchToHttp().getRequest<Request>();
-    const user = request.user as JwtPayloadWithRt | undefined;
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
+    const user = request.user;
     if (!user) return undefined;
     if (!data) return user;
     return user[data];
