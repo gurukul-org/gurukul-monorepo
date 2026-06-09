@@ -102,7 +102,15 @@ export default function TenantLogin() {
                     field.state.meta.isTouched && !field.state.meta.isValid;
                   return (
                     <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                      <div className="flex items-center justify-between">
+                        <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                        <a
+                          href={getApexUrl('/forgot-password')}
+                          className="text-xs text-muted-foreground hover:text-primary underline underline-offset-4 transition-colors"
+                        >
+                          Forgot password?
+                        </a>
+                      </div>
                       <Input
                         id={field.name}
                         name={field.name}

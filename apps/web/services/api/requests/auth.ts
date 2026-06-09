@@ -6,8 +6,11 @@ import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import type {
   CreateTenantDto,
   CreateTenantResponse,
+  ForgotPasswordDto,
   LoginDto,
   LoginResponse,
+  MessageResponse,
+  ResetPasswordDto,
 } from '@/lib/api/types';
 import { getTenantUrl } from '@/lib/env';
 import { useAuthStore } from '@/lib/store/auth';
@@ -71,5 +74,25 @@ export function useRequestLogout() {
       router.replace('/login');
       showError(err);
     },
+  });
+}
+
+export function useRequestForgotPassword() {
+  const showError = useShowApiError();
+
+  return useMutation({
+    mutationFn: (payload: ForgotPasswordDto) =>
+      axios.post<MessageResponse>('/users/forgot-password', payload),
+    onError: (err) => showError(err),
+  });
+}
+
+export function useRequestResetPassword() {
+  const showError = useShowApiError();
+
+  return useMutation({
+    mutationFn: (payload: ResetPasswordDto) =>
+      axios.post<MessageResponse>('/users/reset-password', payload),
+    onError: (err) => showError(err),
   });
 }
