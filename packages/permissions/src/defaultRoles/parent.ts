@@ -1,9 +1,9 @@
-import { DefaultRoleDefinition } from "../types";
-import { PERMS } from "../registry";
+import { PERMS } from '../registry';
+import { DefaultRoleDefinition } from '../types';
 
 // Parent / Guardian — can view linked student's data and communicate with teachers.
 export const parentRole: DefaultRoleDefinition = {
-  title: "Parent",
+  title: 'Parent',
   isAdmin: false,
   rank: 9,
   scopes: [

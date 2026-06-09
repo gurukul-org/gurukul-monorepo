@@ -1,21 +1,21 @@
-import { FeatureDefinition, FeatureKey, PermissionId } from "../types";
-import { dashboardFeature } from "./dashboard";
-import { academicTermFeature } from "./academicTerm";
-import { programFeature } from "./program";
-import { courseFeature } from "./course";
-import { classFeature } from "./class";
-import { instructorFeature } from "./instructor";
-import { studentFeature } from "./student";
-import { parentFeature } from "./parent";
-import { enrolmentFeature } from "./enrolment";
-import { feeFeature } from "./fee";
-import { attendanceFeature } from "./attendance";
-import { gradeFeature } from "./grade";
-import { libraryFeature } from "./library";
-import { userFeature } from "./user";
-import { roleFeature } from "./role";
-import { tenantFeature } from "./tenant";
-import { reportFeature } from "./report";
+import { FeatureDefinition, FeatureKey, PermissionId } from '../types';
+import { academicTermFeature } from './academicTerm';
+import { attendanceFeature } from './attendance';
+import { classFeature } from './class';
+import { courseFeature } from './course';
+import { dashboardFeature } from './dashboard';
+import { enrolmentFeature } from './enrolment';
+import { feeFeature } from './fee';
+import { gradeFeature } from './grade';
+import { instructorFeature } from './instructor';
+import { libraryFeature } from './library';
+import { parentFeature } from './parent';
+import { programFeature } from './program';
+import { reportFeature } from './report';
+import { roleFeature } from './role';
+import { studentFeature } from './student';
+import { tenantFeature } from './tenant';
+import { userFeature } from './user';
 
 // FEATURES — the source of truth that helpers iterate over.
 export const FEATURES: Readonly<Record<FeatureKey, FeatureDefinition>> = {
@@ -55,121 +55,121 @@ function p(feature: FeatureKey, permissionId: string) {
 export const PERMS = {
   dashboard: {
     all: FEATURES.dashboard.all,
-    view: p("dashboard", "view-dashboard"),
-    viewOwn: p("dashboard", "view-own-dashboard"),
+    view: p('dashboard', 'view-dashboard'),
+    viewOwn: p('dashboard', 'view-own-dashboard'),
   },
   academicTerm: {
     all: FEATURES.academicTerm.all,
-    view: p("academicTerm", "view-academic-terms"),
-    create: p("academicTerm", "create-academic-terms"),
-    edit: p("academicTerm", "edit-academic-terms"),
-    delete: p("academicTerm", "delete-academic-terms"),
+    view: p('academicTerm', 'view-academic-terms'),
+    create: p('academicTerm', 'create-academic-terms'),
+    edit: p('academicTerm', 'edit-academic-terms'),
+    delete: p('academicTerm', 'delete-academic-terms'),
   },
   program: {
     all: FEATURES.program.all,
-    view: p("program", "view-programs"),
-    create: p("program", "create-programs"),
-    edit: p("program", "edit-programs"),
-    delete: p("program", "delete-programs"),
+    view: p('program', 'view-programs'),
+    create: p('program', 'create-programs'),
+    edit: p('program', 'edit-programs'),
+    delete: p('program', 'delete-programs'),
   },
   course: {
     all: FEATURES.course.all,
-    view: p("course", "view-courses"),
-    viewOwn: p("course", "view-own-courses"),
-    create: p("course", "create-courses"),
-    edit: p("course", "edit-courses"),
-    delete: p("course", "delete-courses"),
+    view: p('course', 'view-courses'),
+    viewOwn: p('course', 'view-own-courses'),
+    create: p('course', 'create-courses'),
+    edit: p('course', 'edit-courses'),
+    delete: p('course', 'delete-courses'),
   },
   class: {
     all: FEATURES.class.all,
-    view: p("class", "view-classes"),
-    viewOwn: p("class", "view-own-classes"),
-    create: p("class", "create-classes"),
-    edit: p("class", "edit-classes"),
-    delete: p("class", "delete-classes"),
+    view: p('class', 'view-classes'),
+    viewOwn: p('class', 'view-own-classes'),
+    create: p('class', 'create-classes'),
+    edit: p('class', 'edit-classes'),
+    delete: p('class', 'delete-classes'),
   },
   instructor: {
     all: FEATURES.instructor.all,
-    view: p("instructor", "view-instructors"),
-    assign: p("instructor", "assign-instructors"),
-    edit: p("instructor", "edit-instructors"),
-    remove: p("instructor", "remove-instructors"),
+    view: p('instructor', 'view-instructors'),
+    assign: p('instructor', 'assign-instructors'),
+    edit: p('instructor', 'edit-instructors'),
+    remove: p('instructor', 'remove-instructors'),
   },
   student: {
     all: FEATURES.student.all,
-    view: p("student", "view-students"),
-    viewOwn: p("student", "view-own-students"),
-    create: p("student", "create-students"),
-    edit: p("student", "edit-students"),
-    delete: p("student", "delete-students"),
+    view: p('student', 'view-students'),
+    viewOwn: p('student', 'view-own-students'),
+    create: p('student', 'create-students'),
+    edit: p('student', 'edit-students'),
+    delete: p('student', 'delete-students'),
   },
   parent: {
     all: FEATURES.parent.all,
-    view: p("parent", "view-parents"),
-    viewOwn: p("parent", "view-own-parent"),
-    create: p("parent", "create-parents"),
-    edit: p("parent", "edit-parents"),
-    delete: p("parent", "delete-parents"),
+    view: p('parent', 'view-parents'),
+    viewOwn: p('parent', 'view-own-parent'),
+    create: p('parent', 'create-parents'),
+    edit: p('parent', 'edit-parents'),
+    delete: p('parent', 'delete-parents'),
   },
   enrolment: {
     all: FEATURES.enrolment.all,
-    view: p("enrolment", "view-enrolments"),
-    viewOwn: p("enrolment", "view-own-enrolments"),
-    create: p("enrolment", "create-enrolments"),
-    edit: p("enrolment", "edit-enrolments"),
-    delete: p("enrolment", "delete-enrolments"),
+    view: p('enrolment', 'view-enrolments'),
+    viewOwn: p('enrolment', 'view-own-enrolments'),
+    create: p('enrolment', 'create-enrolments'),
+    edit: p('enrolment', 'edit-enrolments'),
+    delete: p('enrolment', 'delete-enrolments'),
   },
   fee: {
     all: FEATURES.fee.all,
-    view: p("fee", "view-fees"),
-    viewOwn: p("fee", "view-own-fees"),
-    create: p("fee", "create-fees"),
-    edit: p("fee", "edit-fees"),
-    delete: p("fee", "delete-fees"),
+    view: p('fee', 'view-fees'),
+    viewOwn: p('fee', 'view-own-fees'),
+    create: p('fee', 'create-fees'),
+    edit: p('fee', 'edit-fees'),
+    delete: p('fee', 'delete-fees'),
   },
   attendance: {
     all: FEATURES.attendance.all,
-    view: p("attendance", "view-attendance"),
-    viewOwn: p("attendance", "view-own-attendance"),
-    mark: p("attendance", "mark-attendance"),
-    edit: p("attendance", "edit-attendance"),
+    view: p('attendance', 'view-attendance'),
+    viewOwn: p('attendance', 'view-own-attendance'),
+    mark: p('attendance', 'mark-attendance'),
+    edit: p('attendance', 'edit-attendance'),
   },
   grade: {
     all: FEATURES.grade.all,
-    view: p("grade", "view-grades"),
-    viewOwn: p("grade", "view-own-grades"),
-    enter: p("grade", "enter-grades"),
-    edit: p("grade", "edit-grades"),
+    view: p('grade', 'view-grades'),
+    viewOwn: p('grade', 'view-own-grades'),
+    enter: p('grade', 'enter-grades'),
+    edit: p('grade', 'edit-grades'),
   },
   library: {
     all: FEATURES.library.all,
-    view: p("library", "view-library"),
-    create: p("library", "create-library"),
-    edit: p("library", "edit-library"),
-    delete: p("library", "delete-library"),
+    view: p('library', 'view-library'),
+    create: p('library', 'create-library'),
+    edit: p('library', 'edit-library'),
+    delete: p('library', 'delete-library'),
   },
   user: {
     all: FEATURES.user.all,
-    view: p("user", "view-users"),
-    invite: p("user", "invite-users"),
-    edit: p("user", "edit-users"),
-    delete: p("user", "delete-users"),
+    view: p('user', 'view-users'),
+    invite: p('user', 'invite-users'),
+    edit: p('user', 'edit-users'),
+    delete: p('user', 'delete-users'),
   },
   role: {
     all: FEATURES.role.all,
-    view: p("role", "view-roles"),
-    create: p("role", "create-roles"),
-    edit: p("role", "edit-roles"),
-    delete: p("role", "delete-roles"),
+    view: p('role', 'view-roles'),
+    create: p('role', 'create-roles'),
+    edit: p('role', 'edit-roles'),
+    delete: p('role', 'delete-roles'),
   },
   tenant: {
     all: FEATURES.tenant.all,
-    view: p("tenant", "view-tenant-settings"),
-    edit: p("tenant", "edit-tenant-settings"),
+    view: p('tenant', 'view-tenant-settings'),
+    edit: p('tenant', 'edit-tenant-settings'),
   },
   report: {
     all: FEATURES.report.all,
-    view: p("report", "view-reports"),
+    view: p('report', 'view-reports'),
   },
 } as const;
 

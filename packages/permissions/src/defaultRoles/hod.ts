@@ -1,11 +1,11 @@
-import { DefaultRoleDefinition } from "../types";
-import { PERMS } from "../registry";
+import { PERMS } from '../registry';
+import { DefaultRoleDefinition } from '../types';
 
 // HOD — Head of Department.
 // Manages courses, classes, and instructors. Views students and enrolments.
 // Can mark attendance and manage grades for their department.
 export const hod: DefaultRoleDefinition = {
-  title: "HOD",
+  title: 'HOD',
   isAdmin: false,
   rank: 4,
   scopes: [

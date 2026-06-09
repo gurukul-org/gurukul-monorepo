@@ -1,10 +1,10 @@
-import { DefaultRoleDefinition } from "../types";
-import { PERMS } from "../registry";
+import { PERMS } from '../registry';
+import { DefaultRoleDefinition } from '../types';
 
 // Academic Director — Dean-level academic oversight.
 // Full access to all academic modules, read access to people and operations.
 export const academicDirector: DefaultRoleDefinition = {
-  title: "Academic Director",
+  title: 'Academic Director',
   isAdmin: false,
   rank: 3,
   scopes: [
