@@ -1,5 +1,5 @@
-import { EditorCategory, FeatureDefinition, PermissionId } from "../types";
-import { FEATURES, PERMS } from "../registry";
+import { FEATURES, PERMS } from '../registry';
+import { EditorCategory, FeatureDefinition, PermissionId } from '../types';
 
 // Group features by the bucket the role editor renders them into.
 export function featuresByEditorCategory(): Readonly<

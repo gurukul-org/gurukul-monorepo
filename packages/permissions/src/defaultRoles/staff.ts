@@ -1,10 +1,10 @@
-import { DefaultRoleDefinition } from "../types";
-import { PERMS } from "../registry";
+import { PERMS } from '../registry';
+import { DefaultRoleDefinition } from '../types';
 
 // Staff — non-teaching staff (clerks, lab assistants, librarians, etc.)
 // Mostly view-only access to key modules.
 export const staff: DefaultRoleDefinition = {
-  title: "Staff",
+  title: 'Staff',
   isAdmin: false,
   rank: 7,
   scopes: [

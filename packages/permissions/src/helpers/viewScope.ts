@@ -1,10 +1,10 @@
-import { PermissionEntry, PermissionId } from "../types";
-import { FEATURES } from "../registry";
-import { userHasPermission } from "./expand";
+import { FEATURES } from '../registry';
+import { PermissionEntry, PermissionId } from '../types';
+import { userHasPermission } from './expand';
 
 // View-scope tri-state: 'all' (no filter), 'own' (filter to user's items), 'none' (no access).
 // Controllers branch on this to do row-level filtering without re-implementing scope checks.
-export type ViewScope = "all" | "own" | "none";
+export type ViewScope = 'all' | 'own' | 'none';
 
 // Auto-derive the (all, own) view pair for every ownership-aware feature at module load.
 interface ViewPair {
@@ -25,8 +25,8 @@ function computeViewPairs(): Map<string, ViewPair> {
         );
       }
       entity = entry.ownershipFor;
-      if (entry.ownership === "all") allEntry = entry;
-      if (entry.ownership === "own") ownEntry = entry;
+      if (entry.ownership === 'all') allEntry = entry;
+      if (entry.ownership === 'own') ownEntry = entry;
     }
     if (entity && allEntry && ownEntry) {
       pairs.set(entity, { all: allEntry, own: ownEntry });
@@ -44,12 +44,12 @@ export function getViewScope(
   entity: string,
   options: { isAdmin?: boolean } = {},
 ): ViewScope {
-  if (options.isAdmin) return "all";
+  if (options.isAdmin) return 'all';
   const pair = VIEW_PAIRS.get(entity);
-  if (!pair) return "none";
-  if (userHasPermission(userScopes, pair.all)) return "all";
-  if (userHasPermission(userScopes, pair.own)) return "own";
-  return "none";
+  if (!pair) return 'none';
+  if (userHasPermission(userScopes, pair.all)) return 'all';
+  if (userHasPermission(userScopes, pair.own)) return 'own';
+  return 'none';
 }
 
 // Exposed mostly for tests/debug — list the entities for which view-scope is defined.

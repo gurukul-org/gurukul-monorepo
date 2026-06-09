@@ -1,5 +1,5 @@
-import { PermissionEntry, PermissionId } from "../types";
-import { FEATURES } from "../registry";
+import { FEATURES } from '../registry';
+import { PermissionEntry, PermissionId } from '../types';
 
 // Build the parent->descendants closure at module load.
 // For each entry that declares `grants`, the parent's accepted set = { itself, every granted child }.
@@ -66,7 +66,7 @@ export function userHasPermission(
   required: PermissionEntry | PermissionId | string,
 ): boolean {
   const targetId = (
-    typeof required === "string" ? required : required.id
+    typeof required === 'string' ? required : required.id
   ) as PermissionId;
   const accepted = ACCEPTED_FOR.get(targetId);
   if (!accepted) {

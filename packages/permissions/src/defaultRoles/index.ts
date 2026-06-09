@@ -1,12 +1,12 @@
-import { owner } from "./owner";
-import { branchManager } from "./branchManager";
-import { academicDirector } from "./academicDirector";
-import { hod } from "./hod";
-import { administrativeOfficer } from "./administrativeOfficer";
-import { faculty } from "./faculty";
-import { staff } from "./staff";
-import { studentRole } from "./student";
-import { parentRole } from "./parent";
+import { academicDirector } from './academicDirector';
+import { administrativeOfficer } from './administrativeOfficer';
+import { branchManager } from './branchManager';
+import { faculty } from './faculty';
+import { hod } from './hod';
+import { owner } from './owner';
+import { parentRole } from './parent';
+import { staff } from './staff';
+import { studentRole } from './student';
 
 export {
   owner,

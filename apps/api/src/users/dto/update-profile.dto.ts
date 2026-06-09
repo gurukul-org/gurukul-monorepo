@@ -1,7 +1,20 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
+
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, MinLength, ValidateIf } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 
 export class UpdateProfileDto {
+  @ApiPropertyOptional({
+    example: 'John',
+    description: 'The updated first name of the user.',
+    minLength: 1,
+  })
   @IsOptional()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
@@ -9,6 +22,11 @@ export class UpdateProfileDto {
   @MinLength(1)
   firstName?: string;
 
+  @ApiPropertyOptional({
+    example: 'Doe',
+    description: 'The updated last name of the user.',
+    minLength: 1,
+  })
   @IsOptional()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
@@ -16,6 +34,12 @@ export class UpdateProfileDto {
   @MinLength(1)
   lastName?: string;
 
+  @ApiPropertyOptional({
+    example: '+1234567890',
+    nullable: true,
+    description:
+      'The updated phone number of the user. Pass null to clear the existing phone number.',
+  })
   @IsOptional()
   @ValidateIf((o: UpdateProfileDto) => o.phone !== null)
   @IsString()

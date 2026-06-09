@@ -1,5 +1,5 @@
-import { PermissionEntry, PermissionId } from "../types";
-import { FEATURES } from "../registry";
+import { FEATURES } from '../registry';
+import { PermissionEntry, PermissionId } from '../types';
 
 // All canonical permission ids in the registry — used by the database validator.
 export const ALL_PERMISSION_IDS: ReadonlySet<PermissionId> = new Set(

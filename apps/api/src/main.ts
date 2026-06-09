@@ -28,9 +28,29 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Gurukul API')
-    .setDescription('The Gurukul API documentation')
+    .setDescription(
+      'The Gurukul API provides core backend services for user accounts, workspace ' +
+        'management, academic calendars, and role-based access control.\n\n' +
+        '### Multi-Tenancy & Subdomain Routing\n' +
+        'This API is designed for multi-tenant deployments. Tenants (workspaces) are resolved ' +
+        'dynamically using the request hostname subdomain (e.g., `school-name.example.com`). ' +
+        'To test tenant-specific endpoints, queries must route to the corresponding tenant subdomain. ' +
+        'Endpoint access across subdomains is automatically verified and restricted.\n\n' +
+        '### Authentication System\n' +
+        'Security relies on stateless JWT Access Tokens and database-backed Refresh Tokens:\n' +
+        '- **Access Tokens:** Must be sent in the `Authorization` header as `Bearer <JWT_ACCESS_TOKEN>`. Expires in 15 minutes.\n' +
+        '- **Refresh Tokens:** Handled via secure HTTP-only cookies (`refreshToken`) for session refresh and rotation. Alternatively, the refresh token can be passed in the authorization header on the refresh endpoint.',
+    )
     .setVersion('1.0')
-    .addBearerAuth()
+    .addBearerAuth({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      name: 'JWT',
+      description:
+        'Enter your JWT access token to authorize calls to protected routes.',
+      in: 'header',
+    })
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);

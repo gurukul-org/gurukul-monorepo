@@ -1,10 +1,10 @@
-import { DefaultRoleDefinition } from "../types";
-import { PERMS } from "../registry";
+import { PERMS } from '../registry';
+import { DefaultRoleDefinition } from '../types';
 
 // Faculty / Instructor — teaching staff.
 // Views own classes, marks attendance, enters grades for assigned classes.
 export const faculty: DefaultRoleDefinition = {
-  title: "Faculty",
+  title: 'Faculty',
   isAdmin: false,
   rank: 6,
   scopes: [

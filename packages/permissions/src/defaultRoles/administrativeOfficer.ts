@@ -1,10 +1,10 @@
-import { DefaultRoleDefinition } from "../types";
-import { PERMS } from "../registry";
+import { PERMS } from '../registry';
+import { DefaultRoleDefinition } from '../types';
 
 // Administrative Officer — merged Registrar + Accountant role.
 // Handles admissions, enrolments, fees, and student/parent management.
 export const administrativeOfficer: DefaultRoleDefinition = {
-  title: "Administrative Officer",
+  title: 'Administrative Officer',
   isAdmin: false,
   rank: 5,
   scopes: [

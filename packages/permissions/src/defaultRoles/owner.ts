@@ -1,10 +1,10 @@
-import { DefaultRoleDefinition } from "../types";
-import { FEATURES } from "../registry";
+import { FEATURES } from '../registry';
+import { DefaultRoleDefinition } from '../types';
 
 // Owner = every permission in the registry.
 // Programmatically computed so adding a permission can't leave Owner without it.
 export const owner: DefaultRoleDefinition = {
-  title: "Owner",
+  title: 'Owner',
   isAdmin: true,
   rank: 1,
   scopes: Object.values(FEATURES).flatMap((f) =>

@@ -1,10 +1,10 @@
-import { DefaultRoleDefinition } from "../types";
-import { PERMS } from "../registry";
+import { PERMS } from '../registry';
+import { DefaultRoleDefinition } from '../types';
 
 // Student — learner self-service.
 // Can only view own data across all relevant modules.
 export const studentRole: DefaultRoleDefinition = {
-  title: "Student",
+  title: 'Student',
   isAdmin: false,
   rank: 8,
   scopes: [

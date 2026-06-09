@@ -13,32 +13,32 @@ export type {
   PermissionEntry,
   FeatureDefinition,
   DefaultRoleDefinition,
-} from "./types";
+} from './types';
 
-export { FEATURES, PERMS } from "./registry";
-export type { Perms } from "./registry";
+export { FEATURES, PERMS } from './registry';
+export type { Perms } from './registry';
 
 export {
   expandScopes,
   userHasPermission,
   userHasAnyPermission,
-} from "./helpers/expand";
+} from './helpers/expand';
 
 export {
   ALL_PERMISSION_IDS,
   ID_TO_ENTRY,
   isValidPermissionId,
-} from "./helpers/lookup";
+} from './helpers/lookup';
 
-export { getViewScope, getViewScopeEntities } from "./helpers/viewScope";
-export type { ViewScope } from "./helpers/viewScope";
+export { getViewScope, getViewScopeEntities } from './helpers/viewScope';
+export type { ViewScope } from './helpers/viewScope';
 
 export {
   featuresByEditorCategory,
   applyDependencies,
   DEPENDENCIES,
-} from "./helpers/categorize";
-export type { PermissionDependency } from "./helpers/categorize";
+} from './helpers/categorize';
+export type { PermissionDependency } from './helpers/categorize';
 
 export {
   owner,
@@ -51,4 +51,4 @@ export {
   studentRole,
   parentRole,
   DEFAULT_ROLES,
-} from "./defaultRoles";
+} from './defaultRoles';
