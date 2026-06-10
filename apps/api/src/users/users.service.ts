@@ -97,6 +97,27 @@ export class UsersService {
     return this.generateTokens(user.id, user.email);
   }
 
+  async getUserMemberships(userId: string) {
+    return this.prisma.tenantMembership.findMany({
+      where: {
+        userId,
+        status: 'ACTIVE',
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        tenant: {
+          select: {
+            subdomain: true,
+            name: true,
+            type: true,
+          },
+        },
+      },
+    });
+  }
+
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
     const response = {
       message: 'If an account exists, a password reset email has been sent.',

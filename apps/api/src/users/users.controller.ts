@@ -208,6 +208,27 @@ export class UsersController {
     return this.usersService.getProfile(userId);
   }
 
+  @Get('me/memberships')
+  @UseGuards(AtGuard)
+  @SkipTenantCheck()
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get current user tenant memberships',
+    description:
+      'Returns the active tenant memberships for the currently authenticated user, including tenant details (subdomain, name, type).',
+  })
+  @ApiOkResponse({
+    description: 'Active memberships retrieved successfully.',
+  })
+  @ApiUnauthorizedResponse({
+    type: UnauthorizedErrorResponseDto,
+    description: 'Invalid or missing bearer token.',
+  })
+  async getMemberships(@GetCurrentUserId() userId: string) {
+    return this.usersService.getUserMemberships(userId);
+  }
+
   @Patch('me')
   @UseGuards(AtGuard)
   @HttpCode(HttpStatus.OK)
