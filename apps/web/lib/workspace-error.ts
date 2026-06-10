@@ -1,6 +1,7 @@
 export type WorkspaceErrorReason =
   | 'workspace-not-found'
-  | 'workspace-unreachable';
+  | 'workspace-unreachable'
+  | 'access-denied';
 
 export const WORKSPACE_ERROR_PARAM = 'error';
 export const WORKSPACE_SUBDOMAIN_PARAM = 'subdomain';
@@ -8,7 +9,11 @@ export const WORKSPACE_SUBDOMAIN_PARAM = 'subdomain';
 export function isWorkspaceErrorReason(
   value: string | null,
 ): value is WorkspaceErrorReason {
-  return value === 'workspace-not-found' || value === 'workspace-unreachable';
+  return (
+    value === 'workspace-not-found' ||
+    value === 'workspace-unreachable' ||
+    value === 'access-denied'
+  );
 }
 
 export function buildWorkspaceErrorUrl(
@@ -29,6 +34,9 @@ export function describeWorkspaceError(
   const label = subdomain ? `"${subdomain}"` : 'that workspace';
   if (reason === 'workspace-not-found') {
     return `Workspace ${label} doesn't exist. Try a different workspace URL.`;
+  }
+  if (reason === 'access-denied') {
+    return `Access denied: you do not have access to workspace ${label}.`;
   }
   return `Workspace ${label} is unreachable right now. Please try again.`;
 }
