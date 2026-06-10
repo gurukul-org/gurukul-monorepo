@@ -2,20 +2,12 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import * as bcrypt from 'bcrypt';
-import type { Cache } from 'cache-manager';
 import { PrismaService } from 'nestjs-prisma';
 
 import { UsersService } from '../users/users.service';
 import { TenantsService } from './tenants.service';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-jest.mock('bcrypt', () => ({
-  compare: jest.fn(),
-  hash: jest.fn(),
-}));
-
-const mockedBcryptCompare = bcrypt.compare as unknown as jest.Mock;
 
 type PrismaMock = {
   tenant: { findFirst: jest.Mock; create: jest.Mock };
@@ -24,21 +16,18 @@ type PrismaMock = {
   $transaction: jest.Mock;
 };
 
+const USER_ID = 'auth-user';
+
 const validDto = {
   subdomain: 'acme',
   name: 'Acme School',
   type: 'SCHOOL' as const,
-  email: 'owner@acme.test',
-  password: 'password123',
-  firstName: 'Ada',
-  lastName: 'Lovelace',
 };
 
 describe('TenantsService — createTenant', () => {
   let service: TenantsService;
   let prisma: PrismaMock;
   let usersService: {
-    hashPassword: jest.Mock;
     generateTokens: jest.Mock;
   };
 
@@ -52,7 +41,6 @@ describe('TenantsService — createTenant', () => {
       ),
     };
     usersService = {
-      hashPassword: jest.fn().mockResolvedValue('hashed'),
       generateTokens: jest.fn().mockResolvedValue({
         accessToken: 'at',
         refreshToken: 'rt',
@@ -79,138 +67,61 @@ describe('TenantsService — createTenant', () => {
 
   it('rejects invalid subdomain format', async () => {
     await expect(
-      service.createTenant({ ...validDto, subdomain: 'AB' }, null),
+      service.createTenant({ ...validDto, subdomain: 'AB' }, USER_ID),
     ).rejects.toThrow(BadRequestException);
   });
 
   it('rejects reserved subdomains', async () => {
     await expect(
-      service.createTenant({ ...validDto, subdomain: 'www' }, null),
+      service.createTenant({ ...validDto, subdomain: 'www' }, USER_ID),
     ).rejects.toThrow(ConflictException);
   });
 
   it('rejects duplicate subdomains', async () => {
     prisma.tenant.findFirst.mockResolvedValueOnce({ id: 'existing' });
-    await expect(service.createTenant(validDto, null)).rejects.toThrow(
+    await expect(service.createTenant(validDto, USER_ID)).rejects.toThrow(
       /already taken/i,
     );
   });
 
-  it('creates tenant + user + membership for anonymous caller', async () => {
+  it('rejects when the authenticated user no longer exists', async () => {
     prisma.tenant.findFirst.mockResolvedValueOnce(null);
     prisma.user.findUnique.mockResolvedValueOnce(null);
-    prisma.user.create.mockResolvedValueOnce({
-      id: 'new-user',
-      email: validDto.email,
-    });
-    prisma.tenant.create.mockResolvedValueOnce({
-      id: 'new-tenant',
-      subdomain: validDto.subdomain,
-    });
-    prisma.tenantMembership.create.mockResolvedValueOnce({
-      id: 'new-membership',
-    });
-
-    await service.createTenant(validDto, null);
-
-    expect(prisma.user.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        email: validDto.email,
-        passwordHash: 'hashed',
-        firstName: validDto.firstName,
-        lastName: validDto.lastName,
-      }),
-    });
-    expect(prisma.tenant.create).toHaveBeenCalled();
-    expect(prisma.tenantMembership.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        tenantId: 'new-tenant',
-        userId: 'new-user',
-        status: 'ACTIVE',
-      }),
-    });
-    expect(usersService.generateTokens).toHaveBeenCalledWith(
-      'new-user',
-      validDto.email,
-      'new-tenant',
-      'new-membership',
-    );
-  });
-
-  it('attaches existing user when password matches', async () => {
-    prisma.tenant.findFirst.mockResolvedValueOnce(null);
-    prisma.user.findUnique.mockResolvedValueOnce({
-      id: 'existing-user',
-      email: validDto.email,
-      passwordHash: 'hash',
-      deletedAt: null,
-    });
-    mockedBcryptCompare.mockResolvedValueOnce(true);
-    prisma.tenant.create.mockResolvedValueOnce({ id: 'new-tenant' });
-    prisma.tenantMembership.create.mockResolvedValueOnce({ id: 'm1' });
-
-    await service.createTenant(validDto, null);
-
-    expect(prisma.user.create).not.toHaveBeenCalled();
-    expect(usersService.generateTokens).toHaveBeenCalledWith(
-      'existing-user',
-      validDto.email,
-      'new-tenant',
-      'm1',
-    );
-  });
-
-  it('rejects with uniform message when password mismatches', async () => {
-    prisma.tenant.findFirst.mockResolvedValueOnce(null);
-    prisma.user.findUnique.mockResolvedValueOnce({
-      id: 'existing-user',
-      email: validDto.email,
-      passwordHash: 'hash',
-      deletedAt: null,
-    });
-    mockedBcryptCompare.mockResolvedValueOnce(false);
-
-    await expect(service.createTenant(validDto, null)).rejects.toThrow(
-      /already in use/i,
+    await expect(service.createTenant(validDto, USER_ID)).rejects.toThrow(
+      BadRequestException,
     );
     expect(prisma.tenant.create).not.toHaveBeenCalled();
   });
 
-  it('requires owner fields when caller is anonymous', async () => {
-    prisma.tenant.findFirst.mockResolvedValueOnce(null);
-    const dto = { ...validDto, email: undefined };
-    await expect(service.createTenant(dto, null)).rejects.toThrow(
-      BadRequestException,
-    );
-  });
-
-  it('uses authenticated user as owner without requiring credentials', async () => {
+  it('uses the authenticated user as the tenant owner', async () => {
     prisma.tenant.findFirst.mockResolvedValueOnce(null);
     prisma.user.findUnique.mockResolvedValueOnce({
-      id: 'auth-user',
+      id: USER_ID,
       email: 'auth@example.test',
       deletedAt: null,
     });
     prisma.tenant.create.mockResolvedValueOnce({ id: 'new-tenant' });
-    prisma.tenantMembership.create.mockResolvedValueOnce({ id: 'm2' });
+    prisma.tenantMembership.create.mockResolvedValueOnce({ id: 'm1' });
 
-    const dtoWithoutCreds = {
-      subdomain: 'beta',
-      name: 'Beta',
-      type: 'INSTITUTE' as const,
-    };
-    await service.createTenant(dtoWithoutCreds, 'auth-user');
+    await service.createTenant(validDto, USER_ID);
 
     expect(prisma.user.findUnique).toHaveBeenCalledWith({
-      where: { id: 'auth-user' },
+      where: { id: USER_ID },
       select: expect.objectContaining({ id: true, email: true }),
     });
     expect(prisma.user.create).not.toHaveBeenCalled();
+    expect(prisma.tenantMembership.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenantId: 'new-tenant',
+        userId: USER_ID,
+        status: 'ACTIVE',
+      }),
+    });
     expect(usersService.generateTokens).toHaveBeenCalledWith(
-      'auth-user',
+      USER_ID,
       'auth@example.test',
       'new-tenant',
-      'm2',
+      'm1',
     );
   });
 });
