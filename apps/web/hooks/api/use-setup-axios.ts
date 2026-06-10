@@ -2,9 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { useRouter } from 'next/navigation';
-
-import { getApiBaseUrl } from '@/lib/env';
+import { getApexUrl, getApiBaseUrl } from '@/lib/env';
 import { useAuthStore } from '@/lib/store/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import axios, {
@@ -34,15 +32,15 @@ export function refreshAccessToken(): Promise<string> {
 
 export function useSetupAxios(instance: AxiosInstance) {
   const queryClient = useQueryClient();
-  const router = useRouter();
 
-  // Refs let interceptors registered synchronously read the latest router
-  // and queryClient without re-registering on every change.
+  // Ref lets interceptors registered synchronously read the latest queryClient
+  // without re-registering on every change.
   const hardLogoutRef = useRef<() => void>(() => {});
   hardLogoutRef.current = () => {
     useAuthStore.getState().clearAccessToken();
     queryClient.clear();
-    router.replace('/login');
+    // Always cross to apex — subdomain has no login route.
+    window.location.replace(getApexUrl('/login'));
   };
 
   // Configure axios synchronously on first render. Child components fire
@@ -99,7 +97,13 @@ export function useSetupAxios(instance: AxiosInstance) {
           !isRefresh &&
           useAuthStore.getState().accessToken
         ) {
-          hardLogoutRef.current();
+          // /tenants/current 403 means "not a member of this tenant" — let the
+          // tenant layout redirect to the apex picker with an access-denied
+          // toast instead of hard-logging-out a still-valid session.
+          const isTenantCurrent = url.startsWith('/tenants/current');
+          if (!isTenantCurrent) {
+            hardLogoutRef.current();
+          }
           return Promise.reject(error);
         }
 
