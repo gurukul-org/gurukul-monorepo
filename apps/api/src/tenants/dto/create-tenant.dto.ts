@@ -1,14 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-import {
-  IsEmail,
-  IsIn,
-  IsOptional,
-  IsString,
-  Length,
-  Matches,
-  MinLength,
-} from 'class-validator';
+import { IsIn, IsOptional, IsString, Length, Matches } from 'class-validator';
 
 import { SUBDOMAIN_REGEX } from '../tenants.constants';
 
@@ -43,46 +35,6 @@ export class CreateTenantDto {
   @IsString()
   @IsIn(TENANT_TYPES)
   type: TenantType;
-
-  // Owner credentials — required only when the caller is anonymous.
-  // The controller enforces conditional presence; class-validator marks them optional.
-  @ApiProperty({
-    example: 'admin@example.com',
-    description: 'Owner email (required if no auth token provided).',
-    required: false,
-  })
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @ApiProperty({
-    example: 'password123',
-    description: 'Owner password (required if no auth token provided).',
-    required: false,
-    minLength: 8,
-  })
-  @IsOptional()
-  @IsString()
-  @MinLength(8)
-  password?: string;
-
-  @ApiProperty({
-    example: 'John',
-    description: 'Owner first name.',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  firstName?: string;
-
-  @ApiProperty({
-    example: 'Doe',
-    description: 'Owner last name.',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  lastName?: string;
 
   @ApiProperty({
     example: '123 Main St',
@@ -128,13 +80,4 @@ export class CreateTenantDto {
   @IsOptional()
   @IsString()
   zipCode?: string;
-
-  @ApiProperty({
-    example: '+1234567890',
-    description: 'Owner phone number.',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  phone?: string;
 }

@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 
 import { Tenant } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from 'nestjs-prisma';
 
@@ -63,14 +62,11 @@ export class TenantsService {
   }
 
   /**
-   * Creates a new tenant. If `currentUserId` is provided, the existing user
-   * becomes the tenant owner. Otherwise, an owner user is created (or
-   * attached to an existing user after password verification) using the
-   * email/password/firstName/lastName fields on the DTO.
+   * Creates a new tenant. The authenticated user becomes the tenant owner.
    */
   async createTenant(
     dto: CreateTenantDto,
-    currentUserId: string | null,
+    currentUserId: string,
   ): Promise<Tokens> {
     if (!this.validateSubdomainFormat(dto.subdomain)) {
       throw new BadRequestException(
@@ -89,9 +85,7 @@ export class TenantsService {
       throw new ConflictException('This subdomain is already taken.');
     }
 
-    const owner = currentUserId
-      ? await this.resolveAuthenticatedOwner(currentUserId)
-      : await this.resolveOrCreateAnonymousOwner(dto);
+    const owner = await this.resolveAuthenticatedOwner(currentUserId);
 
     const { tenantId, membershipId } = await this.prisma.$transaction(
       async (tx) => {
@@ -137,44 +131,6 @@ export class TenantsService {
     if (!user || user.deletedAt) {
       throw new BadRequestException('Authenticated user not found.');
     }
-    return { id: user.id, email: user.email };
-  }
-
-  private async resolveOrCreateAnonymousOwner(
-    dto: CreateTenantDto,
-  ): Promise<{ id: string; email: string }> {
-    if (!dto.email || !dto.password || !dto.firstName || !dto.lastName) {
-      throw new BadRequestException(
-        'email, password, firstName, and lastName are required when creating a tenant without an existing account.',
-      );
-    }
-
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
-
-    if (existing) {
-      if (existing.deletedAt) {
-        throw new ConflictException('Email already in use.');
-      }
-      const ok = await bcrypt.compare(dto.password, existing.passwordHash);
-      if (!ok) {
-        // Uniform message: do not leak whether the email exists.
-        throw new ConflictException('Email already in use.');
-      }
-      return { id: existing.id, email: existing.email };
-    }
-
-    const passwordHash = await this.usersService.hashPassword(dto.password);
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        passwordHash,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        phone: dto.phone,
-      },
-    });
     return { id: user.id, email: user.email };
   }
 }
