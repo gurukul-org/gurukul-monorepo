@@ -322,7 +322,11 @@ export class UsersService {
     return true;
   }
 
-  async refreshTokens(userId: string, rt: string): Promise<Tokens> {
+  async refreshTokens(
+    userId: string,
+    rt: string,
+    requestTenantId?: string,
+  ): Promise<Tokens> {
     const session = await this.prisma.session.findUnique({
       where: { token: rt },
       include: {
@@ -360,12 +364,25 @@ export class UsersService {
       membershipId = activeMembership.id;
     }
 
+    // Auto-bind: session has no tenant but request comes from a tenant subdomain
+    if (!session.tenantId && requestTenantId) {
+      const autoMembership = session.user.memberships.find(
+        (m) =>
+          m.tenantId === requestTenantId &&
+          m.status === 'ACTIVE' &&
+          m.deletedAt === null,
+      );
+      if (autoMembership) {
+        membershipId = autoMembership.id;
+      }
+    }
+
     // Rotate session
     await this.prisma.session.delete({ where: { id: session.id } });
     return this.generateTokens(
       session.userId,
       session.user.email,
-      session.tenantId || undefined,
+      session.tenantId || (membershipId ? requestTenantId : undefined),
       membershipId,
     );
   }
