@@ -16,6 +16,7 @@ import {
   ChangePasswordDto,
   ForgotPasswordDto,
   LoginDto,
+  RegisterDto,
   ResetPasswordDto,
   UpdateProfileDto,
 } from './dto';
@@ -70,6 +71,28 @@ export class UsersService {
       }
       return this.generateTokens(user.id, user.email, tenantId, membership.id);
     }
+
+    return this.generateTokens(user.id, user.email);
+  }
+
+  async register(dto: RegisterDto): Promise<Tokens> {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (existing) {
+      throw new ConflictException('Email already in use');
+    }
+
+    const passwordHash = await this.hashData(dto.password);
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+      },
+    });
 
     return this.generateTokens(user.id, user.email);
   }

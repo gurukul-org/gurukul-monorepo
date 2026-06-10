@@ -15,6 +15,7 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
+  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
@@ -39,6 +40,7 @@ import {
   ForgotPasswordValidationErrorResponseDto,
   LoginValidationErrorResponseDto,
   MessageResponseDto,
+  RegisterValidationErrorResponseDto,
   ResetPasswordValidationErrorResponseDto,
   UnauthorizedErrorResponseDto,
   UpdateProfileValidationErrorResponseDto,
@@ -49,6 +51,7 @@ import {
   ChangePasswordDto,
   ForgotPasswordDto,
   LoginDto,
+  RegisterDto,
   ResetPasswordDto,
   UpdateProfileDto,
   UserProfileResponseDto,
@@ -93,6 +96,36 @@ export class UsersController {
   ): Promise<AccessTokenResponseDto> {
     const tenantId = req.tenant?.id;
     const tokens = await this.usersService.login(dto, tenantId);
+    setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
+    return { accessToken: tokens.accessToken };
+  }
+
+  @Public()
+  @SkipTenantCheck()
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Register a new user',
+    description:
+      'Creates a new user account. Returns an access token and sets the refresh token cookie. Does not create a tenant — use POST /tenants after registration to create a workspace.',
+  })
+  @ApiCreatedResponse({
+    type: AccessTokenResponseDto,
+    description: 'User registered successfully.',
+  })
+  @ApiConflictResponse({
+    type: ConflictErrorResponseDto,
+    description: 'Email already in use.',
+  })
+  @ApiBadRequestResponse({
+    type: RegisterValidationErrorResponseDto,
+    description: 'Validation failed on registration fields.',
+  })
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AccessTokenResponseDto> {
+    const tokens = await this.usersService.register(dto);
     setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
     return { accessToken: tokens.accessToken };
   }
