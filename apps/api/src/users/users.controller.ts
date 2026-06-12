@@ -15,6 +15,7 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
+  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
@@ -39,6 +40,7 @@ import {
   ForgotPasswordValidationErrorResponseDto,
   LoginValidationErrorResponseDto,
   MessageResponseDto,
+  RegisterValidationErrorResponseDto,
   ResetPasswordValidationErrorResponseDto,
   UnauthorizedErrorResponseDto,
   UpdateProfileValidationErrorResponseDto,
@@ -49,6 +51,7 @@ import {
   ChangePasswordDto,
   ForgotPasswordDto,
   LoginDto,
+  RegisterDto,
   ResetPasswordDto,
   UpdateProfileDto,
   UserProfileResponseDto,
@@ -93,6 +96,36 @@ export class UsersController {
   ): Promise<AccessTokenResponseDto> {
     const tenantId = req.tenant?.id;
     const tokens = await this.usersService.login(dto, tenantId);
+    setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
+    return { accessToken: tokens.accessToken };
+  }
+
+  @Public()
+  @SkipTenantCheck()
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Register a new user',
+    description:
+      'Creates a new user account. Returns an access token and sets the refresh token cookie. Does not create a tenant — use POST /tenants after registration to create a workspace.',
+  })
+  @ApiCreatedResponse({
+    type: AccessTokenResponseDto,
+    description: 'User registered successfully.',
+  })
+  @ApiConflictResponse({
+    type: ConflictErrorResponseDto,
+    description: 'Email already in use.',
+  })
+  @ApiBadRequestResponse({
+    type: RegisterValidationErrorResponseDto,
+    description: 'Validation failed on registration fields.',
+  })
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AccessTokenResponseDto> {
+    const tokens = await this.usersService.register(dto);
     setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
     return { accessToken: tokens.accessToken };
   }
@@ -173,6 +206,27 @@ export class UsersController {
     @GetCurrentUserId() userId: string,
   ): Promise<UserProfileResponseDto> {
     return this.usersService.getProfile(userId);
+  }
+
+  @Get('me/memberships')
+  @UseGuards(AtGuard)
+  @SkipTenantCheck()
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get current user tenant memberships',
+    description:
+      'Returns the active tenant memberships for the currently authenticated user, including tenant details (subdomain, name, type).',
+  })
+  @ApiOkResponse({
+    description: 'Active memberships retrieved successfully.',
+  })
+  @ApiUnauthorizedResponse({
+    type: UnauthorizedErrorResponseDto,
+    description: 'Invalid or missing bearer token.',
+  })
+  async getMemberships(@GetCurrentUserId() userId: string) {
+    return this.usersService.getUserMemberships(userId);
   }
 
   @Patch('me')
@@ -270,21 +324,23 @@ export class UsersController {
     return this.usersService.changeEmail(userId, dto);
   }
 
+  @Public()
+  @SkipTenantCheck()
+  @UseGuards(RtGuard)
   @Post('signout')
   @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
   @ApiOperation({
     summary: 'User logout',
     description:
-      'Logs the user out of the current session, removes the session token from database, and clears the refresh token cookie.',
+      'Logs the user out of the current session, removes the session token from database, and clears the refresh token cookie. Authenticated via the refresh-token cookie, so the call succeeds even if the access token has expired.',
   })
   @ApiOkResponse({
     type: Boolean,
     description: 'User successfully logged out.',
   })
-  @ApiUnauthorizedResponse({
-    type: UnauthorizedErrorResponseDto,
-    description: 'Invalid or missing bearer token.',
+  @ApiForbiddenResponse({
+    type: ForbiddenErrorResponseDto,
+    description: 'Access Denied: Refresh token invalid, expired, or malformed.',
   })
   async signout(
     @GetCurrentUserId() userId: string,
@@ -316,9 +372,14 @@ export class UsersController {
   async refreshTokens(
     @GetCurrentUserId() userId: string,
     @GetCurrentUser('refreshToken') refreshToken: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AccessTokenResponseDto> {
-    const tokens = await this.usersService.refreshTokens(userId, refreshToken);
+    const tokens = await this.usersService.refreshTokens(
+      userId,
+      refreshToken,
+      req.tenant?.id,
+    );
     setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
     return { accessToken: tokens.accessToken };
   }

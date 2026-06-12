@@ -16,6 +16,7 @@ import {
   ChangePasswordDto,
   ForgotPasswordDto,
   LoginDto,
+  RegisterDto,
   ResetPasswordDto,
   UpdateProfileDto,
 } from './dto';
@@ -72,6 +73,49 @@ export class UsersService {
     }
 
     return this.generateTokens(user.id, user.email);
+  }
+
+  async register(dto: RegisterDto): Promise<Tokens> {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (existing) {
+      throw new ConflictException('Email already in use');
+    }
+
+    const passwordHash = await this.hashData(dto.password);
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+      },
+    });
+
+    return this.generateTokens(user.id, user.email);
+  }
+
+  async getUserMemberships(userId: string) {
+    return this.prisma.tenantMembership.findMany({
+      where: {
+        userId,
+        status: 'ACTIVE',
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        tenant: {
+          select: {
+            subdomain: true,
+            name: true,
+            type: true,
+          },
+        },
+      },
+    });
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
@@ -278,7 +322,11 @@ export class UsersService {
     return true;
   }
 
-  async refreshTokens(userId: string, rt: string): Promise<Tokens> {
+  async refreshTokens(
+    userId: string,
+    rt: string,
+    requestTenantId?: string,
+  ): Promise<Tokens> {
     const session = await this.prisma.session.findUnique({
       where: { token: rt },
       include: {
@@ -316,12 +364,25 @@ export class UsersService {
       membershipId = activeMembership.id;
     }
 
+    // Auto-bind: session has no tenant but request comes from a tenant subdomain
+    if (!session.tenantId && requestTenantId) {
+      const autoMembership = session.user.memberships.find(
+        (m) =>
+          m.tenantId === requestTenantId &&
+          m.status === 'ACTIVE' &&
+          m.deletedAt === null,
+      );
+      if (autoMembership) {
+        membershipId = autoMembership.id;
+      }
+    }
+
     // Rotate session
     await this.prisma.session.delete({ where: { id: session.id } });
     return this.generateTokens(
       session.userId,
       session.user.email,
-      session.tenantId || undefined,
+      session.tenantId || (membershipId ? requestTenantId : undefined),
       membershipId,
     );
   }

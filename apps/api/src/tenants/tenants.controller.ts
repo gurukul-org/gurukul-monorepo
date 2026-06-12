@@ -10,7 +10,6 @@ import {
   Res,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -20,40 +19,37 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
 import type { Request, Response } from 'express';
 
-import { Public, SkipTenantCheck } from '../common/decorators';
+import { GetCurrentUserId, SkipTenantCheck } from '../common/decorators';
 import {
   AccessTokenResponseDto,
   ConflictErrorResponseDto,
   NotFoundErrorResponseDto,
   TenantValidationErrorResponseDto,
+  UnauthorizedErrorResponseDto,
 } from '../common/dto';
 import { setRefreshTokenCookie } from '../users/cookies.util';
-import { JwtPayload } from '../users/types';
 import { CreateTenantDto, CurrentTenantResponseDto } from './dto';
 import { TenantsService } from './tenants.service';
 
 @ApiTags('Tenants')
 @ApiBearerAuth()
 @Controller('tenants')
-@ApiBearerAuth()
 export class TenantsController {
   constructor(
     private readonly tenantsService: TenantsService,
-    private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
 
-  @Public()
-  @SkipTenantCheck()
   @Get('current')
   @ApiOperation({
     summary: 'Get current tenant details',
     description:
-      'Resolves and returns the active tenant details matching the request hostname (subdomain). Throws 404 if the request is on the apex domain or if the subdomain is invalid/inactive.',
+      'Resolves and returns the active tenant details matching the request hostname (subdomain). Requires the caller to be an authenticated member of the resolved tenant — enforced by the global TenantGuard. Returns 404 on the apex domain or for unknown/inactive subdomains; 401 when no access token is provided; 403 when the user is not a member of this tenant.',
   })
   @ApiOkResponse({
     type: CurrentTenantResponseDto,
@@ -64,6 +60,10 @@ export class TenantsController {
     description:
       'Workspace not found (subdomain not registered or soft-deleted).',
   })
+  @ApiUnauthorizedResponse({
+    type: UnauthorizedErrorResponseDto,
+    description: 'Invalid or missing bearer token.',
+  })
   getCurrent(@Req() req: Request): CurrentTenantResponseDto {
     if (!req.tenant) {
       throw new NotFoundException('Workspace not found');
@@ -72,14 +72,13 @@ export class TenantsController {
     return { id, subdomain, name, type };
   }
 
-  @Public()
   @SkipTenantCheck()
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new tenant',
     description:
-      'Registers a new tenant/workspace. If the requester is signed in, their existing user account becomes the owner. Otherwise, a new user account is created with the provided owner credentials. Returns an access token and sets the refresh token cookie.',
+      'Creates a new tenant/workspace. The authenticated user becomes the owner. Requires a valid access token. Returns an access token and sets the refresh token cookie.',
   })
   @ApiCreatedResponse({
     type: AccessTokenResponseDto,
@@ -88,37 +87,23 @@ export class TenantsController {
   })
   @ApiBadRequestResponse({
     type: TenantValidationErrorResponseDto,
-    description:
-      'Invalid subdomain format, missing required owner fields for anonymous registration, or validation constraints failed.',
+    description: 'Invalid subdomain format or validation constraints failed.',
   })
   @ApiConflictResponse({
     type: ConflictErrorResponseDto,
-    description:
-      'Subdomain is reserved, subdomain is already in use, or owner email is already in use by a different account.',
+    description: 'Subdomain is reserved or subdomain is already in use.',
+  })
+  @ApiUnauthorizedResponse({
+    type: UnauthorizedErrorResponseDto,
+    description: 'Invalid or missing bearer token.',
   })
   async createTenant(
     @Body() dto: CreateTenantDto,
-    @Req() req: Request,
+    @GetCurrentUserId() userId: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AccessTokenResponseDto> {
-    const currentUserId = await this.tryExtractUserId(req);
-    const tokens = await this.tenantsService.createTenant(dto, currentUserId);
+    const tokens = await this.tenantsService.createTenant(dto, userId);
     setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
     return { accessToken: tokens.accessToken };
-  }
-
-  private async tryExtractUserId(req: Request): Promise<string | null> {
-    const header = req.get('authorization');
-    if (!header) return null;
-    const match = /^Bearer\s+(.+)$/i.exec(header);
-    if (!match) return null;
-    try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(match[1], {
-        secret: this.configService.getOrThrow<string>('AT_SECRET'),
-      });
-      return payload.sub ?? null;
-    } catch {
-      return null;
-    }
   }
 }
