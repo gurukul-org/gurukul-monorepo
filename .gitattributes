@@ -1,0 +1,10 @@
+# Auto detect text files and ensure LF line endings for cross-platform consistency
+* text=auto
+
+# Force LF for shell scripts (critical for Docker containers running Linux)
+*.sh text eol=lf
+
+# Force LF for other files commonly used in Linux containers
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

@@ -57,6 +57,8 @@ export interface JwtPayload {
   email: string;
   tenantId?: string;
   membershipId?: string;
+  scopes: string[];
+  isAdmin: boolean;
   iat?: number;
   exp?: number;
 }

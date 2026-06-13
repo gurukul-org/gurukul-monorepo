@@ -11,6 +11,8 @@ declare global {
       email: string;
       tenantId?: string;
       membershipId?: string;
+      scopes: string[];
+      isAdmin: boolean;
       refreshToken?: string;
     }
   }
