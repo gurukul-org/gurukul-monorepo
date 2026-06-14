@@ -6,12 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import { PrismaService } from 'nestjs-prisma';
+
 import {
   FEATURES,
   featuresByEditorCategory,
   isValidPermissionId,
 } from '@repo/permissions';
-import { PrismaService } from 'nestjs-prisma';
 
 import { CreateRoleDto, UpdateRoleDto } from './dto';
 
@@ -182,7 +183,8 @@ export class RolesService {
       // Update role fields
       const updateData: Record<string, unknown> = {};
       if (dto.name) updateData.name = dto.name;
-      if (dto.description !== undefined) updateData.description = dto.description;
+      if (dto.description !== undefined)
+        updateData.description = dto.description;
       if (dto.rank !== undefined) updateData.rank = dto.rank;
 
       if (Object.keys(updateData).length > 0) {

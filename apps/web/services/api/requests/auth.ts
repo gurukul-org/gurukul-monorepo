@@ -4,12 +4,15 @@ import { useRouter } from 'next/navigation';
 
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import type {
+  ForgotPasswordDto,
   LoginDto,
   LoginResponse,
   MembershipDto,
+  MessageResponse,
   OnboardingDto,
   OnboardingResponse,
   RegisterDto,
+  ResetPasswordDto,
 } from '@/lib/api/types';
 import { getApexUrl, getTenantUrl } from '@/lib/env';
 import { useAuthStore } from '@/lib/store/auth';
@@ -103,5 +106,25 @@ export function useRequestLogout() {
       finish();
       showError(err);
     },
+  });
+}
+
+export function useRequestForgotPassword() {
+  const showError = useShowApiError();
+
+  return useMutation({
+    mutationFn: (payload: ForgotPasswordDto) =>
+      axios.post<MessageResponse>('/users/forgot-password', payload),
+    onError: (err) => showError(err),
+  });
+}
+
+export function useRequestResetPassword() {
+  const showError = useShowApiError();
+
+  return useMutation({
+    mutationFn: (payload: ResetPasswordDto) =>
+      axios.post<MessageResponse>('/users/reset-password', payload),
+    onError: (err) => showError(err),
   });
 }

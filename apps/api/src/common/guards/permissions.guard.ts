@@ -9,10 +9,9 @@ import { Reflector } from '@nestjs/core';
 import { userHasPermission } from '@repo/permissions';
 import type { PermissionEntry, PermissionId } from '@repo/permissions';
 
+import type { JwtPayload } from '../../users/types';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { PERMISSIONS_KEY } from '../decorators/require-permissions.decorator';
-
-import type { JwtPayload } from '../../users/types';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
