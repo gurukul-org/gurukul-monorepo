@@ -2,39 +2,39 @@
 
 import { useEffect, useState } from 'react';
 
+import { useAppDispatch, useAppSelector } from '@/lib/store';
+import { toggleTheme } from '@/lib/store/slices/themeSlice';
 import { cn } from '@/lib/utils';
 import { Moon, Sun } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
-type Theme = 'light' | 'dark';
-
 export function ThemeToggle({ className }: { className?: string }) {
-  const [theme, setTheme] = useState<Theme>('light');
+  const dispatch = useAppDispatch();
+  const theme = useAppSelector((s) => s.theme.mode);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const initial: Theme = document.documentElement.classList.contains('dark')
-      ? 'dark'
-      : 'light';
-    setTheme(initial);
     setMounted(true);
   }, []);
 
-  function toggle() {
-    const next: Theme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    document.documentElement.classList.toggle('dark', next === 'dark');
+  // Sync DOM class + localStorage whenever Redux theme changes
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
     try {
-      localStorage.setItem('theme', next);
+      localStorage.setItem('theme', theme);
     } catch {
-      // Ignore write errors (e.g. storage disabled)
+      // storage disabled
     }
+  }, [theme]);
+
+  function handleToggle() {
+    dispatch(toggleTheme());
   }
 
   return (
     <button
       type="button"
-      onClick={toggle}
+      onClick={handleToggle}
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
       aria-pressed={theme === 'dark'}
       className={cn(
