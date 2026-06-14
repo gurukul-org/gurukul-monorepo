@@ -79,16 +79,18 @@ model User {
 // TENANT MEMBERSHIP
 // =====================================================
 model TenantMembership {
-  id           String    @id @default(uuid()) @db.Uuid
-  tenantId     String    @map("tenant_id") @db.Uuid
-  userId       String    @map("user_id") @db.Uuid
-  status       String    @db.VarChar(50) // INVITED, ACTIVE, SUSPENDED, REMOVED
-  joinedAt     DateTime? @map("joined_at") @db.Timestamp(6)
-  lastActiveAt DateTime? @map("last_active_at") @db.Timestamp(6)
-  invitedById  String?   @map("invited_by") @db.Uuid
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamp(6)
+  id                  String    @id @default(uuid()) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  userId              String    @map("user_id") @db.Uuid
+  status              String    @db.VarChar(50) // INVITED, ACTIVE, SUSPENDED, REMOVED
+  joinedAt            DateTime? @map("joined_at") @db.Timestamp(6)
+  lastActiveAt        DateTime? @map("last_active_at") @db.Timestamp(6)
+  invitedById         String?   @map("invited_by") @db.Uuid
+  invitationTokenHash String?   @unique @map("invitation_token_hash") @db.VarChar(255)
+  invitationExpiresAt DateTime? @map("invitation_expires_at") @db.Timestamp(6)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamp(6)
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user             User              @relation("UserMemberships", fields: [userId], references: [id], onDelete: Cascade)
