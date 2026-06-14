@@ -494,7 +494,7 @@ function SidebarMenuButton({
   isActive = false,
   variant = 'default',
   size = 'default',
-  tooltip,
+  tooltip: _tooltip,
   className,
   ...props
 }: React.ComponentProps<'button'> & {
@@ -503,7 +503,8 @@ function SidebarMenuButton({
   tooltip?: string;
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot.Root : 'button';
-  const { isMobile, state } = useSidebar();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _ = _tooltip;
 
   const button = (
     <Comp

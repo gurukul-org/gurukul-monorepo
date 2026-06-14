@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import {
@@ -39,7 +40,7 @@ export function AppSidebar() {
       title: 'Settings',
       icon: Settings,
       href: '/settings',
-      active: pathname === '/settings',
+      active: pathname.startsWith('/settings'),
     },
   ];
 
@@ -75,10 +76,10 @@ export function AppSidebar() {
                 isActive={item.active}
                 className="w-full justify-start gap-3 transition-colors"
               >
-                <a href={item.href}>
+                <Link href={item.href}>
                   <item.icon className="h-4 w-4 shrink-0" />
                   <span>{item.title}</span>
-                </a>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

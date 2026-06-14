@@ -2,6 +2,12 @@
 
 import * as React from 'react';
 
+import Link from 'next/link';
+
+import {
+  ProfilePanel,
+  SecurityPanel,
+} from '@/components/Layout/ProfileSettings';
 import { cn } from '@/lib/utils';
 import { KeyRound, Settings, Shield, User } from 'lucide-react';
 
@@ -33,9 +39,11 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-export default function TenantSettings() {
-  const [activePanel, setActivePanel] = React.useState('profile');
+interface TenantSettingsProps {
+  activePanel: string;
+}
 
+export default function TenantSettings({ activePanel }: TenantSettingsProps) {
   return (
     <div className="flex gap-8">
       {/* Left vertical nav */}
@@ -50,8 +58,8 @@ export default function TenantSettings() {
               <ul className="mt-2 space-y-0.5">
                 {section.items.map((item) => (
                   <li key={item.id}>
-                    <button
-                      onClick={() => setActivePanel(item.id)}
+                    <Link
+                      href={`/settings/${item.id}`}
                       className={cn(
                         'flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors duration-150',
                         activePanel === item.id
@@ -61,7 +69,7 @@ export default function TenantSettings() {
                     >
                       <item.icon className="h-3.5 w-3.5 shrink-0" />
                       {item.label}
-                    </button>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -72,11 +80,21 @@ export default function TenantSettings() {
 
       {/* Content area */}
       <div className="flex-1 min-w-0">
-        <div className="text-sm text-muted-foreground">
-          This is{' '}
-          <span className="font-medium text-foreground">{activePanel}</span>{' '}
-          settings.
-        </div>
+        {activePanel === 'profile' && <ProfilePanel />}
+        {activePanel === 'security' && <SecurityPanel />}
+        {activePanel === 'permissions' && (
+          <div className="text-sm text-muted-foreground">
+            This is{' '}
+            <span className="font-medium text-foreground">permissions</span>{' '}
+            settings.
+          </div>
+        )}
+        {activePanel === 'general' && (
+          <div className="text-sm text-muted-foreground">
+            This is <span className="font-medium text-foreground">general</span>{' '}
+            settings.
+          </div>
+        )}
       </div>
     </div>
   );

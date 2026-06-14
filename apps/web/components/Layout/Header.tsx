@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 
+import Link from 'next/link';
+
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -75,10 +77,10 @@ export function Header() {
               asChild
               className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground cursor-pointer focus:bg-zinc-100 dark:focus:bg-zinc-800 focus:text-foreground"
             >
-              <a href="/settings">
+              <Link href="/settings">
                 <Settings className="h-4 w-4" />
                 <span>Settings</span>
-              </a>
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-1 bg-zinc-100 dark:bg-zinc-850" />
             <DropdownMenuItem

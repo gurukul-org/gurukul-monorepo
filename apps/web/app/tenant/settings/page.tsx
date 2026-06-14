@@ -1,10 +1,5 @@
-import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 
-import TenantSettings from '@/containers/Tenant/Settings';
-
-export const metadata: Metadata = {
-  title: 'Settings | Gurukul',
-  description: 'Manage your workspace settings, profile, and permissions.',
-};
-
-export default TenantSettings;
+export default function SettingsPage() {
+  redirect('/settings/profile');
+}

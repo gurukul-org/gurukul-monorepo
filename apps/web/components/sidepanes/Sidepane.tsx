@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 
+import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,
@@ -22,6 +23,20 @@ const SIZE_CLASSES: Record<SidepaneSize, string> = {
   full: 'sm:max-w-full',
 };
 
+export interface ActionConfig {
+  label: string;
+  onClick: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+  variant?:
+    | 'default'
+    | 'destructive'
+    | 'outline'
+    | 'secondary'
+    | 'ghost'
+    | 'link';
+}
+
 export interface SidepaneProps {
   isOpen: boolean;
   onClose: () => void;
@@ -29,6 +44,8 @@ export interface SidepaneProps {
   description?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  primaryAction?: ActionConfig;
+  secondaryAction?: ActionConfig;
   size?: SidepaneSize;
   side?: 'left' | 'right';
   className?: string;
@@ -41,6 +58,8 @@ export function Sidepane({
   description,
   children,
   footer,
+  primaryAction,
+  secondaryAction,
   size = 'half',
   side = 'right',
   className,
@@ -72,9 +91,34 @@ export function Sidepane({
         <div className="flex-1 overflow-y-auto py-2 pr-1 -mr-1 text-sm leading-relaxed">
           {children}
         </div>
-        {footer && (
+        {(footer || primaryAction || secondaryAction) && (
           <SheetFooter className="pt-4 border-t flex-shrink-0 gap-2 sm:gap-0">
-            {footer}
+            {footer ? (
+              footer
+            ) : (
+              <div className="flex w-full items-center justify-end gap-2">
+                {secondaryAction && (
+                  <Button
+                    variant={secondaryAction.variant || 'outline'}
+                    onClick={secondaryAction.onClick}
+                    disabled={secondaryAction.disabled}
+                    type="button"
+                  >
+                    {secondaryAction.label}
+                  </Button>
+                )}
+                {primaryAction && (
+                  <Button
+                    variant={primaryAction.variant || 'default'}
+                    onClick={primaryAction.onClick}
+                    disabled={primaryAction.disabled || primaryAction.loading}
+                    type="button"
+                  >
+                    {primaryAction.loading ? 'Saving...' : primaryAction.label}
+                  </Button>
+                )}
+              </div>
+            )}
           </SheetFooter>
         )}
       </SheetContent>

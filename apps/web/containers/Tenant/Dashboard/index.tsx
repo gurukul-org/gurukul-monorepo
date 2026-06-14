@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 
-import { DummyModal } from '@/components/modals/DummyModal';
-import { DummySidepane } from '@/components/sidepanes/DummySidepane';
 import { Button } from '@/components/ui/button';
+import { useDummyModal } from '@/hooks/use-modal';
+import { useDummySidepane } from '@/hooks/use-sidepane';
 import { useSubdomain } from '@/hooks/use-subdomain';
 import { useCurrentTenant } from '@/services/api/requests/tenants';
 import { useCurrentUserProfile } from '@/services/api/requests/users';
@@ -15,8 +15,8 @@ export default function TenantDashboard() {
   const { data: tenant } = useCurrentTenant();
   const { data: profile } = useCurrentUserProfile();
 
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [isSidepaneOpen, setIsSidepaneOpen] = React.useState(false);
+  const dummyModal = useDummyModal();
+  const dummySidepane = useDummySidepane();
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -36,23 +36,24 @@ export default function TenantDashboard() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button size="sm" onClick={() => setIsModalOpen(true)}>
+        <Button
+          size="sm"
+          onClick={() =>
+            dummyModal({ message: 'Hello from the type-safe modal!' })
+          }
+        >
           Open Modal
         </Button>
         <Button
           size="sm"
           variant="outline"
-          onClick={() => setIsSidepaneOpen(true)}
+          onClick={() =>
+            dummySidepane({ message: 'Hello from the type-safe sidepane!' })
+          }
         >
           Open Sidepane
         </Button>
       </div>
-
-      <DummyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-      <DummySidepane
-        isOpen={isSidepaneOpen}
-        onClose={() => setIsSidepaneOpen(false)}
-      />
     </div>
   );
 }

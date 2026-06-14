@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,20 @@ const SIZE_CLASSES: Record<ModalSize, string> = {
   xl: 'sm:max-w-4xl',
 };
 
+export interface ActionConfig {
+  label: string;
+  onClick: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+  variant?:
+    | 'default'
+    | 'destructive'
+    | 'outline'
+    | 'secondary'
+    | 'ghost'
+    | 'link';
+}
+
 export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -28,6 +43,8 @@ export interface ModalProps {
   description?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  primaryAction?: ActionConfig;
+  secondaryAction?: ActionConfig;
   size?: ModalSize;
   className?: string;
 }
@@ -39,6 +56,8 @@ export function Modal({
   description,
   children,
   footer,
+  primaryAction,
+  secondaryAction,
   size = 'md',
   className,
 }: ModalProps) {
@@ -66,9 +85,34 @@ export function Modal({
           </DialogHeader>
         )}
         <div className="py-2 text-sm leading-relaxed">{children}</div>
-        {footer && (
+        {(footer || primaryAction || secondaryAction) && (
           <DialogFooter className="pt-4 border-t gap-2 sm:gap-0">
-            {footer}
+            {footer ? (
+              footer
+            ) : (
+              <div className="flex w-full items-center justify-end gap-2">
+                {secondaryAction && (
+                  <Button
+                    variant={secondaryAction.variant || 'outline'}
+                    onClick={secondaryAction.onClick}
+                    disabled={secondaryAction.disabled}
+                    type="button"
+                  >
+                    {secondaryAction.label}
+                  </Button>
+                )}
+                {primaryAction && (
+                  <Button
+                    variant={primaryAction.variant || 'default'}
+                    onClick={primaryAction.onClick}
+                    disabled={primaryAction.disabled || primaryAction.loading}
+                    type="button"
+                  >
+                    {primaryAction.loading ? 'Saving...' : primaryAction.label}
+                  </Button>
+                )}
+              </div>
+            )}
           </DialogFooter>
         )}
       </DialogContent>

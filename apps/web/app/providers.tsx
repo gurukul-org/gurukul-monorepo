@@ -2,6 +2,8 @@
 
 import { Provider as ReduxProvider } from 'react-redux';
 
+import { ModalProvider } from '@/components/modals/ModalProvider';
+import { SidepaneProvider } from '@/components/sidepanes/SidepaneProvider';
 import { useBootstrapAuth } from '@/hooks/api/use-bootstrap-auth';
 import { useSetupAxios } from '@/hooks/api/use-setup-axios';
 import { queryClient } from '@/lib/api/query-client';
@@ -21,7 +23,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ReduxProvider store={store}>
       <QueryClientProvider client={queryClient}>
-        <AxiosGate>{children}</AxiosGate>
+        <AxiosGate>
+          {children}
+          <ModalProvider />
+          <SidepaneProvider />
+        </AxiosGate>
         <Toaster richColors position="top-right" />
         {process.env.NODE_ENV === 'development' && (
           <ReactQueryDevtools
