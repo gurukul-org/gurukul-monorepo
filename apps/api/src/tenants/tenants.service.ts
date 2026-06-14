@@ -10,6 +10,8 @@ import { Tenant } from '@prisma/client';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from 'nestjs-prisma';
 
+import { DEFAULT_ROLES } from '@repo/permissions';
+
 import { Tokens } from '../users/types';
 import { UsersService } from '../users/users.service';
 import { CreateTenantDto } from './dto';
@@ -87,8 +89,8 @@ export class TenantsService {
 
     const owner = await this.resolveAuthenticatedOwner(currentUserId);
 
-    const { tenantId, membershipId } = await this.prisma.$transaction(
-      async (tx) => {
+    const { tenantId, membershipId, scopes, isAdmin } =
+      await this.prisma.$transaction(async (tx) => {
         const tenant = await tx.tenant.create({
           data: {
             subdomain: dto.subdomain,
@@ -105,15 +107,67 @@ export class TenantsService {
             joinedAt: new Date(),
           },
         });
-        return { tenantId: tenant.id, membershipId: membership.id };
-      },
-    );
+
+        // Seed default roles with permissions from @repo/permissions
+        let ownerRoleId: string | undefined;
+        let ownerScopes: string[] = [];
+        let ownerIsAdmin = false;
+
+        for (const roleDef of DEFAULT_ROLES) {
+          const role = await tx.role.create({
+            data: {
+              tenantId: tenant.id,
+              name: roleDef.title,
+              rank: roleDef.rank,
+              isAdmin: roleDef.isAdmin,
+              isSystemRole: true,
+            },
+          });
+
+          // Seed role permissions
+          if (roleDef.scopes.length > 0) {
+            await tx.rolePermission.createMany({
+              data: roleDef.scopes.map((scopeId) => ({
+                roleId: role.id,
+                permissionId: scopeId as string,
+              })),
+            });
+          }
+
+          // Track the Owner role to assign to the founding member
+          if (roleDef.title === 'Owner') {
+            ownerRoleId = role.id;
+            ownerScopes = roleDef.scopes.map((s) => s as string);
+            ownerIsAdmin = roleDef.isAdmin;
+          }
+        }
+
+        // Assign Owner role to the founding member
+        if (ownerRoleId) {
+          await tx.membershipRole.create({
+            data: {
+              tenantMembershipId: membership.id,
+              roleId: ownerRoleId,
+              assignedById: owner.id,
+            },
+          });
+        }
+
+        return {
+          tenantId: tenant.id,
+          membershipId: membership.id,
+          scopes: ownerScopes,
+          isAdmin: ownerIsAdmin,
+        };
+      });
 
     return this.usersService.generateTokens(
       owner.id,
       owner.email,
       tenantId,
       membershipId,
+      scopes,
+      isAdmin,
     );
   }
 

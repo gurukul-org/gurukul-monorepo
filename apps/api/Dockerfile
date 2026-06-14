@@ -43,6 +43,7 @@ COPY --from=builder-full --chown=nestjs:nodejs /app/apps/api/dist ./apps/api/dis
 COPY --from=builder-full --chown=nestjs:nodejs /app/apps/api/package.json ./apps/api/package.json
 COPY --from=builder-full --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder-full --chown=nestjs:nodejs /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder-full --chown=nestjs:nodejs /app/packages ./packages
 
 # Copy Prisma schema, migrations, and config for production runtime
 COPY --from=builder-full --chown=nestjs:nodejs /app/apps/api/prisma ./apps/api/prisma

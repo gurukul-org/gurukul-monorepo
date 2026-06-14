@@ -8,6 +8,8 @@ export type JwtPayload = {
   email: string;
   tenantId?: string;
   membershipId?: string;
+  scopes: string[];
+  isAdmin: boolean;
 };
 
 export type JwtPayloadWithRt = JwtPayload & { refreshToken: string };
