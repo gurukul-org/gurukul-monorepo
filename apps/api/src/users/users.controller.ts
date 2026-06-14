@@ -1,11 +1,15 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -17,6 +21,7 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -26,6 +31,7 @@ import {
 import type { Request, Response } from 'express';
 
 import {
+  GetCurrentTenant,
   GetCurrentUser,
   GetCurrentUserId,
   Public,
@@ -382,5 +388,55 @@ export class UsersController {
     );
     setRefreshTokenCookie(res, tokens.refreshToken, this.configService);
     return { accessToken: tokens.accessToken };
+  }
+
+  @Get()
+  @UseGuards(AtGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'List tenant users',
+    description:
+      'Returns all members of the current tenant. Only admins can perform this.',
+  })
+  @ApiOkResponse({ description: 'Users retrieved successfully.' })
+  @ApiForbiddenResponse({ description: 'Forbidden context.' })
+  async findAllTenantUsers(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUser('membershipId') callerMembershipId: string,
+    @Query('limit') limit?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    const parsedLimit = limit ? parseInt(limit, 10) : 10;
+    return this.usersService.findAllTenantUsers(
+      tenantId,
+      callerMembershipId,
+      parsedLimit,
+      cursor,
+    );
+  }
+
+  @Delete(':membershipId')
+  @UseGuards(AtGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Revoke user access',
+    description:
+      "Revokes a user's access to the tenant. Only admins can perform this.",
+  })
+  @ApiOkResponse({ description: 'User access revoked successfully.' })
+  @ApiForbiddenResponse({ description: 'Forbidden context.' })
+  @ApiNotFoundResponse({ description: 'User membership not found.' })
+  async revokeTenantAccess(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUser('membershipId') callerMembershipId: string,
+    @Param('membershipId', ParseUUIDPipe) targetMembershipId: string,
+  ) {
+    return this.usersService.revokeTenantAccess(
+      tenantId,
+      callerMembershipId,
+      targetMembershipId,
+    );
   }
 }

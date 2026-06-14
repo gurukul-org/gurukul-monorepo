@@ -100,3 +100,62 @@ export function useChangeUserEmail() {
     onError: (err) => showError(err),
   });
 }
+
+export interface TenantUserRole {
+  id: string;
+  name: string;
+  rank: number;
+}
+
+export interface TenantUser {
+  membershipId: string;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  status: string;
+  joinedAt: string | null;
+  isAdmin: boolean;
+  roles: TenantUserRole[];
+}
+
+export interface TenantUsersResponse {
+  users: TenantUser[];
+  nextCursor: string | null;
+}
+
+export function useTenantUsers({
+  limit = 10,
+  cursor,
+}: { limit?: number; cursor?: string } = {}) {
+  return useQuery({
+    queryKey: [UserQueryKey.List, { limit, cursor }],
+    queryFn: async () => {
+      const { data } = await axios.get<TenantUsersResponse>('/users', {
+        params: { limit, cursor },
+      });
+      return data;
+    },
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useRevokeUserAccess() {
+  const queryClient = useQueryClient();
+  const showError = useShowApiError();
+
+  return useMutation({
+    mutationFn: async (membershipId: string) => {
+      const { data } = await axios.delete<{ message: string }>(
+        `/users/${membershipId}`,
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [UserQueryKey.List] });
+      toast.success(data.message || 'User access revoked successfully');
+    },
+    onError: (err) => showError(err),
+  });
+}
