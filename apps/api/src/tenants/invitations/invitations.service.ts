@@ -20,7 +20,7 @@ export class InvitationsService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
-  ) {}
+  ) { }
 
   async inviteUser(
     dto: InviteUserDto,
@@ -113,13 +113,18 @@ export class InvitationsService {
     });
 
     const inviteLink = this.buildInvitationUrl(token);
-    await this.emailService.sendInvitationEmail(
-      dto.email,
-      tenant.name,
-      `${inviter?.firstName} ${inviter?.lastName}`.trim() || 'An administrator',
-      roles.map((r) => r.name),
-      inviteLink,
-    );
+    try {
+      await this.emailService.sendInvitationEmail(
+        dto.email,
+        tenant.name,
+        `${inviter?.firstName} ${inviter?.lastName}`.trim() || 'An administrator',
+        roles.map((r) => r.name),
+        inviteLink,
+      );
+    } catch (error) {
+      console.error('--- Error sending invitation email ---');
+      console.error(error);
+    }
 
     return { message: 'Invitation sent successfully.' };
   }

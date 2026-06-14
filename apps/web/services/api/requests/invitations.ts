@@ -24,7 +24,7 @@ export interface ValidateInvitationResponseDto {
 export const useInviteUser = () => {
   return useMutation({
     mutationFn: async (data: InviteUserDto) => {
-      const response = await axios.post('/api/tenants/invitations', data);
+      const response = await axios.post('/tenants/invitations', data);
       return response.data;
     },
   });
@@ -35,7 +35,7 @@ export const useValidateInvitation = (token: string) => {
     queryKey: ['validate-invitation', token],
     queryFn: async () => {
       const response = await axios.get<ValidateInvitationResponseDto>(
-        `/api/tenants/invitations/validate?token=${token}`
+        `/tenants/invitations/validate?token=${token}`
       );
       return response.data;
     },
@@ -47,7 +47,7 @@ export const useValidateInvitation = (token: string) => {
 export const useAcceptInvitation = () => {
   return useMutation({
     mutationFn: async (data: AcceptInvitationDto) => {
-      const response = await axios.post('/api/tenants/invitations/accept', data);
+      const response = await axios.post('/tenants/invitations/accept', data);
       return response.data;
     },
   });
@@ -56,7 +56,7 @@ export const useAcceptInvitation = () => {
 export const useResendInvitation = () => {
   return useMutation({
     mutationFn: async (membershipId: string) => {
-      const response = await axios.post(`/api/tenants/invitations/${membershipId}/resend`);
+      const response = await axios.post(`/tenants/invitations/${membershipId}/resend`);
       return response.data;
     },
   });
@@ -65,7 +65,7 @@ export const useResendInvitation = () => {
 export const useCancelInvitation = () => {
   return useMutation({
     mutationFn: async (membershipId: string) => {
-      const response = await axios.delete(`/api/tenants/invitations/${membershipId}`);
+      const response = await axios.delete(`/tenants/invitations/${membershipId}`);
       return response.data;
     },
   });

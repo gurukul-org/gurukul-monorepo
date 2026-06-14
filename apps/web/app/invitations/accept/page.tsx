@@ -5,7 +5,7 @@ import { useState } from "react";
 import {
   useAcceptInvitation,
   useValidateInvitation,
-} from "../../../../services/api/requests/invitations";
+} from "../../../services/api/requests/invitations";
 
 export default function AcceptInvitationPage() {
   const searchParams = useSearchParams();
