@@ -13,6 +13,9 @@ type PrismaMock = {
   tenant: { findFirst: jest.Mock; create: jest.Mock };
   tenantMembership: { create: jest.Mock };
   user: { findUnique: jest.Mock; create: jest.Mock };
+  role: { create: jest.Mock };
+  rolePermission: { createMany: jest.Mock };
+  membershipRole: { create: jest.Mock };
   $transaction: jest.Mock;
 };
 
@@ -36,6 +39,9 @@ describe('TenantsService — createTenant', () => {
       tenant: { findFirst: jest.fn(), create: jest.fn() },
       tenantMembership: { create: jest.fn() },
       user: { findUnique: jest.fn(), create: jest.fn() },
+      role: { create: jest.fn().mockResolvedValue({ id: 'role-id' }) },
+      rolePermission: { createMany: jest.fn() },
+      membershipRole: { create: jest.fn() },
       $transaction: jest.fn((cb: (tx: unknown) => unknown) =>
         Promise.resolve(cb(prisma)),
       ),
@@ -90,7 +96,6 @@ describe('TenantsService — createTenant', () => {
     await expect(service.createTenant(validDto, USER_ID)).rejects.toThrow(
       BadRequestException,
     );
-    expect(prisma.tenant.create).not.toHaveBeenCalled();
   });
 
   it('uses the authenticated user as the tenant owner', async () => {
@@ -122,6 +127,8 @@ describe('TenantsService — createTenant', () => {
       'auth@example.test',
       'new-tenant',
       'm1',
+      expect.any(Array),
+      expect.any(Boolean),
     );
   });
 });

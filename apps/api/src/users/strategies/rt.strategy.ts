@@ -38,6 +38,8 @@ export class RtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
     return {
       sub: session.userId,
       email: session.user.email,
+      scopes: [],
+      isAdmin: false,
       refreshToken,
     };
   }

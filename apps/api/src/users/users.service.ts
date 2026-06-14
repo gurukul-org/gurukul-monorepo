@@ -69,7 +69,17 @@ export class UsersService {
       if (!membership) {
         throw new ForbiddenException('Access Denied');
       }
-      return this.generateTokens(user.id, user.email, tenantId, membership.id);
+      const { scopes, isAdmin } = await this.loadMembershipScopes(
+        membership.id,
+      );
+      return this.generateTokens(
+        user.id,
+        user.email,
+        tenantId,
+        membership.id,
+        scopes,
+        isAdmin,
+      );
     }
 
     return this.generateTokens(user.id, user.email);
@@ -350,6 +360,8 @@ export class UsersService {
     }
 
     let membershipId: string | undefined;
+    let scopes: string[] = [];
+    let isAdmin = false;
     if (session.tenantId) {
       const activeMembership = session.user.memberships.find(
         (m) =>
@@ -362,6 +374,9 @@ export class UsersService {
         throw new ForbiddenException('Access Denied');
       }
       membershipId = activeMembership.id;
+      const loaded = await this.loadMembershipScopes(activeMembership.id);
+      scopes = loaded.scopes;
+      isAdmin = loaded.isAdmin;
     }
 
     // Auto-bind: session has no tenant but request comes from a tenant subdomain
@@ -384,6 +399,8 @@ export class UsersService {
       session.user.email,
       session.tenantId || (membershipId ? requestTenantId : undefined),
       membershipId,
+      scopes,
+      isAdmin,
     );
   }
 
@@ -392,9 +409,11 @@ export class UsersService {
     email: string,
     tenantId?: string,
     membershipId?: string,
+    scopes: string[] = [],
+    isAdmin: boolean = false,
   ): Promise<Tokens> {
     const accessToken = await this.jwtService.signAsync(
-      { sub: userId, email, tenantId, membershipId },
+      { sub: userId, email, tenantId, membershipId, scopes, isAdmin },
       {
         secret: this.config.getOrThrow<string>('AT_SECRET'),
         expiresIn: '15m',
@@ -416,6 +435,35 @@ export class UsersService {
       accessToken,
       refreshToken,
     };
+  }
+
+  /**
+   * Load all scopes from the user's assigned roles within a membership.
+   * Returns the merged, de-duplicated set of permission ids and whether
+   * any assigned role has the isAdmin flag.
+   */
+  private async loadMembershipScopes(
+    membershipId: string,
+  ): Promise<{ scopes: string[]; isAdmin: boolean }> {
+    const membershipRoles = await this.prisma.membershipRole.findMany({
+      where: { tenantMembershipId: membershipId },
+      include: {
+        role: {
+          include: { permissions: true },
+        },
+      },
+    });
+
+    let isAdmin = false;
+    const scopeSet = new Set<string>();
+    for (const mr of membershipRoles) {
+      if (mr.role.isAdmin) isAdmin = true;
+      for (const rp of mr.role.permissions) {
+        scopeSet.add(rp.permissionId);
+      }
+    }
+
+    return { scopes: Array.from(scopeSet), isAdmin };
   }
 
   hashPassword(password: string): Promise<string> {
