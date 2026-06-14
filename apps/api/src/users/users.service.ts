@@ -16,6 +16,7 @@ import {
   ChangePasswordDto,
   ForgotPasswordDto,
   LoginDto,
+  RegisterDto,
   ResetPasswordDto,
   UpdateProfileDto,
 } from './dto';
@@ -68,10 +69,63 @@ export class UsersService {
       if (!membership) {
         throw new ForbiddenException('Access Denied');
       }
-      return this.generateTokens(user.id, user.email, tenantId, membership.id);
+      const { scopes, isAdmin } = await this.loadMembershipScopes(
+        membership.id,
+      );
+      return this.generateTokens(
+        user.id,
+        user.email,
+        tenantId,
+        membership.id,
+        scopes,
+        isAdmin,
+      );
     }
 
     return this.generateTokens(user.id, user.email);
+  }
+
+  async register(dto: RegisterDto): Promise<Tokens> {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+    if (existing) {
+      throw new ConflictException('Email already in use');
+    }
+
+    const passwordHash = await this.hashData(dto.password);
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+      },
+    });
+
+    return this.generateTokens(user.id, user.email);
+  }
+
+  async getUserMemberships(userId: string) {
+    return this.prisma.tenantMembership.findMany({
+      where: {
+        userId,
+        status: 'ACTIVE',
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        tenant: {
+          select: {
+            subdomain: true,
+            name: true,
+            type: true,
+          },
+        },
+      },
+    });
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
@@ -278,7 +332,11 @@ export class UsersService {
     return true;
   }
 
-  async refreshTokens(userId: string, rt: string): Promise<Tokens> {
+  async refreshTokens(
+    userId: string,
+    rt: string,
+    requestTenantId?: string,
+  ): Promise<Tokens> {
     const session = await this.prisma.session.findUnique({
       where: { token: rt },
       include: {
@@ -302,6 +360,8 @@ export class UsersService {
     }
 
     let membershipId: string | undefined;
+    let scopes: string[] = [];
+    let isAdmin = false;
     if (session.tenantId) {
       const activeMembership = session.user.memberships.find(
         (m) =>
@@ -314,6 +374,22 @@ export class UsersService {
         throw new ForbiddenException('Access Denied');
       }
       membershipId = activeMembership.id;
+      const loaded = await this.loadMembershipScopes(activeMembership.id);
+      scopes = loaded.scopes;
+      isAdmin = loaded.isAdmin;
+    }
+
+    // Auto-bind: session has no tenant but request comes from a tenant subdomain
+    if (!session.tenantId && requestTenantId) {
+      const autoMembership = session.user.memberships.find(
+        (m) =>
+          m.tenantId === requestTenantId &&
+          m.status === 'ACTIVE' &&
+          m.deletedAt === null,
+      );
+      if (autoMembership) {
+        membershipId = autoMembership.id;
+      }
     }
 
     // Rotate session
@@ -321,8 +397,10 @@ export class UsersService {
     return this.generateTokens(
       session.userId,
       session.user.email,
-      session.tenantId || undefined,
+      session.tenantId || (membershipId ? requestTenantId : undefined),
       membershipId,
+      scopes,
+      isAdmin,
     );
   }
 
@@ -331,9 +409,11 @@ export class UsersService {
     email: string,
     tenantId?: string,
     membershipId?: string,
+    scopes: string[] = [],
+    isAdmin: boolean = false,
   ): Promise<Tokens> {
     const accessToken = await this.jwtService.signAsync(
-      { sub: userId, email, tenantId, membershipId },
+      { sub: userId, email, tenantId, membershipId, scopes, isAdmin },
       {
         secret: this.config.getOrThrow<string>('AT_SECRET'),
         expiresIn: '15m',
@@ -355,6 +435,35 @@ export class UsersService {
       accessToken,
       refreshToken,
     };
+  }
+
+  /**
+   * Load all scopes from the user's assigned roles within a membership.
+   * Returns the merged, de-duplicated set of permission ids and whether
+   * any assigned role has the isAdmin flag.
+   */
+  private async loadMembershipScopes(
+    membershipId: string,
+  ): Promise<{ scopes: string[]; isAdmin: boolean }> {
+    const membershipRoles = await this.prisma.membershipRole.findMany({
+      where: { tenantMembershipId: membershipId },
+      include: {
+        role: {
+          include: { permissions: true },
+        },
+      },
+    });
+
+    let isAdmin = false;
+    const scopeSet = new Set<string>();
+    for (const mr of membershipRoles) {
+      if (mr.role.isAdmin) isAdmin = true;
+      for (const rp of mr.role.permissions) {
+        scopeSet.add(rp.permissionId);
+      }
+    }
+
+    return { scopes: Array.from(scopeSet), isAdmin };
   }
 
   hashPassword(password: string): Promise<string> {

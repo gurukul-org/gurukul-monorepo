@@ -14,6 +14,13 @@ export interface CreateTenantDto {
   subdomain: string;
   name: string;
   type: TenantType;
+}
+
+export interface CreateTenantResponse {
+  accessToken: string;
+}
+
+export interface RegisterDto {
   email: string;
   password: string;
   firstName: string;
@@ -21,8 +28,24 @@ export interface CreateTenantDto {
   phone?: string;
 }
 
-export interface CreateTenantResponse {
+export interface OnboardingDto {
+  subdomain: string;
+  name: string;
+  type: TenantType;
+}
+
+export interface OnboardingResponse {
   accessToken: string;
+}
+
+export interface MembershipDto {
+  id: string;
+  tenantId: string;
+  tenant: {
+    subdomain: string;
+    name: string;
+    type: TenantType;
+  };
 }
 
 export interface RefreshResponse {
@@ -34,6 +57,8 @@ export interface JwtPayload {
   email: string;
   tenantId?: string;
   membershipId?: string;
+  scopes: string[];
+  isAdmin: boolean;
   iat?: number;
   exp?: number;
 }

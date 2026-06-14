@@ -30,6 +30,13 @@ export function proxy(request: NextRequest) {
   }
 
   if (subdomain) {
+    // Login is global at the apex. Bounce stale subdomain /login links over.
+    if (pathname === '/login') {
+      const portSuffix = request.nextUrl.port ? `:${request.nextUrl.port}` : '';
+      const target = `${request.nextUrl.protocol}//${APP_DOMAIN}${portSuffix}/login?workspace=${encodeURIComponent(subdomain)}`;
+      return NextResponse.redirect(target);
+    }
+
     const url = request.nextUrl.clone();
     url.pathname =
       pathname === '/' ? '/tenant/dashboard' : `/tenant${pathname}`;

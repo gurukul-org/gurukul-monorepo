@@ -1,9 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -20,63 +17,35 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { APP_DOMAIN, getTenantUrl } from '@/lib/env';
-import {
-  WORKSPACE_ERROR_PARAM,
-  WORKSPACE_SUBDOMAIN_PARAM,
-  describeWorkspaceError,
-  isWorkspaceErrorReason,
-} from '@/lib/workspace-error';
+import { useRequestLogin } from '@/services/api/requests/auth';
 import { useForm } from '@tanstack/react-form';
-import { ArrowRight } from 'lucide-react';
-import { toast } from 'sonner';
 import { z } from 'zod';
 
-const SUBDOMAIN_REGEX = /^(?=[a-z0-9-]{3,63}$)[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
 const schema = z.object({
-  subdomain: z
-    .string()
-    .min(1, 'Workspace is required')
-    .regex(
-      SUBDOMAIN_REGEX,
-      'Use 3-63 lowercase letters, digits, or hyphens (no leading or trailing hyphen).',
-    ),
+  email: z.string().email('Enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 export default function ApexLogin() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const didShowError = useRef(false);
-
-  useEffect(() => {
-    if (didShowError.current) return;
-    const reason = searchParams.get(WORKSPACE_ERROR_PARAM);
-    if (!isWorkspaceErrorReason(reason)) return;
-    didShowError.current = true;
-    const subdomain = searchParams.get(WORKSPACE_SUBDOMAIN_PARAM);
-    toast.error(describeWorkspaceError(reason, subdomain));
-    router.replace(pathname);
-  }, [searchParams, router, pathname]);
+  const login = useRequestLogin();
 
   const form = useForm({
-    defaultValues: { subdomain: '' },
+    defaultValues: { email: '', password: '' },
     validators: { onSubmit: schema },
     onSubmit: ({ value }) => {
-      window.location.assign(
-        getTenantUrl(value.subdomain.toLowerCase(), '/login'),
-      );
+      login.mutate(value);
     },
   });
+
+  const isPending = login.isPending || login.isSuccess;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Sign in to your workspace</CardTitle>
+          <CardTitle>Sign in</CardTitle>
           <CardDescription>
-            Enter your workspace URL to continue.
+            Welcome back. Sign in to access your workspaces.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -87,33 +56,25 @@ export default function ApexLogin() {
             }}
           >
             <FieldGroup>
-              <form.Field name="subdomain">
+              <form.Field name="email">
                 {(field) => {
                   const isInvalid =
                     field.state.meta.isTouched && !field.state.meta.isValid;
                   return (
                     <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>Workspace</FieldLabel>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(event) =>
-                            field.handleChange(event.target.value)
-                          }
-                          aria-invalid={isInvalid}
-                          placeholder="acme"
-                          autoComplete="off"
-                          autoCapitalize="none"
-                          autoCorrect="off"
-                          spellCheck={false}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          .{APP_DOMAIN}
-                        </span>
-                      </div>
+                      <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="email"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        aria-invalid={isInvalid}
+                        autoComplete="email"
+                      />
                       {isInvalid && (
                         <FieldError errors={field.state.meta.errors} />
                       )}
@@ -121,6 +82,42 @@ export default function ApexLogin() {
                   );
                 }}
               </form.Field>
+
+              <form.Field name="password">
+                {(field) => {
+                  const isInvalid =
+                    field.state.meta.isTouched && !field.state.meta.isValid;
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <div className="flex items-center justify-between">
+                        <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                        <Link
+                          href="/forgot-password"
+                          className="text-xs text-muted-foreground hover:text-primary underline underline-offset-4 transition-colors"
+                        >
+                          Forgot password?
+                        </Link>
+                      </div>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="password"
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
+                        aria-invalid={isInvalid}
+                        autoComplete="current-password"
+                      />
+                      {isInvalid && (
+                        <FieldError errors={field.state.meta.errors} />
+                      )}
+                    </Field>
+                  );
+                }}
+              </form.Field>
+
               <form.Subscribe
                 selector={(state) => [state.canSubmit, state.isSubmitting]}
               >
@@ -129,10 +126,9 @@ export default function ApexLogin() {
                     type="submit"
                     size="lg"
                     className="w-full"
-                    disabled={!canSubmit || isSubmitting}
+                    disabled={!canSubmit || isSubmitting || isPending}
                   >
-                    {isSubmitting ? 'Redirecting…' : 'Continue'}
-                    <ArrowRight />
+                    {isPending || isSubmitting ? 'Signing in…' : 'Sign in'}
                   </Button>
                 )}
               </form.Subscribe>
@@ -144,7 +140,7 @@ export default function ApexLogin() {
               href="/signup"
               className="font-medium text-foreground underline underline-offset-4"
             >
-              Create a workspace
+              Create an account
             </Link>
           </p>
         </CardContent>

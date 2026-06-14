@@ -7,9 +7,10 @@ import {
 } from '@nestjs/common';
 
 import { Tenant } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from 'nestjs-prisma';
+
+import { DEFAULT_ROLES } from '@repo/permissions';
 
 import { Tokens } from '../users/types';
 import { UsersService } from '../users/users.service';
@@ -63,14 +64,11 @@ export class TenantsService {
   }
 
   /**
-   * Creates a new tenant. If `currentUserId` is provided, the existing user
-   * becomes the tenant owner. Otherwise, an owner user is created (or
-   * attached to an existing user after password verification) using the
-   * email/password/firstName/lastName fields on the DTO.
+   * Creates a new tenant. The authenticated user becomes the tenant owner.
    */
   async createTenant(
     dto: CreateTenantDto,
-    currentUserId: string | null,
+    currentUserId: string,
   ): Promise<Tokens> {
     if (!this.validateSubdomainFormat(dto.subdomain)) {
       throw new BadRequestException(
@@ -89,12 +87,10 @@ export class TenantsService {
       throw new ConflictException('This subdomain is already taken.');
     }
 
-    const owner = currentUserId
-      ? await this.resolveAuthenticatedOwner(currentUserId)
-      : await this.resolveOrCreateAnonymousOwner(dto);
+    const owner = await this.resolveAuthenticatedOwner(currentUserId);
 
-    const { tenantId, membershipId } = await this.prisma.$transaction(
-      async (tx) => {
+    const { tenantId, membershipId, scopes, isAdmin } =
+      await this.prisma.$transaction(async (tx) => {
         const tenant = await tx.tenant.create({
           data: {
             subdomain: dto.subdomain,
@@ -111,15 +107,67 @@ export class TenantsService {
             joinedAt: new Date(),
           },
         });
-        return { tenantId: tenant.id, membershipId: membership.id };
-      },
-    );
+
+        // Seed default roles with permissions from @repo/permissions
+        let ownerRoleId: string | undefined;
+        let ownerScopes: string[] = [];
+        let ownerIsAdmin = false;
+
+        for (const roleDef of DEFAULT_ROLES) {
+          const role = await tx.role.create({
+            data: {
+              tenantId: tenant.id,
+              name: roleDef.title,
+              rank: roleDef.rank,
+              isAdmin: roleDef.isAdmin,
+              isSystemRole: true,
+            },
+          });
+
+          // Seed role permissions
+          if (roleDef.scopes.length > 0) {
+            await tx.rolePermission.createMany({
+              data: roleDef.scopes.map((scopeId) => ({
+                roleId: role.id,
+                permissionId: scopeId as string,
+              })),
+            });
+          }
+
+          // Track the Owner role to assign to the founding member
+          if (roleDef.title === 'Owner') {
+            ownerRoleId = role.id;
+            ownerScopes = roleDef.scopes.map((s) => s as string);
+            ownerIsAdmin = roleDef.isAdmin;
+          }
+        }
+
+        // Assign Owner role to the founding member
+        if (ownerRoleId) {
+          await tx.membershipRole.create({
+            data: {
+              tenantMembershipId: membership.id,
+              roleId: ownerRoleId,
+              assignedById: owner.id,
+            },
+          });
+        }
+
+        return {
+          tenantId: tenant.id,
+          membershipId: membership.id,
+          scopes: ownerScopes,
+          isAdmin: ownerIsAdmin,
+        };
+      });
 
     return this.usersService.generateTokens(
       owner.id,
       owner.email,
       tenantId,
       membershipId,
+      scopes,
+      isAdmin,
     );
   }
 
@@ -137,44 +185,6 @@ export class TenantsService {
     if (!user || user.deletedAt) {
       throw new BadRequestException('Authenticated user not found.');
     }
-    return { id: user.id, email: user.email };
-  }
-
-  private async resolveOrCreateAnonymousOwner(
-    dto: CreateTenantDto,
-  ): Promise<{ id: string; email: string }> {
-    if (!dto.email || !dto.password || !dto.firstName || !dto.lastName) {
-      throw new BadRequestException(
-        'email, password, firstName, and lastName are required when creating a tenant without an existing account.',
-      );
-    }
-
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
-
-    if (existing) {
-      if (existing.deletedAt) {
-        throw new ConflictException('Email already in use.');
-      }
-      const ok = await bcrypt.compare(dto.password, existing.passwordHash);
-      if (!ok) {
-        // Uniform message: do not leak whether the email exists.
-        throw new ConflictException('Email already in use.');
-      }
-      return { id: existing.id, email: existing.email };
-    }
-
-    const passwordHash = await this.usersService.hashPassword(dto.password);
-    const user = await this.prisma.user.create({
-      data: {
-        email: dto.email,
-        passwordHash,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        phone: dto.phone,
-      },
-    });
     return { id: user.id, email: user.email };
   }
 }
