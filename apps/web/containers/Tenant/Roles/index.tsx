@@ -1,46 +1,59 @@
 'use client';
 
 import React, { useState } from 'react';
+
 import { useRouter } from 'next/navigation';
 
 import { PermissionGate } from '@/components/permission-gate';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { usePermission } from '@/hooks/use-permission';
 import {
-  useRoles,
-  useRolePermissionsRegistry,
-  useCreateRole,
-  useUpdateRole,
-  useDeleteRole,
-  type Role,
   type PermissionCategory,
+  type Role,
+  useCreateRole,
+  useDeleteRole,
+  useRolePermissionsRegistry,
+  useRoles,
+  useUpdateRole,
 } from '@/services/api/requests/roles';
 import {
-  Shield,
-  Plus,
-  Trash2,
-  Edit,
+  AlertTriangle,
   ArrowLeft,
   Check,
   ChevronRight,
+  Edit,
   Info,
+  Plus,
+  Shield,
+  Trash2,
   Users,
-  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { PERMS, applyDependencies, type PermissionId } from '@repo/permissions';
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { PERMS, type PermissionId, applyDependencies } from '@repo/permissions';
 
 export default function RolesContainer() {
   const router = useRouter();
   const { hasPermission } = usePermission();
   const { data: roles = [], isLoading: loadingRoles } = useRoles();
-  const { data: registry = [], isLoading: loadingRegistry } = useRolePermissionsRegistry();
+  const { data: registry = [], isLoading: loadingRegistry } =
+    useRolePermissionsRegistry();
 
   const createMutation = useCreateRole();
   const updateMutation = useUpdateRole();
@@ -85,7 +98,10 @@ export default function RolesContainer() {
     setSelectedPermissions(Array.from(nextPerms));
   };
 
-  const handleSelectAllForFeature = (featurePerms: string[], select: boolean) => {
+  const handleSelectAllForFeature = (
+    featurePerms: string[],
+    select: boolean,
+  ) => {
     const nextPerms = new Set(selectedPermissions);
     if (select) {
       featurePerms.forEach((id) => {
@@ -122,7 +138,12 @@ export default function RolesContainer() {
         // Prepare payload (system roles can only update description and permissions)
         const payload = editingRole.isSystemRole
           ? { description, permissions: selectedPermissions }
-          : { name, description, rank: Number(rank), permissions: selectedPermissions };
+          : {
+              name,
+              description,
+              rank: Number(rank),
+              permissions: selectedPermissions,
+            };
 
         // We can use the configured update mutation dynamically
         await updateMutation.mutateAsync(
@@ -133,10 +154,11 @@ export default function RolesContainer() {
               setEditingRole(null);
             },
             onError: (err: any) => {
-              const msg = err.response?.data?.message || 'Failed to update role';
+              const msg =
+                err.response?.data?.message || 'Failed to update role';
               toast.error(Array.isArray(msg) ? msg[0] : msg);
             },
-          }
+          },
         );
       }
     } catch (err: any) {
@@ -146,7 +168,11 @@ export default function RolesContainer() {
   };
 
   const handleDelete = async (roleId: string) => {
-    if (!confirm('Are you sure you want to delete this custom role? This action cannot be undone.')) {
+    if (
+      !confirm(
+        'Are you sure you want to delete this custom role? This action cannot be undone.',
+      )
+    ) {
       return;
     }
 
@@ -159,9 +185,11 @@ export default function RolesContainer() {
     }
   };
 
-  const filteredRoles = roles.filter((role) =>
-    role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (role.description && role.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredRoles = roles.filter(
+    (role) =>
+      role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (role.description &&
+        role.description.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
   if (loadingRoles || loadingRegistry) {
@@ -169,7 +197,9 @@ export default function RolesContainer() {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="text-sm text-muted-foreground">Loading access controls…</p>
+          <p className="text-sm text-muted-foreground">
+            Loading access controls…
+          </p>
         </div>
       </div>
     );
@@ -182,25 +212,37 @@ export default function RolesContainer() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push('/dashboard')}
+          >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Roles & Permissions</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Roles & Permissions
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Configure access roles, permissions hierarchy, and assign capabilities for user accounts.
+              Configure access roles, permissions hierarchy, and assign
+              capabilities for user accounts.
             </p>
           </div>
         </div>
 
         {isFormOpen ? (
           /* Create / Edit Form Layout */
-          <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <form
+            onSubmit={handleSave}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+          >
             <div className="lg:col-span-1 space-y-6">
               <Card className="border-border/60 shadow-lg bg-card/60 backdrop-blur-md">
                 <CardHeader>
                   <CardTitle className="text-lg">
-                    {isCreating ? 'Create Custom Role' : `Edit ${editingRole?.isSystemRole ? 'System' : 'Custom'} Role`}
+                    {isCreating
+                      ? 'Create Custom Role'
+                      : `Edit ${editingRole?.isSystemRole ? 'System' : 'Custom'} Role`}
                   </CardTitle>
                   <CardDescription>
                     Define the name, priority rank, and baseline capabilities.
@@ -219,7 +261,8 @@ export default function RolesContainer() {
                     />
                     {editingRole?.isSystemRole && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Info className="h-3 w-3" /> System role title cannot be modified.
+                        <Info className="h-3 w-3" /> System role title cannot be
+                        modified.
                       </span>
                     )}
                   </div>
@@ -276,9 +319,12 @@ export default function RolesContainer() {
               <Card className="border-border/60 shadow-lg bg-card/60 backdrop-blur-md">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
                   <div>
-                    <CardTitle className="text-lg">Permission Registry</CardTitle>
+                    <CardTitle className="text-lg">
+                      Permission Registry
+                    </CardTitle>
                     <CardDescription>
-                      Assign feature-specific actions to this role. Dependents automatically apply.
+                      Assign feature-specific actions to this role. Dependents
+                      automatically apply.
                     </CardDescription>
                   </div>
                   <Badge variant="secondary" className="font-mono">
@@ -294,16 +340,20 @@ export default function RolesContainer() {
                         className="border border-border/40 rounded-lg px-4 bg-background/40"
                       >
                         <AccordionTrigger className="hover:no-underline py-3">
-                          <span className="font-semibold text-sm capitalize">{cat.category}</span>
+                          <span className="font-semibold text-sm capitalize">
+                            {cat.category}
+                          </span>
                         </AccordionTrigger>
                         <AccordionContent className="pt-2 pb-4 space-y-6">
                           {cat.features.map((feature) => {
-                            const featurePermIds = feature.permissions.map((p) => p.id);
+                            const featurePermIds = feature.permissions.map(
+                              (p) => p.id,
+                            );
                             const hasAll = featurePermIds.every((id) =>
-                              selectedPermissions.includes(id)
+                              selectedPermissions.includes(id),
                             );
                             const hasSome = featurePermIds.some((id) =>
-                              selectedPermissions.includes(id)
+                              selectedPermissions.includes(id),
                             );
 
                             return (
@@ -323,7 +373,10 @@ export default function RolesContainer() {
                                     size="sm"
                                     className="text-xs text-muted-foreground h-7 px-2"
                                     onClick={() =>
-                                      handleSelectAllForFeature(featurePermIds, !hasAll)
+                                      handleSelectAllForFeature(
+                                        featurePermIds,
+                                        !hasAll,
+                                      )
                                     }
                                   >
                                     {hasAll ? 'Deselect All' : 'Select All'}
@@ -332,7 +385,8 @@ export default function RolesContainer() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                   {feature.permissions.map((perm) => {
-                                    const checked = selectedPermissions.includes(perm.id);
+                                    const checked =
+                                      selectedPermissions.includes(perm.id);
                                     return (
                                       <label
                                         key={perm.id}
@@ -345,7 +399,9 @@ export default function RolesContainer() {
                                         <input
                                           type="checkbox"
                                           checked={checked}
-                                          onChange={() => handlePermissionToggle(perm.id)}
+                                          onChange={() =>
+                                            handlePermissionToggle(perm.id)
+                                          }
                                           className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                         />
                                         <div className="space-y-0.5">
@@ -386,7 +442,10 @@ export default function RolesContainer() {
                 />
               </div>
               <PermissionGate permission={PERMS.role.create}>
-                <Button onClick={handleStartCreate} className="w-full sm:w-auto gap-2">
+                <Button
+                  onClick={handleStartCreate}
+                  className="w-full sm:w-auto gap-2"
+                >
                   <Plus className="h-4 w-4" /> Add Custom Role
                 </Button>
               </PermissionGate>
@@ -402,9 +461,14 @@ export default function RolesContainer() {
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <CardTitle className="text-lg font-bold">{role.name}</CardTitle>
+                          <CardTitle className="text-lg font-bold">
+                            {role.name}
+                          </CardTitle>
                           {role.isSystemRole && (
-                            <Badge variant="secondary" className="text-[10px] py-0 px-1.5">
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] py-0 px-1.5"
+                            >
                               System
                             </Badge>
                           )}

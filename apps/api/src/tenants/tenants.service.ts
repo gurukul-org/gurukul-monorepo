@@ -10,6 +10,8 @@ import { Tenant } from '@prisma/client';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from 'nestjs-prisma';
 
+import { DEFAULT_ROLES } from '@repo/permissions';
+
 import { Tokens } from '../users/types';
 import { UsersService } from '../users/users.service';
 import { CreateTenantDto } from './dto';
@@ -18,8 +20,6 @@ import {
   SUBDOMAIN_REGEX,
   TENANT_CACHE_TTL,
 } from './tenants.constants';
-
-import { DEFAULT_ROLES } from '@repo/permissions';
 
 @Injectable()
 export class TenantsService {

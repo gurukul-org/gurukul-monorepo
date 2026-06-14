@@ -77,7 +77,7 @@ export function useRolePermissionsRegistry() {
     queryKey: [RoleQueryKey.Registry],
     queryFn: async () => {
       const { data } = await axios.get<PermissionCategory[]>(
-        '/roles/permissions/registry'
+        '/roles/permissions/registry',
       );
       return data;
     },
@@ -107,7 +107,9 @@ export function useUpdateRole() {
     },
     onSuccess: (data, { id }) => {
       void queryClient.invalidateQueries({ queryKey: [RoleQueryKey.List] });
-      void queryClient.invalidateQueries({ queryKey: [RoleQueryKey.Detail, id] });
+      void queryClient.invalidateQueries({
+        queryKey: [RoleQueryKey.Detail, id],
+      });
     },
   });
 }

@@ -3,6 +3,7 @@
 import type { PropsWithChildren } from 'react';
 import { useEffect, useRef } from 'react';
 
+import { DashboardLayout } from '@/components/Layout/DashboardLayout';
 import { useSubdomain } from '@/hooks/use-subdomain';
 import { getApexUrl } from '@/lib/env';
 import { useIsAuthenticated, useIsBootstrapping } from '@/lib/store/auth';
@@ -70,5 +71,5 @@ export default function TenantLayout({ children }: PropsWithChildren) {
     );
   }
 
-  return <>{children}</>;
+  return <DashboardLayout>{children}</DashboardLayout>;
 }

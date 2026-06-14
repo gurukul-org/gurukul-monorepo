@@ -3,6 +3,7 @@
 import React from 'react';
 
 import { usePermission } from '@/hooks/use-permission';
+
 import type { PermissionEntry, PermissionId } from '@repo/permissions';
 
 interface PermissionGateProps {
@@ -10,7 +11,10 @@ interface PermissionGateProps {
   /**
    * Required permission(s). If multiple are provided, the user must satisfy ALL.
    */
-  permission?: PermissionEntry | PermissionId | (PermissionEntry | PermissionId)[];
+  permission?:
+    | PermissionEntry
+    | PermissionId
+    | (PermissionEntry | PermissionId)[];
   /**
    * Required permission(s) where the user must satisfy AT LEAST ONE.
    */
@@ -37,7 +41,8 @@ export function PermissionGate({
   anyOf,
   fallback = null,
 }: PermissionGateProps) {
-  const { hasPermission, hasAllPermissions, hasAnyPermission } = usePermission();
+  const { hasPermission, hasAllPermissions, hasAnyPermission } =
+    usePermission();
 
   let allowed = true;
 

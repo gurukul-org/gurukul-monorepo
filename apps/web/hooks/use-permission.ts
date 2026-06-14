@@ -1,10 +1,11 @@
 'use client';
 
 import { useAuthStore } from '@/lib/store/auth';
+
 import {
-  userHasPermission,
   type PermissionEntry,
   type PermissionId,
+  userHasPermission,
 } from '@repo/permissions';
 
 /**
@@ -23,14 +24,16 @@ import {
 export function usePermission() {
   const user = useAuthStore((s) => s.user);
 
-  const hasPermission = (permission: PermissionEntry | PermissionId): boolean => {
+  const hasPermission = (
+    permission: PermissionEntry | PermissionId,
+  ): boolean => {
     if (!user) return false;
     if (user.isAdmin) return true;
     return userHasPermission(user.scopes || [], permission);
   };
 
   const hasAllPermissions = (
-    permissions: (PermissionEntry | PermissionId)[]
+    permissions: (PermissionEntry | PermissionId)[],
   ): boolean => {
     if (!user) return false;
     if (user.isAdmin) return true;
@@ -38,7 +41,7 @@ export function usePermission() {
   };
 
   const hasAnyPermission = (
-    permissions: (PermissionEntry | PermissionId)[]
+    permissions: (PermissionEntry | PermissionId)[],
   ): boolean => {
     if (!user) return false;
     if (user.isAdmin) return true;

@@ -30,7 +30,6 @@ import {
   GetCurrentUser,
   RequirePermissions,
 } from '../common/decorators';
-
 import { CreateRoleDto, UpdateRoleDto } from './dto';
 import { RolesService } from './roles.service';
 
@@ -70,8 +69,7 @@ export class RolesController {
   @RequirePermissions(PERMS.role.view)
   @ApiOperation({
     summary: 'Get role details',
-    description:
-      'Returns a single role with its permissions and member count.',
+    description: 'Returns a single role with its permissions and member count.',
   })
   @ApiOkResponse({ description: 'Role retrieved successfully.' })
   @ApiNotFoundResponse({ description: 'Role not found.' })
@@ -89,7 +87,7 @@ export class RolesController {
   @ApiOperation({
     summary: 'Create a custom role',
     description:
-      'Creates a new custom role. The rank must be higher (lower privilege) than the caller\'s highest role rank.',
+      "Creates a new custom role. The rank must be higher (lower privilege) than the caller's highest role rank.",
   })
   @ApiCreatedResponse({ description: 'Role created successfully.' })
   @ApiBadRequestResponse({ description: 'Validation failed.' })
@@ -114,7 +112,7 @@ export class RolesController {
   @ApiOperation({
     summary: 'Update a role',
     description:
-      'Updates a role\'s name, description, rank, and/or permissions. System roles can only have their permissions and description modified.',
+      "Updates a role's name, description, rank, and/or permissions. System roles can only have their permissions and description modified.",
   })
   @ApiOkResponse({ description: 'Role updated successfully.' })
   @ApiBadRequestResponse({
