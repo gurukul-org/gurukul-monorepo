@@ -129,7 +129,7 @@ export class TenantsService {
             await tx.rolePermission.createMany({
               data: roleDef.scopes.map((scopeId) => ({
                 roleId: role.id,
-                permissionId: scopeId as string,
+                permissionId: scopeId,
               })),
             });
           }

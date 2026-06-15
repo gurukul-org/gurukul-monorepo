@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -11,6 +13,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useSubdomain } from '@/hooks/use-subdomain';
@@ -18,7 +23,14 @@ import { useAuthUser } from '@/lib/store/auth';
 import { useRequestLogout } from '@/services/api/requests/auth';
 import { useCurrentTenant } from '@/services/api/requests/tenants';
 import { useCurrentUserProfile } from '@/services/api/requests/users';
-import { LayoutDashboard, LogOut, Settings } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Users,
+} from 'lucide-react';
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -29,20 +41,7 @@ export function AppSidebar() {
   const { data: tenant } = useCurrentTenant();
   const { data: profile } = useCurrentUserProfile();
 
-  const menuItems = [
-    {
-      title: 'Dashboard',
-      icon: LayoutDashboard,
-      href: '/dashboard',
-      active: pathname === '/dashboard',
-    },
-    {
-      title: 'Settings',
-      icon: Settings,
-      href: '/settings',
-      active: pathname.startsWith('/settings'),
-    },
-  ];
+  const [isErpOpen, setIsErpOpen] = useState(pathname.startsWith('/users'));
 
   return (
     <Sidebar collapsible="icon" className="!border-r-0">
@@ -69,20 +68,64 @@ export function AppSidebar() {
 
       <SidebarContent className="py-4">
         <SidebarMenu className="px-2 gap-1">
-          {menuItems.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton
-                asChild
-                isActive={item.active}
-                className="w-full justify-start gap-3 transition-colors"
-              >
-                <Link href={item.href}>
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  <span>{item.title}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {/* Dashboard Link */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === '/dashboard'}
+              className="w-full justify-start gap-3 transition-colors"
+            >
+              <Link href="/dashboard">
+                <LayoutDashboard className="h-4 w-4 shrink-0" />
+                <span>Dashboard</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {/* Directory Collapsible Link */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => setIsErpOpen((prev) => !prev)}
+              className="w-full justify-start gap-3 transition-colors cursor-pointer"
+            >
+              <Users className="h-4 w-4 shrink-0" />
+              <span className="flex-1 text-left">Directory</span>
+              {isErpOpen ? (
+                <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+              )}
+            </SidebarMenuButton>
+            {isErpOpen && state !== 'collapsed' && (
+              <SidebarMenuSub className="mt-1 ml-4 pl-3 border-l border-sidebar-border flex flex-col gap-1">
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={pathname === '/users'}
+                    className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                  >
+                    <Link href="/users">
+                      <span>All Users</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              </SidebarMenuSub>
+            )}
+          </SidebarMenuItem>
+
+          {/* Settings Link */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith('/settings')}
+              className="w-full justify-start gap-3 transition-colors"
+            >
+              <Link href="/settings">
+                <Settings className="h-4 w-4 shrink-0" />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
 

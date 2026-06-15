@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -494,5 +496,206 @@ export class UsersService {
       'code' in error &&
       error.code === 'P2002'
     );
+  }
+
+  async findAllTenantUsers(
+    tenantId: string,
+    callerMembershipId: string,
+    limit = 10,
+    cursor?: string,
+  ) {
+    const foundingMembership = await this.prisma.tenantMembership.findFirst({
+      where: { tenantId },
+      orderBy: { createdAt: 'asc' },
+    });
+    const isCallerFounder = foundingMembership?.id === callerMembershipId;
+
+    const callerRoles = await this.prisma.membershipRole.findMany({
+      where: {
+        tenantMembershipId: callerMembershipId,
+        membership: { tenantId },
+      },
+      include: { role: true },
+    });
+
+    const isCallerAdmin =
+      isCallerFounder ||
+      callerRoles.some(
+        (r) =>
+          r.role.name.toLowerCase() === 'owner' ||
+          r.role.name.toLowerCase().includes('admin'),
+      );
+
+    if (!isCallerAdmin) {
+      throw new ForbiddenException('Only admins can view tenant users.');
+    }
+
+    const take = limit > 0 ? limit : 10;
+    const memberships = await this.prisma.tenantMembership.findMany({
+      where: { tenantId, deletedAt: null },
+      take: take + 1,
+      skip: cursor ? 1 : 0,
+      cursor: cursor ? { id: cursor } : undefined,
+      orderBy: { id: 'asc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+        roles: {
+          include: {
+            role: {
+              select: {
+                id: true,
+                name: true,
+                rank: true,
+                isAdmin: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const hasNextPage = memberships.length > take;
+    if (hasNextPage) {
+      memberships.pop();
+    }
+    const nextCursor = hasNextPage
+      ? memberships[memberships.length - 1].id
+      : null;
+
+    const users = memberships.map((m) => {
+      const isTargetFounder = foundingMembership?.id === m.id;
+      const hasAdminRole = m.roles.some((r) => r.role.isAdmin);
+      return {
+        membershipId: m.id,
+        userId: m.user.id,
+        email: m.user.email,
+        firstName: m.user.firstName,
+        lastName: m.user.lastName,
+        phone: m.user.phone,
+        status: m.status,
+        joinedAt: m.joinedAt,
+        isAdmin: isTargetFounder || hasAdminRole,
+        roles: m.roles.map((r) => ({
+          id: r.role.id,
+          name: r.role.name,
+          rank: r.role.rank,
+        })),
+      };
+    });
+
+    return {
+      users,
+      nextCursor,
+    };
+  }
+
+  async revokeTenantAccess(
+    tenantId: string,
+    callerMembershipId: string,
+    targetMembershipId: string,
+  ) {
+    const foundingMembership = await this.prisma.tenantMembership.findFirst({
+      where: { tenantId },
+      orderBy: { createdAt: 'asc' },
+    });
+    const isCallerFounder = foundingMembership?.id === callerMembershipId;
+
+    const callerRoles = await this.prisma.membershipRole.findMany({
+      where: {
+        tenantMembershipId: callerMembershipId,
+        membership: { tenantId },
+      },
+      include: { role: true },
+    });
+
+    const isCallerAdmin =
+      isCallerFounder ||
+      callerRoles.some(
+        (r) =>
+          r.role.name.toLowerCase() === 'owner' ||
+          r.role.name.toLowerCase().includes('admin'),
+      );
+
+    if (!isCallerAdmin) {
+      throw new ForbiddenException('Only admins can revoke tenant access.');
+    }
+
+    if (callerMembershipId === targetMembershipId) {
+      throw new BadRequestException('You cannot revoke your own access.');
+    }
+
+    const targetMembership = await this.prisma.tenantMembership.findFirst({
+      where: { id: targetMembershipId, tenantId, deletedAt: null },
+      include: {
+        roles: {
+          include: { role: true },
+        },
+      },
+    });
+
+    if (!targetMembership) {
+      throw new NotFoundException('User membership not found in this tenant.');
+    }
+
+    const isTargetFounder = foundingMembership?.id === targetMembershipId;
+    if (isTargetFounder) {
+      throw new ForbiddenException(
+        'You cannot revoke access of the tenant owner.',
+      );
+    }
+
+    const isTargetAdmin = targetMembership.roles.some((r) => r.role.isAdmin);
+    if (isTargetAdmin) {
+      throw new ForbiddenException('You cannot revoke access of admins.');
+    }
+
+    let callerMinRank = isCallerFounder ? 1 : Infinity;
+    if (callerRoles.length > 0) {
+      callerMinRank = Math.min(
+        callerMinRank,
+        ...callerRoles.map((r) => r.role.rank),
+      );
+    }
+
+    let targetMinRank = isTargetFounder ? 1 : Infinity;
+    if (targetMembership.roles.length > 0) {
+      targetMinRank = Math.min(
+        targetMinRank,
+        ...targetMembership.roles.map((r) => r.role.rank),
+      );
+    }
+
+    if (targetMinRank <= callerMinRank) {
+      throw new ForbiddenException(
+        'You cannot revoke access of a user with equal or higher privilege than your own.',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tenantMembership.update({
+        where: { id: targetMembershipId },
+        data: {
+          status: 'REMOVED',
+          deletedAt: new Date(),
+        },
+      });
+
+      await tx.session.deleteMany({
+        where: {
+          userId: targetMembership.userId,
+          tenantId,
+        },
+      });
+    });
+
+    return { message: 'User access revoked successfully.' };
   }
 }
