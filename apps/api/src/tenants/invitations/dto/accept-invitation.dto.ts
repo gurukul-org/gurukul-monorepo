@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+
 import { IsOptional, IsString, MinLength } from 'class-validator';
 
 export class AcceptInvitationDto {
@@ -11,7 +12,8 @@ export class AcceptInvitationDto {
 
   @ApiProperty({
     example: 'newpassword123',
-    description: 'The password to set if this is a newly created placeholder user.',
+    description:
+      'The password to set if this is a newly created placeholder user.',
     required: false,
     minLength: 8,
   })

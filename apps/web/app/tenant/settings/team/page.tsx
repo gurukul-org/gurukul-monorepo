@@ -2,13 +2,10 @@
 
 import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { zodValidator } from "@tanstack/zod-form-adapter";
 import { z } from "zod";
-import {
-  useInviteUser,
-  useResendInvitation,
-  useCancelInvitation,
-} from "../../../../../services/api/requests/invitations";
+import { useCancelInvitation, useInviteUser, useResendInvitation } from "@/services/api/requests/invitations";
+import { FieldError } from "@/components/ui/field";
+
 
 // Mock data since we don't have endpoints to fetch members yet
 const mockMembers = [
@@ -18,6 +15,15 @@ const mockMembers = [
 const mockPending = [
   { id: "2", name: "Jane Doe", email: "jane@example.com", roles: ["Teacher"], status: "INVITED" },
 ];
+
+const inviteUserSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Enter a valid email"),
+  roleIds: z
+    .array(z.string())
+    .min(1, "At least one role is required"),
+});
 
 export default function TeamManagementPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,7 +42,9 @@ export default function TeamManagementPage() {
       email: "",
       roleIds: ["role-id-1"], // Default placeholder
     },
-    validatorAdapter: zodValidator(),
+    validators: {
+      onSubmit: inviteUserSchema,
+    },
     onSubmit: async ({ value }) => {
       inviteUser(value, {
         onSuccess: () => {
@@ -200,9 +208,9 @@ export default function TeamManagementPage() {
                       onChange={(e) => field.handleChange(e.target.value)}
                       className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                     />
-                    {field.state.meta.errors ? (
-                      <p className="mt-1 text-xs text-red-600">{field.state.meta.errors}</p>
-                    ) : null}
+                    {field.state.meta.isTouched && !field.state.meta.isValid && (
+                      <FieldError errors={field.state.meta.errors} />
+                    )}
                   </div>
                 )}
               />
@@ -222,9 +230,9 @@ export default function TeamManagementPage() {
                       onChange={(e) => field.handleChange(e.target.value)}
                       className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                     />
-                    {field.state.meta.errors ? (
-                      <p className="mt-1 text-xs text-red-600">{field.state.meta.errors}</p>
-                    ) : null}
+                    {field.state.meta.isTouched && !field.state.meta.isValid && (
+                      <FieldError errors={field.state.meta.errors} />
+                    )}
                   </div>
                 )}
               />
@@ -245,9 +253,9 @@ export default function TeamManagementPage() {
                       onChange={(e) => field.handleChange(e.target.value)}
                       className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                     />
-                    {field.state.meta.errors ? (
-                      <p className="mt-1 text-xs text-red-600">{field.state.meta.errors}</p>
-                    ) : null}
+                    {field.state.meta.isTouched && !field.state.meta.isValid && (
+                      <FieldError errors={field.state.meta.errors} />
+                    )}
                   </div>
                 )}
               />

@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-import { Transform } from 'class-transformer';
+import { Transform, type TransformFnParams } from 'class-transformer';
 import {
   IsNotEmpty,
   IsOptional,
@@ -16,7 +16,12 @@ export class UpdateProfileDto {
     minLength: 1,
   })
   @IsOptional()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }: TransformFnParams): string | undefined => {
+    if (typeof value === 'string') {
+      return value.trim();
+    }
+    return undefined;
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(1)
@@ -28,7 +33,13 @@ export class UpdateProfileDto {
     minLength: 1,
   })
   @IsOptional()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }: TransformFnParams): string | undefined => {
+    if (typeof value === 'string') {
+      return value.trim();
+    }
+
+    return undefined;
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(1)

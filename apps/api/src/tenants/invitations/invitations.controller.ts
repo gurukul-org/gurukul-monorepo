@@ -8,9 +8,7 @@ import {
   Param,
   Post,
   Query,
-  Req,
 } from '@nestjs/common';
-
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -22,6 +20,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
+import { GetCurrentUser } from '../../common/decorators';
 import { Public, SkipTenantCheck } from '../../common/decorators';
 import { MessageResponseDto } from '../../common/dto';
 import {
@@ -29,14 +28,12 @@ import {
   InviteUserDto,
   ValidateInvitationResponseDto,
 } from './dto';
-
 import { InvitationsService } from './invitations.service';
-import type { Request } from 'express';
 
 @ApiTags('Invitations')
 @Controller('tenants/invitations')
 export class InvitationsController {
-  constructor(private readonly invitationsService: InvitationsService) { }
+  constructor(private readonly invitationsService: InvitationsService) {}
 
   /**
    * =========================
@@ -59,19 +56,16 @@ export class InvitationsController {
     description: 'Invalid role assignment or validation failed.',
   })
   @ApiConflictResponse({
-    description:
-      'User is already a member of this tenant or already invited.',
+    description: 'User is already a member of this tenant or already invited.',
   })
   @ApiUnauthorizedResponse({
     description: 'Invalid or missing bearer token.',
   })
   async inviteUser(
     @Body() dto: InviteUserDto,
-    @Req() req: Request,
+    @GetCurrentUser('tenantId') tenantId?: string,
+    @GetCurrentUser('sub') userId?: string,
   ): Promise<MessageResponseDto> {
-    const tenantId = req.user?.tenantId;
-    const userId = req.user?.sub;
-
     if (!tenantId || !userId) {
       throw new Error('Invalid authentication context: tenant or user missing');
     }
@@ -120,16 +114,14 @@ export class InvitationsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Accept invitation',
-    description:
-      'Accepts invitation and activates tenant membership.',
+    description: 'Accepts invitation and activates tenant membership.',
   })
   @ApiOkResponse({
     type: MessageResponseDto,
     description: 'Invitation accepted successfully.',
   })
   @ApiBadRequestResponse({
-    description:
-      'Invalid token, expired invitation, or missing password.',
+    description: 'Invalid token, expired invitation, or missing password.',
   })
   async acceptInvitation(
     @Body() dto: AcceptInvitationDto,
@@ -147,8 +139,7 @@ export class InvitationsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Resend invitation',
-    description:
-      'Regenerates invitation token and sends email again.',
+    description: 'Regenerates invitation token and sends email again.',
   })
   @ApiOkResponse({
     type: MessageResponseDto,
@@ -162,20 +153,15 @@ export class InvitationsController {
   })
   async resendInvitation(
     @Param('id') membershipId: string,
-    @Req() req: Request,
+    @GetCurrentUser('tenantId') tenantId?: string,
   ): Promise<MessageResponseDto> {
-    const tenantId = req.user?.tenantId;
-
     if (!tenantId) {
       throw new Error(
         'Invalid authentication context: tenantId missing from token',
       );
     }
 
-    return this.invitationsService.resendInvitation(
-      membershipId,
-      tenantId,
-    );
+    return this.invitationsService.resendInvitation(membershipId, tenantId);
   }
 
   /**
@@ -202,19 +188,14 @@ export class InvitationsController {
   })
   async cancelInvitation(
     @Param('id') membershipId: string,
-    @Req() req: Request,
+    @GetCurrentUser('tenantId') tenantId?: string,
   ): Promise<MessageResponseDto> {
-    const tenantId = req.user?.tenantId;
-
     if (!tenantId) {
       throw new Error(
         'Invalid authentication context: tenantId missing from token',
       );
     }
 
-    return this.invitationsService.cancelInvitation(
-      membershipId,
-      tenantId,
-    );
+    return this.invitationsService.cancelInvitation(membershipId, tenantId);
   }
 }

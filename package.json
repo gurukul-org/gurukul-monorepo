@@ -31,6 +31,7 @@
     "@prisma/client": "^7.8.0",
     "@prisma/engines": "^7.8.0",
     "@tailwindcss/oxide-linux-x64-gnu": "^4.3.0",
+    "@tanstack/zod-form-adapter": "^0.42.1",
     "prisma": "^7.8.0"
   }
 }

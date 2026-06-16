@@ -4612,6 +4612,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/form-core@npm:0.42.1":
+  version: 0.42.1
+  resolution: "@tanstack/form-core@npm:0.42.1"
+  dependencies:
+    "@tanstack/store": "npm:^0.7.0"
+  checksum: 10c0/8f5621b21bc764dc97aca7c364010d7357b4127950540d5c45c931bd072cd8577a4c7d2257c1ea93c9139dc21e776ff7d0c6df5dae6563eae0e22e541a901ecd
+  languageName: node
+  linkType: hard
+
 "@tanstack/form-core@npm:1.33.0":
   version: 1.33.0
   resolution: "@tanstack/form-core@npm:1.33.0"
@@ -4699,6 +4708,24 @@ __metadata:
   version: 0.11.0
   resolution: "@tanstack/store@npm:0.11.0"
   checksum: 10c0/6fef9e81d30c3097709cfdd113407578849a7b8a6ce7a674467950620a67047c365552a01747a0f448d16ea4f607e58e97021583523ba5cdabcb1b98d0e2a632
+  languageName: node
+  linkType: hard
+
+"@tanstack/store@npm:^0.7.0":
+  version: 0.7.7
+  resolution: "@tanstack/store@npm:0.7.7"
+  checksum: 10c0/bf90fa957bd97336d7dbc0d7b87379b5fe4baea030efef8a93fe4e49ac1c8bc929247d1a9f84b16a1642e386b67fe53be14df8d5415efdf85f83733ccdf8877a
+  languageName: node
+  linkType: hard
+
+"@tanstack/zod-form-adapter@npm:^0.42.1":
+  version: 0.42.1
+  resolution: "@tanstack/zod-form-adapter@npm:0.42.1"
+  dependencies:
+    "@tanstack/form-core": "npm:0.42.1"
+  peerDependencies:
+    zod: ^3.x
+  checksum: 10c0/bdf3c93f18548cc8c228a871119443783c214f265d95b384edc92fd418a8ab16096ee37a8a06d3f66ab40f2f6f66ddcc90a0f5220bd9e00b0d007638abaa3e73
   languageName: node
   linkType: hard
 
@@ -9340,6 +9367,7 @@ __metadata:
     "@prisma/client": "npm:^7.8.0"
     "@prisma/engines": "npm:^7.8.0"
     "@tailwindcss/oxide-linux-x64-gnu": "npm:^4.3.0"
+    "@tanstack/zod-form-adapter": "npm:^0.42.1"
     "@trivago/prettier-plugin-sort-imports": "npm:^6.0.2"
     husky: "npm:^9.1.7"
     lint-staged: "npm:^17.0.5"
