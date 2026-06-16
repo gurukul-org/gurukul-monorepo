@@ -4704,6 +4704,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/react-table@npm:^8.21.3":
+  version: 8.21.3
+  resolution: "@tanstack/react-table@npm:8.21.3"
+  dependencies:
+    "@tanstack/table-core": "npm:8.21.3"
+  peerDependencies:
+    react: ">=16.8"
+    react-dom: ">=16.8"
+  checksum: 10c0/85d1d0fcb690ecc011f68a5a61c96f82142e31a0270dcf9cbc699a6f36715b1653fe6ff1518302a6d08b7093351fc4cabefd055a7db3cd8ac01e068956b0f944
+  languageName: node
+  linkType: hard
+
 "@tanstack/store@npm:0.11.0, @tanstack/store@npm:^0.11.0":
   version: 0.11.0
   resolution: "@tanstack/store@npm:0.11.0"
@@ -4711,21 +4723,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/store@npm:^0.7.0":
-  version: 0.7.7
-  resolution: "@tanstack/store@npm:0.7.7"
-  checksum: 10c0/bf90fa957bd97336d7dbc0d7b87379b5fe4baea030efef8a93fe4e49ac1c8bc929247d1a9f84b16a1642e386b67fe53be14df8d5415efdf85f83733ccdf8877a
-  languageName: node
-  linkType: hard
-
-"@tanstack/zod-form-adapter@npm:^0.42.1":
-  version: 0.42.1
-  resolution: "@tanstack/zod-form-adapter@npm:0.42.1"
-  dependencies:
-    "@tanstack/form-core": "npm:0.42.1"
-  peerDependencies:
-    zod: ^3.x
-  checksum: 10c0/bdf3c93f18548cc8c228a871119443783c214f265d95b384edc92fd418a8ab16096ee37a8a06d3f66ab40f2f6f66ddcc90a0f5220bd9e00b0d007638abaa3e73
+"@tanstack/table-core@npm:8.21.3":
+  version: 8.21.3
+  resolution: "@tanstack/table-core@npm:8.21.3"
+  checksum: 10c0/40e3560e6d55e07cc047024aa7f83bd47a9323d21920d4adabba8071fd2d21230c48460b26cedf392588f8265b9edc133abb1b0d6d0adf4dae0970032900a8c9
   languageName: node
   linkType: hard
 
@@ -16274,6 +16275,7 @@ __metadata:
     "@tanstack/react-form": "npm:^1.33.0"
     "@tanstack/react-query": "npm:^5.100.14"
     "@tanstack/react-query-devtools": "npm:^5.100.14"
+    "@tanstack/react-table": "npm:^8.21.3"
     "@types/node": "npm:^22.15.3"
     "@types/react": "npm:19.2.2"
     "@types/react-dom": "npm:19.2.2"

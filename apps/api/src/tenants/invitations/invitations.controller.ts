@@ -33,7 +33,7 @@ import { InvitationsService } from './invitations.service';
 @ApiTags('Invitations')
 @Controller('tenants/invitations')
 export class InvitationsController {
-  constructor(private readonly invitationsService: InvitationsService) {}
+  constructor(private readonly invitationsService: InvitationsService) { }
 
   /**
    * =========================
