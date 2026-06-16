@@ -1,19 +1,21 @@
-"use client";
+'use client';
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from 'react';
+
+import { useRouter, useSearchParams } from 'next/navigation';
+
 import {
   useAcceptInvitation,
   useValidateInvitation,
-} from "../../../services/api/requests/invitations";
+} from '@/services/api/requests/invitations';
 
-export default function AcceptInvitationPage() {
+function AcceptInvitationForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get("token") || "";
+  const token = searchParams.get('token') || '';
 
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const {
     data: validationResult,
@@ -31,7 +33,9 @@ export default function AcceptInvitationPage() {
           <h1 className="mb-2 text-xl font-semibold text-red-700">
             Invalid Link
           </h1>
-          <p className="text-red-600">The invitation link is missing or invalid.</p>
+          <p className="text-red-600">
+            The invitation link is missing or invalid.
+          </p>
         </div>
       </div>
     );
@@ -57,10 +61,10 @@ export default function AcceptInvitationPage() {
           </h1>
           <p className="text-red-600">
             {(validationError as any)?.response?.data?.message ||
-              "This invitation is invalid, expired, or has already been accepted."}
+              'This invitation is invalid, expired, or has already been accepted.'}
           </p>
           <button
-            onClick={() => router.push("/login")}
+            onClick={() => router.push('/login')}
             className="mt-6 w-full rounded bg-primary px-4 py-2 text-white hover:bg-primary/90"
           >
             Go to Login
@@ -72,26 +76,29 @@ export default function AcceptInvitationPage() {
 
   const handleAccept = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
 
     if (validationResult.requiresPasswordSetup && password.length < 8) {
-      setError("Password must be at least 8 characters long.");
+      setError('Password must be at least 8 characters long.');
       return;
     }
 
     acceptInvitation(
-      { token, password: validationResult.requiresPasswordSetup ? password : undefined },
+      {
+        token,
+        password: validationResult.requiresPasswordSetup ? password : undefined,
+      },
       {
         onSuccess: () => {
-          router.push("/login?message=invitation_accepted");
+          router.push('/login?message=invitation_accepted');
         },
         onError: (err: any) => {
           setError(
             err.response?.data?.message ||
-              "An error occurred while accepting the invitation."
+              'An error occurred while accepting the invitation.',
           );
         },
-      }
+      },
     );
   };
 
@@ -157,13 +164,30 @@ export default function AcceptInvitationPage() {
             className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
           >
             {isAccepting
-              ? "Accepting..."
+              ? 'Accepting...'
               : validationResult.requiresPasswordSetup
-                ? "Set Password & Join"
-                : "Accept Invitation"}
+                ? 'Set Password & Join'
+                : 'Accept Invitation'}
           </button>
         </form>
       </div>
     </div>
+  );
+}
+
+export default function AcceptInvitationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center p-4">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <AcceptInvitationForm />
+    </Suspense>
   );
 }

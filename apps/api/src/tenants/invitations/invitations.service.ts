@@ -12,7 +12,11 @@ import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from 'nestjs-prisma';
 
 import { EmailService } from '../../email/email.service';
-import { AcceptInvitationDto, InviteUserDto, ValidateInvitationResponseDto } from './dto';
+import {
+  AcceptInvitationDto,
+  InviteUserDto,
+  ValidateInvitationResponseDto,
+} from './dto';
 
 @Injectable()
 export class InvitationsService {
@@ -20,7 +24,7 @@ export class InvitationsService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
-  ) { }
+  ) {}
 
   async inviteUser(
     dto: InviteUserDto,
@@ -36,7 +40,9 @@ export class InvitationsService {
     });
 
     if (roles.length !== dto.roleIds.length) {
-      throw new BadRequestException('One or more selected roles are invalid for this tenant.');
+      throw new BadRequestException(
+        'One or more selected roles are invalid for this tenant.',
+      );
     }
 
     const tenant = await this.prisma.tenant.findUnique({
@@ -60,7 +66,9 @@ export class InvitationsService {
     if (existingUser && existingUser.memberships.length > 0) {
       const membership = existingUser.memberships[0];
       if (membership.status === 'INVITED') {
-        throw new ConflictException('User is already invited to this tenant. You can resend the invitation.');
+        throw new ConflictException(
+          'User is already invited to this tenant. You can resend the invitation.',
+        );
       }
       throw new ConflictException('User is already a member of this tenant.');
     }
@@ -117,7 +125,8 @@ export class InvitationsService {
       await this.emailService.sendInvitationEmail(
         dto.email,
         tenant.name,
-        `${inviter?.firstName} ${inviter?.lastName}`.trim() || 'An administrator',
+        `${inviter?.firstName} ${inviter?.lastName}`.trim() ||
+          'An administrator',
         roles.map((r) => r.name),
         inviteLink,
       );
@@ -129,7 +138,9 @@ export class InvitationsService {
     return { message: 'Invitation sent successfully.' };
   }
 
-  async validateInvitation(token: string): Promise<ValidateInvitationResponseDto> {
+  async validateInvitation(
+    token: string,
+  ): Promise<ValidateInvitationResponseDto> {
     const invitationTokenHash = this.hashToken(token);
 
     const membership = await this.prisma.tenantMembership.findUnique({
@@ -143,18 +154,27 @@ export class InvitationsService {
       },
     });
 
-    if (!membership || membership.status !== 'INVITED' || membership.deletedAt) {
+    if (
+      !membership ||
+      membership.status !== 'INVITED' ||
+      membership.deletedAt
+    ) {
       throw new BadRequestException('Invalid or cancelled invitation.');
     }
 
-    if (membership.invitationExpiresAt && membership.invitationExpiresAt < new Date()) {
-      throw new BadRequestException('This invitation has expired. Please contact your administrator.');
+    if (
+      membership.invitationExpiresAt &&
+      membership.invitationExpiresAt < new Date()
+    ) {
+      throw new BadRequestException(
+        'This invitation has expired. Please contact your administrator.',
+      );
     }
 
     // Determine if the user is a placeholder (newly created) or an existing user.
-    // If the user has a temporary hash, we can infer they never logged in, but better is to check 
-    // if they have other active memberships or if we can rely on a flag. 
-    // Since we created them, they haven't set a password. We can assume if they only have this 1 membership and it's invited, 
+    // If the user has a temporary hash, we can infer they never logged in, but better is to check
+    // if they have other active memberships or if we can rely on a flag.
+    // Since we created them, they haven't set a password. We can assume if they only have this 1 membership and it's invited,
     // they need to set a password. A safer check is whether they've logged in before, but we can just require password if they haven't.
     // Let's assume a user with no other active memberships and no lastActiveAt needs password setup.
     const activeMemberships = await this.prisma.tenantMembership.count({
@@ -171,7 +191,9 @@ export class InvitationsService {
     };
   }
 
-  async acceptInvitation(dto: AcceptInvitationDto): Promise<{ message: string }> {
+  async acceptInvitation(
+    dto: AcceptInvitationDto,
+  ): Promise<{ message: string }> {
     const invitationTokenHash = this.hashToken(dto.token);
 
     const membership = await this.prisma.tenantMembership.findUnique({
@@ -179,12 +201,21 @@ export class InvitationsService {
       include: { user: true },
     });
 
-    if (!membership || membership.status !== 'INVITED' || membership.deletedAt) {
+    if (
+      !membership ||
+      membership.status !== 'INVITED' ||
+      membership.deletedAt
+    ) {
       throw new BadRequestException('Invalid or cancelled invitation.');
     }
 
-    if (membership.invitationExpiresAt && membership.invitationExpiresAt < new Date()) {
-      throw new BadRequestException('This invitation has expired. Please contact your administrator.');
+    if (
+      membership.invitationExpiresAt &&
+      membership.invitationExpiresAt < new Date()
+    ) {
+      throw new BadRequestException(
+        'This invitation has expired. Please contact your administrator.',
+      );
     }
 
     const activeMemberships = await this.prisma.tenantMembership.count({
@@ -193,7 +224,9 @@ export class InvitationsService {
     const requiresPasswordSetup = activeMemberships === 0;
 
     if (requiresPasswordSetup && !dto.password) {
-      throw new BadRequestException('Password is required to complete account setup.');
+      throw new BadRequestException(
+        'Password is required to complete account setup.',
+      );
     }
 
     await this.prisma.$transaction(async (prisma) => {
@@ -221,7 +254,10 @@ export class InvitationsService {
     return { message: 'Invitation accepted successfully.' };
   }
 
-  async resendInvitation(membershipId: string, tenantId: string): Promise<{ message: string }> {
+  async resendInvitation(
+    membershipId: string,
+    tenantId: string,
+  ): Promise<{ message: string }> {
     const membership = await this.prisma.tenantMembership.findUnique({
       where: { id: membershipId },
       include: {
@@ -257,7 +293,8 @@ export class InvitationsService {
     await this.emailService.sendInvitationEmail(
       membership.user.email,
       membership.tenant.name,
-      `${membership.invitedBy?.firstName} ${membership.invitedBy?.lastName}`.trim() || 'An administrator',
+      `${membership.invitedBy?.firstName} ${membership.invitedBy?.lastName}`.trim() ||
+        'An administrator',
       membership.roles.map((r) => r.role.name),
       inviteLink,
     );
@@ -265,7 +302,10 @@ export class InvitationsService {
     return { message: 'Invitation resent successfully.' };
   }
 
-  async cancelInvitation(membershipId: string, tenantId: string): Promise<{ message: string }> {
+  async cancelInvitation(
+    membershipId: string,
+    tenantId: string,
+  ): Promise<{ message: string }> {
     const membership = await this.prisma.tenantMembership.findUnique({
       where: { id: membershipId },
     });
@@ -275,7 +315,9 @@ export class InvitationsService {
     }
 
     if (membership.status !== 'INVITED') {
-      throw new BadRequestException('Only pending invitations can be cancelled.');
+      throw new BadRequestException(
+        'Only pending invitations can be cancelled.',
+      );
     }
 
     await this.prisma.tenantMembership.update({
@@ -295,7 +337,8 @@ export class InvitationsService {
   }
 
   private buildInvitationUrl(token: string): string {
-    const baseUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const baseUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const url = new URL(`${baseUrl}/invitations/accept`);
     url.searchParams.set('token', token);
     return url.toString();

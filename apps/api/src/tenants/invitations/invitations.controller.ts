@@ -10,7 +10,6 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -22,6 +21,8 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
+import type { Request } from 'express';
+
 import { Public, SkipTenantCheck } from '../../common/decorators';
 import { MessageResponseDto } from '../../common/dto';
 import {
@@ -29,14 +30,12 @@ import {
   InviteUserDto,
   ValidateInvitationResponseDto,
 } from './dto';
-
 import { InvitationsService } from './invitations.service';
-import type { Request } from 'express';
 
 @ApiTags('Invitations')
 @Controller('tenants/invitations')
 export class InvitationsController {
-  constructor(private readonly invitationsService: InvitationsService) { }
+  constructor(private readonly invitationsService: InvitationsService) {}
 
   /**
    * =========================
@@ -59,8 +58,7 @@ export class InvitationsController {
     description: 'Invalid role assignment or validation failed.',
   })
   @ApiConflictResponse({
-    description:
-      'User is already a member of this tenant or already invited.',
+    description: 'User is already a member of this tenant or already invited.',
   })
   @ApiUnauthorizedResponse({
     description: 'Invalid or missing bearer token.',
@@ -120,16 +118,14 @@ export class InvitationsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Accept invitation',
-    description:
-      'Accepts invitation and activates tenant membership.',
+    description: 'Accepts invitation and activates tenant membership.',
   })
   @ApiOkResponse({
     type: MessageResponseDto,
     description: 'Invitation accepted successfully.',
   })
   @ApiBadRequestResponse({
-    description:
-      'Invalid token, expired invitation, or missing password.',
+    description: 'Invalid token, expired invitation, or missing password.',
   })
   async acceptInvitation(
     @Body() dto: AcceptInvitationDto,
@@ -147,8 +143,7 @@ export class InvitationsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Resend invitation',
-    description:
-      'Regenerates invitation token and sends email again.',
+    description: 'Regenerates invitation token and sends email again.',
   })
   @ApiOkResponse({
     type: MessageResponseDto,
@@ -172,10 +167,7 @@ export class InvitationsController {
       );
     }
 
-    return this.invitationsService.resendInvitation(
-      membershipId,
-      tenantId,
-    );
+    return this.invitationsService.resendInvitation(membershipId, tenantId);
   }
 
   /**
@@ -212,9 +204,6 @@ export class InvitationsController {
       );
     }
 
-    return this.invitationsService.cancelInvitation(
-      membershipId,
-      tenantId,
-    );
+    return this.invitationsService.cancelInvitation(membershipId, tenantId);
   }
 }

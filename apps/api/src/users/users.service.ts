@@ -41,7 +41,7 @@ export class UsersService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly emailService: EmailService,
-  ) { }
+  ) {}
 
   async login(dto: LoginDto, tenantId?: string): Promise<Tokens> {
     const user = await this.prisma.user.findUnique({
@@ -49,12 +49,12 @@ export class UsersService {
       include: {
         memberships: tenantId
           ? {
-            where: {
-              tenantId,
-              status: 'ACTIVE',
-              deletedAt: null,
-            },
-          }
+              where: {
+                tenantId,
+                status: 'ACTIVE',
+                deletedAt: null,
+              },
+            }
           : false,
       },
     });

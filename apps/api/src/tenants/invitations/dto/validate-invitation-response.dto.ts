@@ -22,7 +22,8 @@ export class ValidateInvitationResponseDto {
 
   @ApiProperty({
     example: true,
-    description: 'Whether the user needs to set a password to complete acceptance.',
+    description:
+      'Whether the user needs to set a password to complete acceptance.',
   })
   requiresPasswordSetup: boolean;
 }
