@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
 
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -22,7 +23,6 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { usePermission } from '@/hooks/use-permission';
 import {
   type PermissionCategory,
   type Role,
@@ -32,11 +32,10 @@ import {
   useRoles,
   useUpdateRole,
 } from '@/services/api/requests/roles';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   AlertTriangle,
   ArrowLeft,
-  Check,
-  ChevronRight,
   Edit,
   Info,
   Plus,
@@ -45,37 +44,74 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 
 import { PERMS, type PermissionId, applyDependencies } from '@repo/permissions';
+
+const roleFormSchema = z.object({
+  name: z.string().min(1, 'Role title is required'),
+  description: z.string(),
+  rank: z
+    .number()
+    .min(1, 'Rank must be at least 1')
+    .max(100, 'Rank cannot exceed 100'),
+  permissions: z.array(z.string()),
+});
+
+type RoleFormValues = z.infer<typeof roleFormSchema>;
 
 export default function RolesContainer() {
   const router = useRouter();
   const pathname = usePathname();
   const isSettings = pathname.startsWith('/settings');
-  const { hasPermission } = usePermission();
   const { data: roles = [], isLoading: loadingRoles } = useRoles();
   const { data: registry = [], isLoading: loadingRegistry } =
     useRolePermissionsRegistry();
 
-  const createMutation = useCreateRole();
-  const updateMutation = useUpdateRole();
-  const deleteMutation = useDeleteRole();
+  const { mutateAsync: createRole, isPending: isCreatingRole } =
+    useCreateRole();
+  const { mutateAsync: updateRole, isPending: isUpdatingRole } =
+    useUpdateRole();
+  const {
+    mutateAsync: deleteRole,
+    isPending: isDeletingRole,
+    variables: deletingRoleId,
+  } = useDeleteRole();
+
+  const isSaving = isCreatingRole || isUpdatingRole;
+  const isMutating = isSaving || isDeletingRole;
 
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Form State
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [rank, setRank] = useState(10);
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  // Form setup
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<RoleFormValues>({
+    resolver: zodResolver(roleFormSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      rank: 10,
+      permissions: [],
+    },
+  });
+
+  const selectedPermissions = watch('permissions') || [];
 
   const handleStartCreate = () => {
-    setName('');
-    setDescription('');
-    setRank(10);
-    setSelectedPermissions([]);
+    reset({
+      name: '',
+      description: '',
+      rank: 10,
+      permissions: [],
+    });
     setIsCreating(true);
     setEditingRole(null);
   };
@@ -83,10 +119,12 @@ export default function RolesContainer() {
   const handleStartEdit = (role: Role) => {
     setEditingRole(role);
     setIsCreating(false);
-    setName(role.name);
-    setDescription(role.description || '');
-    setRank(role.rank);
-    setSelectedPermissions(role.permissions);
+    reset({
+      name: role.name,
+      description: role.description || '',
+      rank: role.rank,
+      permissions: role.permissions,
+    });
   };
 
   const handlePermissionToggle = (permId: string) => {
@@ -97,7 +135,10 @@ export default function RolesContainer() {
       nextPerms.add(permId);
       applyDependencies(permId as PermissionId, nextPerms);
     }
-    setSelectedPermissions(Array.from(nextPerms));
+    setValue('permissions', Array.from(nextPerms), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   const handleSelectAllForFeature = (
@@ -115,53 +156,37 @@ export default function RolesContainer() {
         nextPerms.delete(id);
       });
     }
-    setSelectedPermissions(Array.from(nextPerms));
+    setValue('permissions', Array.from(nextPerms), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!name.trim()) {
-      toast.error('Role name is required');
-      return;
-    }
-
+  const onFormSubmit = async (data: RoleFormValues) => {
     try {
       if (isCreating) {
-        await createMutation.mutateAsync({
-          name,
-          description,
-          rank: Number(rank),
-          permissions: selectedPermissions,
+        await createRole({
+          name: data.name,
+          description: data.description,
+          rank: data.rank,
+          permissions: data.permissions,
         });
         toast.success('Role created successfully');
         setIsCreating(false);
       } else if (editingRole) {
         // Prepare payload (system roles can only update description and permissions)
         const payload = editingRole.isSystemRole
-          ? { description, permissions: selectedPermissions }
+          ? { description: data.description, permissions: data.permissions }
           : {
-              name,
-              description,
-              rank: Number(rank),
-              permissions: selectedPermissions,
+              name: data.name,
+              description: data.description,
+              rank: data.rank,
+              permissions: data.permissions,
             };
 
-        // We can use the configured update mutation dynamically
-        await updateMutation.mutateAsync(
-          { id: editingRole.id, dto: payload },
-          {
-            onSuccess: () => {
-              toast.success('Role updated successfully');
-              setEditingRole(null);
-            },
-            onError: (err: any) => {
-              const msg =
-                err.response?.data?.message || 'Failed to update role';
-              toast.error(Array.isArray(msg) ? msg[0] : msg);
-            },
-          },
-        );
+        await updateRole({ id: editingRole.id, dto: payload });
+        toast.success('Role updated successfully');
+        setEditingRole(null);
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || 'An error occurred';
@@ -179,7 +204,7 @@ export default function RolesContainer() {
     }
 
     try {
-      await deleteMutation.mutateAsync(roleId);
+      await deleteRole(roleId);
       toast.success('Role deleted successfully');
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Failed to delete role';
@@ -224,6 +249,7 @@ export default function RolesContainer() {
             <Button
               variant="ghost"
               size="icon"
+              disabled={isMutating}
               onClick={() => router.push('/dashboard')}
             >
               <ArrowLeft className="h-5 w-5" />
@@ -255,7 +281,7 @@ export default function RolesContainer() {
         {isFormOpen ? (
           /* Create / Edit Form Layout */
           <form
-            onSubmit={handleSave}
+            onSubmit={handleSubmit(onFormSubmit)}
             className="grid grid-cols-1 lg:grid-cols-3 gap-8"
           >
             <div className="lg:col-span-1 space-y-6">
@@ -275,12 +301,15 @@ export default function RolesContainer() {
                     <Label htmlFor="role-name">Role Title</Label>
                     <Input
                       id="role-name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      disabled={editingRole?.isSystemRole}
+                      {...register('name')}
+                      disabled={editingRole?.isSystemRole || isSaving}
                       placeholder="e.g. Exam Superintendent"
-                      required
                     />
+                    {errors.name && (
+                      <p className="text-xs text-destructive mt-1">
+                        {errors.name.message}
+                      </p>
+                    )}
                     {editingRole?.isSystemRole && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Info className="h-3 w-3" /> System role title cannot be
@@ -293,10 +322,10 @@ export default function RolesContainer() {
                     <Label htmlFor="role-desc">Description</Label>
                     <textarea
                       id="role-desc"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
+                      {...register('description')}
+                      disabled={isSaving}
                       rows={3}
-                      className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
                       placeholder="Specify the purpose of this role..."
                     />
                   </div>
@@ -308,26 +337,44 @@ export default function RolesContainer() {
                       type="number"
                       min={1}
                       max={100}
-                      value={rank}
-                      onChange={(e) => setRank(Number(e.target.value))}
-                      disabled={editingRole?.isSystemRole}
-                      required
+                      {...register('rank', { valueAsNumber: true })}
+                      disabled={editingRole?.isSystemRole || isSaving}
                     />
+                    {errors.rank && (
+                      <p className="text-xs text-destructive mt-1">
+                        {errors.rank.message}
+                      </p>
+                    )}
                     <span className="text-xs text-muted-foreground block">
                       Lower numbers indicate higher privilege level.
                     </span>
                   </div>
 
                   <div className="pt-4 flex gap-3">
-                    <Button type="submit" className="flex-1">
-                      {isCreating ? 'Create Role' : 'Save Changes'}
+                    <Button
+                      type="submit"
+                      disabled={isSaving}
+                      className="flex-1"
+                    >
+                      {isSaving ? (
+                        <span className="flex items-center gap-2">
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          Saving...
+                        </span>
+                      ) : isCreating ? (
+                        'Create Role'
+                      ) : (
+                        'Save Changes'
+                      )}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
+                      disabled={isSaving}
                       onClick={() => {
                         setIsCreating(false);
                         setEditingRole(null);
+                        reset();
                       }}
                     >
                       Cancel
@@ -374,9 +421,6 @@ export default function RolesContainer() {
                             const hasAll = featurePermIds.every((id) =>
                               selectedPermissions.includes(id),
                             );
-                            const hasSome = featurePermIds.some((id) =>
-                              selectedPermissions.includes(id),
-                            );
 
                             return (
                               <div
@@ -393,6 +437,7 @@ export default function RolesContainer() {
                                     type="button"
                                     variant="ghost"
                                     size="sm"
+                                    disabled={isSaving}
                                     className="text-xs text-muted-foreground h-7 px-2"
                                     onClick={() =>
                                       handleSelectAllForFeature(
@@ -416,15 +461,16 @@ export default function RolesContainer() {
                                           checked
                                             ? 'border-primary/40 bg-primary/5 shadow-sm'
                                             : 'border-border/40 hover:bg-muted/30 bg-background/20'
-                                        }`}
+                                        } ${isSaving ? 'opacity-60 cursor-not-allowed' : ''}`}
                                       >
                                         <input
                                           type="checkbox"
                                           checked={checked}
+                                          disabled={isSaving}
                                           onChange={() =>
                                             handlePermissionToggle(perm.id)
                                           }
-                                          className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                          className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50"
                                         />
                                         <div className="space-y-0.5">
                                           <span className="text-xs font-semibold block">
@@ -460,12 +506,14 @@ export default function RolesContainer() {
                   placeholder="Search roles..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  disabled={isMutating}
                   className="bg-card/40 border-border/80"
                 />
               </div>
               <PermissionGate permission={PERMS.role.create}>
                 <Button
                   onClick={handleStartCreate}
+                  disabled={isMutating}
                   className="w-full sm:w-auto gap-2"
                 >
                   <Plus className="h-4 w-4" /> Add Custom Role
@@ -474,80 +522,90 @@ export default function RolesContainer() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredRoles.map((role) => (
-                <Card
-                  key={role.id}
-                  className="border-border/60 hover:border-primary/30 transition-all duration-300 shadow-md bg-card/40 backdrop-blur-md flex flex-col justify-between"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-lg font-bold">
-                            {role.name}
-                          </CardTitle>
-                          {role.isSystemRole && (
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] py-0 px-1.5"
-                            >
-                              System
-                            </Badge>
-                          )}
+              {filteredRoles.map((role) => {
+                const isThisRoleDeleting =
+                  isDeletingRole && deletingRoleId === role.id;
+                return (
+                  <Card
+                    key={role.id}
+                    className="border-border/60 hover:border-primary/30 transition-all duration-300 shadow-md bg-card/40 backdrop-blur-md flex flex-col justify-between"
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-lg font-bold">
+                              {role.name}
+                            </CardTitle>
+                            {role.isSystemRole && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] py-0 px-1.5"
+                              >
+                                System
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground block font-mono">
+                            Rank: {role.rank}
+                          </span>
                         </div>
-                        <span className="text-[10px] text-muted-foreground block font-mono">
-                          Rank: {role.rank}
-                        </span>
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                          <Shield className="h-4 w-4" />
+                        </div>
                       </div>
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                        <Shield className="h-4 w-4" />
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-0">
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {role.description || 'No description provided.'}
-                    </p>
+                    </CardHeader>
+                    <CardContent className="space-y-4 pt-0">
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {role.description || 'No description provided.'}
+                      </p>
 
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/20">
-                      <div className="flex items-center gap-1">
-                        <Users className="h-3.5 w-3.5" />
-                        <span>{role.memberCount} members</span>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/20">
+                        <div className="flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5" />
+                          <span>{role.memberCount} members</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Shield className="h-3.5 w-3.5" />
+                          <span>{role.permissions.length} perms</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Shield className="h-3.5 w-3.5" />
-                        <span>{role.permissions.length} perms</span>
-                      </div>
-                    </div>
 
-                    <div className="flex gap-2 pt-2">
-                      <PermissionGate permission={PERMS.role.edit}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 gap-1.5 text-xs h-8"
-                          onClick={() => handleStartEdit(role)}
-                        >
-                          <Edit className="h-3 w-3" /> Edit
-                        </Button>
-                      </PermissionGate>
-
-                      {!role.isSystemRole && (
-                        <PermissionGate permission={PERMS.role.delete}>
+                      <div className="flex gap-2 pt-2">
+                        <PermissionGate permission={PERMS.role.edit}>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 px-3"
-                            onClick={() => handleDelete(role.id)}
+                            className="flex-1 gap-1.5 text-xs h-8"
+                            disabled={isMutating}
+                            onClick={() => handleStartEdit(role)}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Edit className="h-3 w-3" /> Edit
                           </Button>
                         </PermissionGate>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+
+                        {!role.isSystemRole && (
+                          <PermissionGate permission={PERMS.role.delete}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 px-3"
+                              disabled={isMutating}
+                              onClick={() => handleDelete(role.id)}
+                            >
+                              {isThisRoleDeleting ? (
+                                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          </PermissionGate>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
 
             {filteredRoles.length === 0 && (
