@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
-import { KeyRound, Settings, Shield, User } from 'lucide-react';
+import { KeyRound, Settings, Shield, User, Users } from 'lucide-react';
 
 interface NavSection {
   label: string;
@@ -30,6 +30,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Organization',
     items: [
+      { id: 'team', label: 'Team', icon: Users },
       { id: 'roles', label: 'Roles & Permissions', icon: Shield },
       { id: 'general', label: 'General', icon: Settings },
     ],
@@ -42,6 +43,7 @@ export default function SettingsLayoutContainer({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const basePath = '/settings';
 
   // Extract the active panel from the pathname (e.g. /settings/profile -> profile)
   const activePanel = pathname.split('/').pop() || 'profile';
@@ -61,7 +63,7 @@ export default function SettingsLayoutContainer({
                 {section.items.map((item) => (
                   <li key={item.id}>
                     <Link
-                      href={`/settings/${item.id}`}
+                      href={`${basePath}/${item.id}`}
                       className={cn(
                         'flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors duration-150',
                         activePanel === item.id
