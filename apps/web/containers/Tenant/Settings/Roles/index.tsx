@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { PermissionGate } from '@/components/permission-gate';
 import {
@@ -50,6 +50,8 @@ import { PERMS, type PermissionId, applyDependencies } from '@repo/permissions';
 
 export default function RolesContainer() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isSettings = pathname.startsWith('/settings');
   const { hasPermission } = usePermission();
   const { data: roles = [], isLoading: loadingRoles } = useRoles();
   const { data: registry = [], isLoading: loadingRegistry } =
@@ -208,22 +210,42 @@ export default function RolesContainer() {
   const isFormOpen = isCreating || !!editingRole;
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-12">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <div
+      className={
+        isSettings
+          ? 'pb-12'
+          : 'min-h-screen bg-background text-foreground pb-12'
+      }
+    >
+      <div className={isSettings ? '' : 'max-w-6xl mx-auto px-4 py-8'}>
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.push('/dashboard')}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          {!isSettings && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push('/dashboard')}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
+            <h1
+              className={
+                isSettings
+                  ? 'text-sm font-semibold tracking-tight'
+                  : 'text-3xl font-bold tracking-tight'
+              }
+            >
               Roles & Permissions
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p
+              className={
+                isSettings
+                  ? 'text-xs text-muted-foreground mt-1'
+                  : 'text-sm text-muted-foreground mt-1'
+              }
+            >
               Configure access roles, permissions hierarchy, and assign
               capabilities for user accounts.
             </p>
@@ -483,7 +505,7 @@ export default function RolesContainer() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-0">
-                    <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2rem]">
+                    <p className="text-xs text-muted-foreground line-clamp-2">
                       {role.description || 'No description provided.'}
                     </p>
 
