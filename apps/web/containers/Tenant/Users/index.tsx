@@ -72,7 +72,10 @@ export default function TenantUsersContainer() {
     limit,
     cursor,
   });
-  const revokeAccess = useRevokeUserAccess();
+  const { mutateAsync: revokeAccess, isPending: isRevoking } =
+    useRevokeUserAccess();
+
+  const isPendingState = isRevoking;
 
   const handleNextPage = () => {
     if (data?.nextCursor) {
@@ -100,7 +103,7 @@ export default function TenantUsersContainer() {
   const handleConfirmRevoke = async () => {
     if (!targetUser) return;
     try {
-      await revokeAccess.mutateAsync(targetUser.membershipId);
+      await revokeAccess(targetUser.membershipId);
       setIsConfirmOpen(false);
       setTargetUser(null);
     } catch {
@@ -117,8 +120,9 @@ export default function TenantUsersContainer() {
             <input
               type="checkbox"
               checked={table.getIsAllPageRowsSelected()}
+              disabled={isPendingState}
               onChange={table.getToggleAllPageRowsSelectedHandler()}
-              className="rounded border-zinc-300 dark:border-zinc-700 text-primary focus:ring-primary focus:ring-offset-2 h-4 w-4 dark:bg-zinc-900 bg-white cursor-pointer transition-all"
+              className="rounded border-zinc-300 dark:border-zinc-700 text-primary focus:ring-primary focus:ring-offset-2 h-4 w-4 dark:bg-zinc-900 bg-white cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
         ),
@@ -127,7 +131,7 @@ export default function TenantUsersContainer() {
             <input
               type="checkbox"
               checked={row.getIsSelected()}
-              disabled={!row.getCanSelect()}
+              disabled={!row.getCanSelect() || isPendingState}
               onChange={row.getToggleSelectedHandler()}
               className="rounded border-zinc-300 dark:border-zinc-700 text-primary focus:ring-primary focus:ring-offset-2 h-4 w-4 dark:bg-zinc-900 bg-white cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             />
@@ -288,6 +292,7 @@ export default function TenantUsersContainer() {
                     variant="ghost"
                     size="icon-sm"
                     className="h-8 w-8 p-0"
+                    disabled={isPendingState}
                   >
                     <MoreVertical className="h-4 w-4" />
                     <span className="sr-only">Open menu</span>
@@ -330,7 +335,7 @@ export default function TenantUsersContainer() {
         },
       },
     ],
-    [],
+    [isPendingState],
   );
 
   const table = useReactTable({
@@ -372,6 +377,7 @@ export default function TenantUsersContainer() {
             placeholder="Search name or email..."
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
+            disabled={isPendingState}
             className="pl-9 h-9"
           />
         </div>
@@ -381,7 +387,8 @@ export default function TenantUsersContainer() {
           <select
             value={limit}
             onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-            className="h-9 w-20 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring"
+            disabled={isPendingState}
+            className="h-9 w-20 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring disabled:opacity-50"
           >
             {[5, 10, 20, 50].map((size) => (
               <option key={size} value={size}>
@@ -403,6 +410,7 @@ export default function TenantUsersContainer() {
             variant="ghost"
             size="sm"
             className="h-7 text-xs px-2 hover:bg-primary/10"
+            disabled={isPendingState}
             onClick={() => setRowSelection({})}
           >
             Clear selection
@@ -491,7 +499,7 @@ export default function TenantUsersContainer() {
               variant="outline"
               size="sm"
               onClick={handlePrevPage}
-              disabled={cursorHistory.length === 0}
+              disabled={cursorHistory.length === 0 || isPendingState}
               className="h-8 gap-1"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -501,7 +509,7 @@ export default function TenantUsersContainer() {
               variant="outline"
               size="sm"
               onClick={handleNextPage}
-              disabled={!data.nextCursor}
+              disabled={!data.nextCursor || isPendingState}
               className="h-8 gap-1"
             >
               <span>Next</span>
@@ -541,17 +549,17 @@ export default function TenantUsersContainer() {
                 setIsConfirmOpen(false);
                 setTargetUser(null);
               }}
-              disabled={revokeAccess.isPending}
+              disabled={isPendingState}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleConfirmRevoke}
-              disabled={revokeAccess.isPending}
+              disabled={isPendingState}
               className="flex items-center gap-1.5"
             >
-              {revokeAccess.isPending && (
+              {isPendingState && (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               )}
               <span>Revoke Access</span>

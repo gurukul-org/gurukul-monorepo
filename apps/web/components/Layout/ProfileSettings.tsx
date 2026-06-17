@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useForm } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -11,6 +12,9 @@ import {
   useCurrentUserProfile,
   useUpdateUserProfile,
 } from '@/services/api/requests/users';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2 } from 'lucide-react';
+import { z } from 'zod';
 
 function ProfileSkeleton() {
   return (
@@ -32,32 +36,58 @@ function ProfileSkeleton() {
   );
 }
 
+const profileFormSchema = z.object({
+  firstName: z.string().trim().min(1, 'First name is required'),
+  lastName: z.string().trim().min(1, 'Last name is required'),
+  phone: z.string(),
+});
+
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
+
 export function ProfilePanel() {
   const { data: profile, isLoading } = useCurrentUserProfile();
-  const updateProfileMutation = useUpdateUserProfile();
+  const { mutateAsync: updateProfile, isPending: isUpdating } =
+    useUpdateUserProfile();
 
-  const [firstName, setFirstName] = React.useState('');
-  const [lastName, setLastName] = React.useState('');
-  const [phone, setPhone] = React.useState('');
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      phone: '',
+    },
+  });
 
   React.useEffect(() => {
     if (profile) {
-      setFirstName(profile.firstName || '');
-      setLastName(profile.lastName || '');
-      setPhone(profile.phone || '');
+      reset({
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        phone: profile.phone || '',
+      });
     }
-  }, [profile]);
+  }, [profile, reset]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateProfileMutation.mutate({
-      firstName,
-      lastName,
-      phone: phone || null,
-    });
+  const onFormSubmit = async (data: ProfileFormValues) => {
+    try {
+      await updateProfile({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone || null,
+      });
+    } catch {
+      // API hook handles notifications and error logging
+    }
   };
 
   if (isLoading) return <ProfileSkeleton />;
+
+  const isSubmitting = isUpdating;
 
   return (
     <div>
@@ -69,26 +99,37 @@ export function ProfilePanel() {
           Update your personal information.
         </p>
       </div>
-      <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
+      <form
+        onSubmit={handleSubmit(onFormSubmit)}
+        className="space-y-4 max-w-lg"
+      >
         <FieldGroup>
           <div className="grid grid-cols-2 gap-4">
             <Field>
               <FieldLabel htmlFor="firstName">First Name</FieldLabel>
               <Input
                 id="firstName"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
+                {...register('firstName')}
+                disabled={isSubmitting}
               />
+              {errors.firstName && (
+                <p className="text-xs text-destructive mt-1">
+                  {errors.firstName.message}
+                </p>
+              )}
             </Field>
             <Field>
               <FieldLabel htmlFor="lastName">Last Name</FieldLabel>
               <Input
                 id="lastName"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
+                {...register('lastName')}
+                disabled={isSubmitting}
               />
+              {errors.lastName && (
+                <p className="text-xs text-destructive mt-1">
+                  {errors.lastName.message}
+                </p>
+              )}
             </Field>
           </div>
 
@@ -106,58 +147,77 @@ export function ProfilePanel() {
             <FieldLabel htmlFor="phone">Phone Number</FieldLabel>
             <Input
               id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
               placeholder="+1 (555) 000-0000"
+              {...register('phone')}
+              disabled={isSubmitting}
             />
+            {errors.phone && (
+              <p className="text-xs text-destructive mt-1">
+                {errors.phone.message}
+              </p>
+            )}
           </Field>
         </FieldGroup>
 
-        <Button
-          type="submit"
-          disabled={updateProfileMutation.isPending}
-          className="mt-2"
-        >
-          {updateProfileMutation.isPending ? 'Saving…' : 'Save Changes'}
+        <Button type="submit" disabled={isSubmitting} className="mt-2">
+          {isSubmitting ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </span>
+          ) : (
+            'Save Changes'
+          )}
         </Button>
       </form>
     </div>
   );
 }
 
+const securityFormSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z.string().min(6, 'Password must be at least 6 characters'),
+    confirmPassword: z.string().min(6, 'Please confirm your new password'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'New passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+type SecurityFormValues = z.infer<typeof securityFormSchema>;
+
 export function SecurityPanel() {
-  const changePasswordMutation = useChangeUserPassword();
+  const { mutateAsync: changePassword, isPending: isChanging } =
+    useChangeUserPassword();
 
-  const [currentPassword, setCurrentPassword] = React.useState('');
-  const [newPassword, setNewPassword] = React.useState('');
-  const [confirmPassword, setConfirmPassword] = React.useState('');
-  const [passwordError, setPasswordError] = React.useState('');
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<SecurityFormValues>({
+    resolver: zodResolver(securityFormSchema),
+    defaultValues: {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    },
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordError('');
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match');
-      return;
+  const onFormSubmit = async (data: SecurityFormValues) => {
+    try {
+      await changePassword({
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
+      reset();
+    } catch {
+      // API hook handles notifications and error logging
     }
-
-    if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
-      return;
-    }
-
-    changePasswordMutation.mutate(
-      { currentPassword, newPassword },
-      {
-        onSuccess: () => {
-          setCurrentPassword('');
-          setNewPassword('');
-          setConfirmPassword('');
-        },
-      },
-    );
   };
+
+  const isSubmitting = isChanging;
 
   return (
     <div>
@@ -167,27 +227,38 @@ export function SecurityPanel() {
           Change your password.
         </p>
       </div>
-      <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
+      <form
+        onSubmit={handleSubmit(onFormSubmit)}
+        className="space-y-4 max-w-lg"
+      >
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="currentPassword">Current Password</FieldLabel>
             <Input
               id="currentPassword"
               type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              required
+              {...register('currentPassword')}
+              disabled={isSubmitting}
             />
+            {errors.currentPassword && (
+              <p className="text-xs text-destructive mt-1">
+                {errors.currentPassword.message}
+              </p>
+            )}
           </Field>
           <Field>
             <FieldLabel htmlFor="newPassword">New Password</FieldLabel>
             <Input
               id="newPassword"
               type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
+              {...register('newPassword')}
+              disabled={isSubmitting}
             />
+            {errors.newPassword && (
+              <p className="text-xs text-destructive mt-1">
+                {errors.newPassword.message}
+              </p>
+            )}
           </Field>
           <Field>
             <FieldLabel htmlFor="confirmPassword">
@@ -196,25 +267,26 @@ export function SecurityPanel() {
             <Input
               id="confirmPassword"
               type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
+              {...register('confirmPassword')}
+              disabled={isSubmitting}
             />
+            {errors.confirmPassword && (
+              <p className="text-xs text-destructive mt-1">
+                {errors.confirmPassword.message}
+              </p>
+            )}
           </Field>
         </FieldGroup>
 
-        {passwordError && (
-          <p className="text-xs text-destructive font-medium">
-            {passwordError}
-          </p>
-        )}
-
-        <Button
-          type="submit"
-          disabled={changePasswordMutation.isPending}
-          className="mt-2"
-        >
-          {changePasswordMutation.isPending ? 'Updating…' : 'Update Password'}
+        <Button type="submit" disabled={isSubmitting} className="mt-2">
+          {isSubmitting ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Updating...
+            </span>
+          ) : (
+            'Update Password'
+          )}
         </Button>
       </form>
     </div>
