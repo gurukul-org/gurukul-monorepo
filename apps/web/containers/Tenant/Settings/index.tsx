@@ -3,13 +3,10 @@
 import * as React from 'react';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
-import {
-  ProfilePanel,
-  SecurityPanel,
-} from '@/components/Layout/ProfileSettings';
 import { cn } from '@/lib/utils';
-import { KeyRound, Settings, Shield, User } from 'lucide-react';
+import { KeyRound, Settings, Shield, User, Users } from 'lucide-react';
 
 interface NavSection {
   label: string;
@@ -33,17 +30,24 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Organization',
     items: [
-      { id: 'permissions', label: 'Permissions', icon: Shield },
+      { id: 'team', label: 'Team', icon: Users },
+      { id: 'roles', label: 'Roles & Permissions', icon: Shield },
       { id: 'general', label: 'General', icon: Settings },
     ],
   },
 ];
 
-interface TenantSettingsProps {
-  activePanel: string;
-}
+export default function SettingsLayoutContainer({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const basePath = '/settings';
 
-export default function TenantSettings({ activePanel }: TenantSettingsProps) {
+  // Extract the active panel from the pathname (e.g. /settings/profile -> profile)
+  const activePanel = pathname.split('/').pop() || 'profile';
+
   return (
     <div className="flex gap-8">
       {/* Left vertical nav */}
@@ -59,7 +63,7 @@ export default function TenantSettings({ activePanel }: TenantSettingsProps) {
                 {section.items.map((item) => (
                   <li key={item.id}>
                     <Link
-                      href={`/settings/${item.id}`}
+                      href={`${basePath}/${item.id}`}
                       className={cn(
                         'flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors duration-150',
                         activePanel === item.id
@@ -79,23 +83,7 @@ export default function TenantSettings({ activePanel }: TenantSettingsProps) {
       </nav>
 
       {/* Content area */}
-      <div className="flex-1 min-w-0">
-        {activePanel === 'profile' && <ProfilePanel />}
-        {activePanel === 'security' && <SecurityPanel />}
-        {activePanel === 'permissions' && (
-          <div className="text-sm text-muted-foreground">
-            This is{' '}
-            <span className="font-medium text-foreground">permissions</span>{' '}
-            settings.
-          </div>
-        )}
-        {activePanel === 'general' && (
-          <div className="text-sm text-muted-foreground">
-            This is <span className="font-medium text-foreground">general</span>{' '}
-            settings.
-          </div>
-        )}
-      </div>
+      <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
 }

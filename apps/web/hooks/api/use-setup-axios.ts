@@ -97,13 +97,9 @@ export function useSetupAxios(instance: AxiosInstance) {
           !isRefresh &&
           useAuthStore.getState().accessToken
         ) {
-          // /tenants/current 403 means "not a member of this tenant" — let the
-          // tenant layout redirect to the apex picker with an access-denied
-          // toast instead of hard-logging-out a still-valid session.
-          const isTenantCurrent = url.startsWith('/tenants/current');
-          if (!isTenantCurrent) {
-            hardLogoutRef.current();
-          }
+          // A 403 Forbidden from /tenants/current means the user is not a member of this tenant.
+          // Let the tenant layout redirect them to the apex workspace picker with an access-denied toast.
+          // For any other endpoints, the user simply lacks permissions for that action, so do not log them out.
           return Promise.reject(error);
         }
 
