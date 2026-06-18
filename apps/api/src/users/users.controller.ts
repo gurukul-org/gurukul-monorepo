@@ -406,6 +406,7 @@ export class UsersController {
     @GetCurrentUser('membershipId') callerMembershipId: string,
     @Query('limit') limit?: string,
     @Query('cursor') cursor?: string,
+    @Query('status') status?: string,
   ) {
     const parsedLimit = limit ? parseInt(limit, 10) : 10;
     return this.usersService.findAllTenantUsers(
@@ -413,6 +414,7 @@ export class UsersController {
       callerMembershipId,
       parsedLimit,
       cursor,
+      status,
     );
   }
 

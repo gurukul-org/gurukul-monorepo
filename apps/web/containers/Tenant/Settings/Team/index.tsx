@@ -19,7 +19,7 @@ import { z } from 'zod';
 const inviteFormSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required'),
   lastName: z.string().trim().min(1, 'Last name is required'),
-  email: z.string().trim().email('Invalid email address'),
+  email: z.email('Invalid email address'),
   roleIds: z.array(z.string()).min(1, 'At least one role must be selected'),
 });
 
@@ -34,10 +34,10 @@ export default function TeamContainer() {
     isLoading,
     isError,
     refetch,
-  } = useTenantUsers({ limit: 100 });
+  } = useTenantUsers({ limit: 25, status: 'INVITED' });
 
   const pendingInvitations = useMemo(() => {
-    return usersData?.users.filter((u) => u.status === 'INVITED') ?? [];
+    return usersData?.users ?? [];
   }, [usersData]);
 
   const { mutateAsync: inviteUser, isPending: isInviting } = useInviteUser();

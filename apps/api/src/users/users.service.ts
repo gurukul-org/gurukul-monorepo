@@ -503,6 +503,7 @@ export class UsersService {
     callerMembershipId: string,
     limit = 10,
     cursor?: string,
+    status?: string,
   ) {
     const foundingMembership = await this.prisma.tenantMembership.findFirst({
       where: { tenantId },
@@ -530,9 +531,14 @@ export class UsersService {
       throw new ForbiddenException('Only admins can view tenant users.');
     }
 
+    const cleanStatus = status?.replace(/['"]/g, '');
     const take = limit > 0 ? limit : 10;
     const memberships = await this.prisma.tenantMembership.findMany({
-      where: { tenantId, deletedAt: null },
+      where: {
+        tenantId,
+        deletedAt: null,
+        status: cleanStatus ? cleanStatus : undefined,
+      },
       take: take + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
