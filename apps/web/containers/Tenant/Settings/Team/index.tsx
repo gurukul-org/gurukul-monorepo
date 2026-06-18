@@ -122,6 +122,15 @@ export default function TeamContainer() {
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                       Roles
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Invited By
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Invited At
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Last Resent At
+                    </th>
                     <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
                       Actions
                     </th>
@@ -150,6 +159,43 @@ export default function TeamContainer() {
                               {r.name}
                             </span>
                           ))}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <div className="text-sm text-zinc-900 dark:text-zinc-50">
+                          {invitation.invitedBy
+                            ? `${invitation.invitedBy.firstName} ${invitation.invitedBy.lastName}`.trim() ||
+                              invitation.invitedBy.email
+                            : '-'}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                          {invitation.createdAt
+                            ? new Date(invitation.createdAt).toLocaleString(
+                                undefined,
+                                {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short',
+                                },
+                              )
+                            : '-'}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                          {invitation.createdAt &&
+                          invitation.updatedAt &&
+                          new Date(invitation.updatedAt).getTime() >
+                            new Date(invitation.createdAt).getTime()
+                            ? new Date(invitation.updatedAt).toLocaleString(
+                                undefined,
+                                {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short',
+                                },
+                              )
+                            : 'Never'}
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">

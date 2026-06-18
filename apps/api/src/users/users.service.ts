@@ -547,6 +547,14 @@ export class UsersService {
             },
           },
         },
+        invitedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
       },
     });
 
@@ -576,6 +584,16 @@ export class UsersService {
           name: r.role.name,
           rank: r.role.rank,
         })),
+        invitedBy: m.invitedBy
+          ? {
+              id: m.invitedBy.id,
+              firstName: m.invitedBy.firstName,
+              lastName: m.invitedBy.lastName,
+              email: m.invitedBy.email,
+            }
+          : null,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
       };
     });
 

@@ -80,6 +80,7 @@ describe('InvitationsService - cancelInvitation', () => {
       id: 'm-1',
       tenantId: 'other-tenant',
       status: 'INVITED',
+      user: { email: 'mock@example.com' },
     });
 
     await expect(service.cancelInvitation('m-1', 'tenant-1')).rejects.toThrow(
@@ -92,6 +93,7 @@ describe('InvitationsService - cancelInvitation', () => {
       id: 'm-1',
       tenantId: 'tenant-1',
       status: 'ACTIVE',
+      user: { email: 'mock@example.com' },
     });
 
     await expect(service.cancelInvitation('m-1', 'tenant-1')).rejects.toThrow(
@@ -105,6 +107,7 @@ describe('InvitationsService - cancelInvitation', () => {
       tenantId: 'tenant-1',
       userId: 'user-1',
       status: 'INVITED',
+      user: { email: 'mock@example.com' },
     });
 
     prisma.tenantMembership.count.mockResolvedValueOnce(0);
@@ -132,6 +135,7 @@ describe('InvitationsService - cancelInvitation', () => {
       tenantId: 'tenant-1',
       userId: 'user-1',
       status: 'INVITED',
+      user: { email: 'mock@example.com' },
     });
 
     prisma.tenantMembership.count.mockResolvedValueOnce(1); // has 1 other membership

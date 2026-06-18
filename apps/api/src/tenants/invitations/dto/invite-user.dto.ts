@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-import { IsArray, IsEmail, IsString, Length } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsEmail,
+  IsString,
+  Length,
+} from 'class-validator';
 
 export class InviteUserDto {
   @ApiProperty({
@@ -32,6 +38,7 @@ export class InviteUserDto {
     type: [String],
   })
   @IsArray()
+  @ArrayMinSize(1, { message: 'At least one role must be selected.' })
   @IsString({ each: true })
   roleIds: string[];
 }

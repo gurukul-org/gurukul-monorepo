@@ -118,6 +118,14 @@ export interface TenantUser {
   joinedAt: string | null;
   isAdmin: boolean;
   roles: TenantUserRole[];
+  invitedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TenantUsersResponse {
