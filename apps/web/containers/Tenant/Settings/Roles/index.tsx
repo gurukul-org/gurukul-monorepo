@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   type PermissionCategory,
   type Role,
@@ -59,6 +60,32 @@ const roleFormSchema = z.object({
 });
 
 type RoleFormValues = z.infer<typeof roleFormSchema>;
+
+function RoleCardSkeleton() {
+  return (
+    <Card className="border-border/60 shadow-md bg-card/40 backdrop-blur-md flex flex-col justify-between h-[220px] animate-pulse">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-5 w-1/2 bg-zinc-200 dark:bg-zinc-800" />
+            <Skeleton className="h-3.5 w-1/4 bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+          <Skeleton className="h-8 w-8 rounded-full bg-zinc-200 dark:bg-zinc-800" />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-0">
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-full bg-zinc-200 dark:bg-zinc-800" />
+          <Skeleton className="h-3 w-5/6 bg-zinc-200 dark:bg-zinc-800" />
+        </div>
+        <div className="flex items-center gap-4 pt-2 border-t border-border/20">
+          <Skeleton className="h-3 w-16 bg-zinc-200 dark:bg-zinc-800" />
+          <Skeleton className="h-3 w-16 bg-zinc-200 dark:bg-zinc-800" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function RolesContainer() {
   const router = useRouter();
@@ -188,8 +215,11 @@ export default function RolesContainer() {
         toast.success('Role updated successfully');
         setEditingRole(null);
       }
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'An error occurred';
+    } catch (err: unknown) {
+      const axiosError = err as {
+        response?: { data?: { message?: string | string[] } };
+      };
+      const msg = axiosError.response?.data?.message || 'An error occurred';
       toast.error(Array.isArray(msg) ? msg[0] : msg);
     }
   };
@@ -206,8 +236,11 @@ export default function RolesContainer() {
     try {
       await deleteRole(roleId);
       toast.success('Role deleted successfully');
-    } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to delete role';
+    } catch (err: unknown) {
+      const axiosError = err as {
+        response?: { data?: { message?: string | string[] } };
+      };
+      const msg = axiosError.response?.data?.message || 'Failed to delete role';
       toast.error(Array.isArray(msg) ? msg[0] : msg);
     }
   };
@@ -219,7 +252,7 @@ export default function RolesContainer() {
         role.description.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
-  if (loadingRoles || loadingRegistry) {
+  if (loadingRegistry) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -522,93 +555,101 @@ export default function RolesContainer() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredRoles.map((role) => {
-                const isThisRoleDeleting =
-                  isDeletingRole && deletingRoleId === role.id;
-                return (
-                  <Card
-                    key={role.id}
-                    className="border-border/60 hover:border-primary/30 transition-all duration-300 shadow-md bg-card/40 backdrop-blur-md flex flex-col justify-between"
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <CardTitle className="text-lg font-bold">
-                              {role.name}
-                            </CardTitle>
-                            {role.isSystemRole && (
-                              <Badge
-                                variant="secondary"
-                                className="text-[10px] py-0 px-1.5"
-                              >
-                                System
-                              </Badge>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground block font-mono">
-                            Rank: {role.rank}
-                          </span>
-                        </div>
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                          <Shield className="h-4 w-4" />
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4 pt-0">
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {role.description || 'No description provided.'}
-                      </p>
-
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/20">
-                        <div className="flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5" />
-                          <span>{role.memberCount} members</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Shield className="h-3.5 w-3.5" />
-                          <span>{role.permissions.length} perms</span>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 pt-2">
-                        <PermissionGate permission={PERMS.role.edit}>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 gap-1.5 text-xs h-8"
-                            disabled={isMutating}
-                            onClick={() => handleStartEdit(role)}
-                          >
-                            <Edit className="h-3 w-3" /> Edit
-                          </Button>
-                        </PermissionGate>
-
-                        {!role.isSystemRole && (
-                          <PermissionGate permission={PERMS.role.delete}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 px-3"
-                              disabled={isMutating}
-                              onClick={() => handleDelete(role.id)}
-                            >
-                              {isThisRoleDeleting ? (
-                                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                              ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
+              {loadingRoles ? (
+                <>
+                  <RoleCardSkeleton />
+                  <RoleCardSkeleton />
+                  <RoleCardSkeleton />
+                </>
+              ) : (
+                filteredRoles.map((role) => {
+                  const isThisRoleDeleting =
+                    isDeletingRole && deletingRoleId === role.id;
+                  return (
+                    <Card
+                      key={role.id}
+                      className="border-border/60 hover:border-primary/30 transition-all duration-300 shadow-md bg-card/40 backdrop-blur-md flex flex-col justify-between"
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-lg font-bold">
+                                {role.name}
+                              </CardTitle>
+                              {role.isSystemRole && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] py-0 px-1.5"
+                                >
+                                  System
+                                </Badge>
                               )}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground block font-mono">
+                              Rank: {role.rank}
+                            </span>
+                          </div>
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                            <Shield className="h-4 w-4" />
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4 pt-0">
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {role.description || 'No description provided.'}
+                        </p>
+
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/20">
+                          <div className="flex items-center gap-1">
+                            <Users className="h-3.5 w-3.5" />
+                            <span>{role.memberCount} members</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Shield className="h-3.5 w-3.5" />
+                            <span>{role.permissions.length} perms</span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                          <PermissionGate permission={PERMS.role.edit}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 gap-1.5 text-xs h-8"
+                              disabled={isMutating}
+                              onClick={() => handleStartEdit(role)}
+                            >
+                              <Edit className="h-3 w-3" /> Edit
                             </Button>
                           </PermissionGate>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+
+                          {!role.isSystemRole && (
+                            <PermissionGate permission={PERMS.role.delete}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 px-3"
+                                disabled={isMutating}
+                                onClick={() => handleDelete(role.id)}
+                              >
+                                {isThisRoleDeleting ? (
+                                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                ) : (
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            </PermissionGate>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
             </div>
 
-            {filteredRoles.length === 0 && (
+            {!loadingRoles && filteredRoles.length === 0 && (
               <div className="text-center py-12 border border-dashed border-border/40 rounded-xl bg-card/20">
                 <AlertTriangle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                 <h3 className="text-sm font-semibold">No Roles Found</h3>
