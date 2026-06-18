@@ -391,6 +391,9 @@ export class UsersService {
       );
       if (autoMembership) {
         membershipId = autoMembership.id;
+        const loaded = await this.loadMembershipScopes(autoMembership.id);
+        scopes = loaded.scopes;
+        isAdmin = loaded.isAdmin;
       }
     }
 
@@ -509,27 +512,6 @@ export class UsersService {
       where: { tenantId },
       orderBy: { createdAt: 'asc' },
     });
-    const isCallerFounder = foundingMembership?.id === callerMembershipId;
-
-    const callerRoles = await this.prisma.membershipRole.findMany({
-      where: {
-        tenantMembershipId: callerMembershipId,
-        membership: { tenantId },
-      },
-      include: { role: true },
-    });
-
-    const isCallerAdmin =
-      isCallerFounder ||
-      callerRoles.some(
-        (r) =>
-          r.role.name.toLowerCase() === 'owner' ||
-          r.role.name.toLowerCase().includes('admin'),
-      );
-
-    if (!isCallerAdmin) {
-      throw new ForbiddenException('Only admins can view tenant users.');
-    }
 
     const cleanStatus = status?.replace(/['"]/g, '');
     const take = limit > 0 ? limit : 10;
@@ -621,18 +603,6 @@ export class UsersService {
       },
       include: { role: true },
     });
-
-    const isCallerAdmin =
-      isCallerFounder ||
-      callerRoles.some(
-        (r) =>
-          r.role.name.toLowerCase() === 'owner' ||
-          r.role.name.toLowerCase().includes('admin'),
-      );
-
-    if (!isCallerAdmin) {
-      throw new ForbiddenException('Only admins can revoke tenant access.');
-    }
 
     if (callerMembershipId === targetMembershipId) {
       throw new BadRequestException('You cannot revoke your own access.');
