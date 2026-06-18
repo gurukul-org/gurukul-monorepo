@@ -1,33 +1,21 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useMemo } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
+import { useInviteMemberModal } from '@/hooks/use-modal';
 import {
   useCancelInvitation,
-  useInviteUser,
   useResendInvitation,
 } from '@/services/api/requests/invitations';
 import { useTenantUsers } from '@/services/api/requests/users';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { z } from 'zod';
-
-const inviteFormSchema = z.object({
-  firstName: z.string().trim().min(1, 'First name is required'),
-  lastName: z.string().trim().min(1, 'Last name is required'),
-  email: z.email('Invalid email address'),
-  roleIds: z.array(z.string()).min(1, 'At least one role must be selected'),
-});
-
-type InviteFormValues = z.infer<typeof inviteFormSchema>;
 
 export default function TeamContainer() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const showError = useShowApiError();
+  const showInviteModal = useInviteMemberModal();
 
   const {
     data: usersData,
@@ -40,7 +28,6 @@ export default function TeamContainer() {
     return usersData?.users ?? [];
   }, [usersData]);
 
-  const { mutateAsync: inviteUser, isPending: isInviting } = useInviteUser();
   const {
     mutateAsync: resendInvite,
     isPending: isResending,
@@ -52,39 +39,13 @@ export default function TeamContainer() {
     variables: cancelingInviteId,
   } = useCancelInvitation();
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<InviteFormValues>({
-    resolver: zodResolver(inviteFormSchema),
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      roleIds: ['role-id-1'], // Default placeholder
-    },
-  });
-
-  const isAnyMutating = isInviting || isResending || isCanceling;
-
-  const onFormSubmit = async (data: InviteFormValues) => {
-    try {
-      await inviteUser(data);
-      setIsModalOpen(false);
-      reset();
-      toast.success('Invitation sent successfully!');
-    } catch (error: any) {
-      showError(error);
-    }
-  };
+  const isAnyMutating = isResending || isCanceling;
 
   const handleResend = async (id: string) => {
     try {
       await resendInvite(id);
       toast.success('Invitation resent successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       showError(error);
     }
   };
@@ -93,7 +54,7 @@ export default function TeamContainer() {
     try {
       await cancelInvite(id);
       toast.success('Invitation cancelled successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       showError(error);
     }
   };
@@ -107,7 +68,7 @@ export default function TeamContainer() {
             Manage your tenant members and roles.
           </p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} disabled={isAnyMutating}>
+        <Button onClick={showInviteModal} disabled={isAnyMutating}>
           Invite Member
         </Button>
       </div>
@@ -235,88 +196,6 @@ export default function TeamContainer() {
           )}
         </section>
       </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-lg font-medium text-gray-900">
-              Invite New Member
-            </h3>
-            <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  First Name
-                </label>
-                <input
-                  {...register('firstName')}
-                  disabled={isInviting}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:opacity-50 disabled:bg-gray-100"
-                />
-                {errors.firstName && (
-                  <p className="text-xs text-red-600 mt-1">
-                    {errors.firstName.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Last Name
-                </label>
-                <input
-                  {...register('lastName')}
-                  disabled={isInviting}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:opacity-50 disabled:bg-gray-100"
-                />
-                {errors.lastName && (
-                  <p className="text-xs text-red-600 mt-1">
-                    {errors.lastName.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  {...register('email')}
-                  disabled={isInviting}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:opacity-50 disabled:bg-gray-100"
-                />
-                {errors.email && (
-                  <p className="text-xs text-red-600 mt-1">
-                    {errors.email.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    reset();
-                  }}
-                  disabled={isInviting}
-                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isInviting}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {isInviting && <Loader2 className="h-4 w-4 animate-spin" />}
-                  <span>{isInviting ? 'Sending...' : 'Send Invitation'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

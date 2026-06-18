@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -320,13 +319,30 @@ export class InvitationsService {
       );
     }
 
-    await this.prisma.tenantMembership.update({
-      where: { id: membership.id },
-      data: {
-        status: 'REMOVED',
-        invitationTokenHash: null,
-        invitationExpiresAt: null,
-      },
+    const userId = membership.userId;
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Delete matching assigned roles
+      await tx.membershipRole.deleteMany({
+        where: { tenantMembershipId: membershipId },
+      });
+
+      // 2. Delete the membership row
+      await tx.tenantMembership.delete({
+        where: { id: membershipId },
+      });
+
+      // 3. Count other memberships for the user across all tenants
+      const otherMembershipsCount = await tx.tenantMembership.count({
+        where: { userId },
+      });
+
+      // 4. If the user has no other memberships left, delete the user row
+      if (otherMembershipsCount === 0) {
+        await tx.user.delete({
+          where: { id: userId },
+        });
+      }
     });
 
     return { message: 'Invitation cancelled successfully.' };

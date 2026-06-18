@@ -5,9 +5,11 @@ import { useAppSelector } from '@/lib/store';
 import { ModalType } from '@/lib/store/types/modal';
 
 import { DummyModal } from './DummyModal';
+import { InviteMemberModal } from './InviteMemberModal';
 
 const MODAL_COMPONENTS = {
   [ModalType.DummyModal]: DummyModal,
+  [ModalType.InviteMemberModal]: InviteMemberModal,
 };
 
 export function ModalProvider() {
