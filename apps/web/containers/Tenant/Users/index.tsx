@@ -5,14 +5,6 @@ import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -27,11 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  TenantUser,
-  useRevokeUserAccess,
-  useTenantUsers,
-} from '@/services/api/requests/users';
+import { useShowModal } from '@/hooks/use-modal';
+import { ModalType } from '@/lib/store/types/modal';
+import { TenantUser, useTenantUsers } from '@/services/api/requests/users';
 import {
   ColumnDef,
   flexRender,
@@ -63,19 +53,15 @@ export default function TenantUsersContainer() {
   // Local state for row selection
   const [rowSelection, setRowSelection] = useState({});
 
-  // Local state for revoking access confirmation
-  const [targetUser, setTargetUser] = useState<TenantUser | null>(null);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const showModal = useShowModal();
 
   // API hooks
   const { data, isLoading, isError, refetch } = useTenantUsers({
     limit,
     cursor,
   });
-  const { mutateAsync: revokeAccess, isPending: isRevoking } =
-    useRevokeUserAccess();
 
-  const isPendingState = isRevoking;
+  const isPendingState = false;
 
   const handleNextPage = () => {
     if (data?.nextCursor) {
@@ -98,17 +84,6 @@ export default function TenantUsersContainer() {
     setCursor(undefined);
     setCursorHistory([]);
     setRowSelection({});
-  };
-
-  const handleConfirmRevoke = async () => {
-    if (!targetUser) return;
-    try {
-      await revokeAccess(targetUser.membershipId);
-      setIsConfirmOpen(false);
-      setTargetUser(null);
-    } catch {
-      // Error is already handled by showError in useRevokeUserAccess
-    }
   };
 
   const columns = useMemo<ColumnDef<TenantUser>[]>(
@@ -306,8 +281,10 @@ export default function TenantUsersContainer() {
                     <DropdownMenuItem
                       variant="destructive"
                       onClick={() => {
-                        setTargetUser(u);
-                        setIsConfirmOpen(true);
+                        showModal(ModalType.RevokeAccessModal, {
+                          membershipId: u.membershipId,
+                          userFullName: `${u.firstName} ${u.lastName}`,
+                        });
                       }}
                       className="cursor-pointer"
                     >
@@ -518,55 +495,6 @@ export default function TenantUsersContainer() {
           </div>
         </div>
       )}
-
-      {/* Confirmation Revocation Modal */}
-      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
-              <ShieldAlert className="h-5 w-5" />
-              <span>Revoke Workspace Access</span>
-            </DialogTitle>
-            <DialogDescription className="pt-2 text-zinc-600 dark:text-zinc-400">
-              Are you sure you want to revoke workspace access for{' '}
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                {targetUser
-                  ? `${targetUser.firstName} ${targetUser.lastName}`
-                  : ''}
-              </span>
-              ?
-              <br />
-              <br />
-              This will immediately terminate all active sessions for this user
-              in this tenant workspace and block them from re-entering. This
-              action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsConfirmOpen(false);
-                setTargetUser(null);
-              }}
-              disabled={isPendingState}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmRevoke}
-              disabled={isPendingState}
-              className="flex items-center gap-1.5"
-            >
-              {isPendingState && (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              )}
-              <span>Revoke Access</span>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

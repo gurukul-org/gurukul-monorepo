@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 
 import { usePathname, useRouter } from 'next/navigation';
 
-import { RoleModal } from '@/components/modals/RoleModal';
 import { PermissionGate } from '@/components/permission-gate';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useShowDeleteModal, useShowRoleModal } from '@/hooks/use-modal';
 import {
   type Role,
   useDeleteRole,
@@ -66,41 +66,41 @@ export default function RolesContainer() {
     variables: deletingRoleId,
   } = useDeleteRole();
 
-  const [editingRole, setEditingRole] = useState<Role | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const showDeleteModal = useShowDeleteModal();
+  const showRoleModal = useShowRoleModal();
   const [searchQuery, setSearchQuery] = useState('');
 
   const isMutating = isDeletingRole;
 
   const handleStartCreate = () => {
-    setEditingRole(null);
-    setIsModalOpen(true);
+    showRoleModal(null);
   };
 
   const handleStartEdit = (role: Role) => {
-    setEditingRole(role);
-    setIsModalOpen(true);
+    showRoleModal(role);
   };
 
-  const handleDelete = async (roleId: string) => {
-    if (
-      !confirm(
+  const handleDelete = (roleId: string) => {
+    showDeleteModal({
+      title: 'Delete Custom Role',
+      subtitle:
         'Are you sure you want to delete this custom role? This action cannot be undone.',
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await deleteRole(roleId);
-      toast.success('Role deleted successfully');
-    } catch (err: unknown) {
-      const axiosError = err as {
-        response?: { data?: { message?: string | string[] } };
-      };
-      const msg = axiosError.response?.data?.message || 'Failed to delete role';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
-    }
+      confirmButtonText: 'Delete Role',
+      onConfirm: async () => {
+        try {
+          await deleteRole(roleId);
+          toast.success('Role deleted successfully');
+        } catch (err: unknown) {
+          const axiosError = err as {
+            response?: { data?: { message?: string | string[] } };
+          };
+          const msg =
+            axiosError.response?.data?.message || 'Failed to delete role';
+          toast.error(Array.isArray(msg) ? msg[0] : msg);
+          throw err;
+        }
+      },
+    });
   };
 
   const filteredRoles = roles.filter(
@@ -282,15 +282,6 @@ export default function RolesContainer() {
             </div>
           )}
         </div>
-
-        <RoleModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setEditingRole(null);
-          }}
-          editingRole={editingRole}
-        />
       </div>
     </div>
   );

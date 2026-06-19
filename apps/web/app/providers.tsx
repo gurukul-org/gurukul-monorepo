@@ -2,7 +2,7 @@
 
 import { Provider as ReduxProvider } from 'react-redux';
 
-import { ModalProvider } from '@/components/modals/ModalProvider';
+import ModalDialog from '@/components/ModalDialog';
 import { SidepaneProvider } from '@/components/sidepanes/SidepaneProvider';
 import { useBootstrapAuth } from '@/hooks/api/use-bootstrap-auth';
 import { useSetupAxios } from '@/hooks/api/use-setup-axios';
@@ -25,7 +25,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <AxiosGate>
           {children}
-          <ModalProvider />
+          <ModalDialog />
           <SidepaneProvider />
         </AxiosGate>
         <Toaster richColors position="top-right" />

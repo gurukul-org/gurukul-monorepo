@@ -1,15 +1,31 @@
+import { type Role } from '@/services/api/requests/roles';
+
+// Add every modal you register, in declaration order.
+// `None` MUST be the first/zero value — it's the closed state.
 export enum ModalType {
-  DummyModal = 'DummyModal',
-  InviteMemberModal = 'InviteMemberModal',
+  None,
+  ExampleDeletion,
+  InviteMemberModal,
+  RoleModal,
+  RevokeAccessModal,
+  DeleteModal,
 }
 
-export interface DummyModalPayload {
-  message?: string;
-}
+// Union of every modal's payload shape. Each member should ideally
+// come from its modal's own `types.ts` so payloads stay co-located.
+export type ModalPayload =
+  | Record<string, never> // for modals with no payload
+  | { id: string } // ExampleDeletion
+  | { editingRole: Role | null } // RoleModal
+  | { membershipId: string; userFullName: string } // RevokeAccessModal
+  | {
+      title: string;
+      subtitle: string;
+      confirmButtonText?: string;
+      onConfirm: () => void | Promise<void>;
+    }; // DeleteModal
 
-export type ModalPayloadMap = {
-  [ModalType.DummyModal]: DummyModalPayload;
-  [ModalType.InviteMemberModal]: undefined;
+export type ModalState = {
+  type: ModalType;
+  payload: ModalPayload;
 };
-
-export type ModalPayload = DummyModalPayload;

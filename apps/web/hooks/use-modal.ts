@@ -1,58 +1,82 @@
 import { useCallback } from 'react';
 
-import { useAppDispatch } from '@/lib/store';
-import { hideModal, showModal } from '@/lib/store/slices/uiSlice';
-import { ModalPayloadMap, ModalType } from '@/lib/store/types/modal';
+import { useAppDispatch, useAppSelector } from '@/lib/store';
+import { actions } from '@/lib/store/slices/modal';
+import { ModalPayload, ModalType } from '@/lib/store/types/modal';
+import { type Role } from '@/services/api/requests/roles';
 
+// Generic primitives — every per-modal hook below composes these.
 export function useShowModal() {
   const dispatch = useAppDispatch();
   return useCallback(
-    <T extends ModalType>(type: T, payload?: ModalPayloadMap[T]) => {
-      dispatch(showModal({ type, payload }));
-    },
+    (type: ModalType, payload: ModalPayload) =>
+      dispatch(actions.showModal({ type, payload })),
     [dispatch],
   );
 }
 
 export function useHideModal() {
   const dispatch = useAppDispatch();
-  return useCallback(() => {
-    dispatch(hideModal());
-  }, [dispatch]);
+  return useCallback(() => dispatch(actions.hideModal()), [dispatch]);
 }
 
-// Convenience hooks for specific modals
-export function useDummyModal() {
-  const show = useShowModal();
+export function useModalType() {
+  return useAppSelector((state) => state.modal.type);
+}
+
+export function useModalPayload() {
+  return useAppSelector((state) => state.modal.payload);
+}
+
+// Per-modal hooks — one per registered modal. This is the public API
+// every feature component should use. Callers never reference
+// ModalType directly.
+export function useShowExampleDeletionModal(id: string) {
+  const showModal = useShowModal();
   return useCallback(
-    (payload?: ModalPayloadMap[ModalType.DummyModal]) => {
-      show(ModalType.DummyModal, payload);
-    },
-    [show],
+    () => showModal(ModalType.ExampleDeletion, { id }),
+    [showModal, id],
   );
 }
 
-export function useInviteMemberModal() {
-  const show = useShowModal();
-  return useCallback(() => {
-    show(ModalType.InviteMemberModal);
-  }, [show]);
+export function useShowInviteMemberModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    () => showModal(ModalType.InviteMemberModal, {}),
+    [showModal],
+  );
 }
 
-// Keep a backward compatible useModal wrapper for any legacy uses
-export function useModal() {
-  const show = useShowModal();
-  const hide = useHideModal();
-
-  const open = useCallback(
-    (type: string, data?: unknown) => {
-      show(type as ModalType, data as ModalPayloadMap[ModalType]);
-    },
-    [show],
+export function useShowRoleModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (editingRole: Role | null) =>
+      showModal(ModalType.RoleModal, { editingRole }),
+    [showModal],
   );
+}
 
-  return {
-    open,
-    close: hide,
-  };
+export function useShowRevokeAccessModal(
+  membershipId: string,
+  userFullName: string,
+) {
+  const showModal = useShowModal();
+  return useCallback(
+    () =>
+      showModal(ModalType.RevokeAccessModal, { membershipId, userFullName }),
+    [showModal, membershipId, userFullName],
+  );
+}
+
+export function useShowDeleteModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (payload: {
+      title: string;
+      subtitle: string;
+      confirmButtonText?: string;
+      onConfirm: () => void | Promise<void>;
+    }) => showModal(ModalType.DeleteModal, payload),
+    [showModal],
+  );
 }
