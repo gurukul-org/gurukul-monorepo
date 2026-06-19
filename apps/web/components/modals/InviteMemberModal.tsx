@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
+import { useHideModal } from '@/hooks/use-modal';
 import { useInviteUser } from '@/services/api/requests/invitations';
 import { useRoles } from '@/services/api/requests/roles';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,12 +29,10 @@ const inviteFormSchema = z.object({
 
 type InviteFormValues = z.infer<typeof inviteFormSchema>;
 
-interface InviteMemberModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export function InviteMemberModal({ isOpen, onClose }: InviteMemberModalProps) {
+// Rendered by ModalDialog when ModalType.InviteMemberModal is active.
+// No isOpen/onClose props — the modal manages its own close via useHideModal.
+export function InviteMemberModal() {
+  const hideModal = useHideModal();
   const showError = useShowApiError();
   const { mutateAsync: inviteUser, isPending: isInviting } = useInviteUser();
   const { data: roles, isLoading: isLoadingRoles } = useRoles();
@@ -58,7 +57,7 @@ export function InviteMemberModal({ isOpen, onClose }: InviteMemberModalProps) {
       await inviteUser(data);
       toast.success('Invitation sent successfully!');
       reset();
-      onClose();
+      hideModal();
     } catch (error: unknown) {
       showError(error);
     }
@@ -66,8 +65,8 @@ export function InviteMemberModal({ isOpen, onClose }: InviteMemberModalProps) {
 
   return (
     <Modal
-      isOpen={isOpen}
-      onClose={onClose}
+      isOpen={true}
+      onClose={hideModal}
       title="Invite New Member"
       description="Send an invitation link to a new member to join this tenant workspace."
     >
@@ -183,7 +182,7 @@ export function InviteMemberModal({ isOpen, onClose }: InviteMemberModalProps) {
           <Button
             type="button"
             variant="outline"
-            onClick={onClose}
+            onClick={hideModal}
             disabled={isInviting}
           >
             Cancel

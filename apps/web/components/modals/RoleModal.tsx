@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useHideModal } from '@/hooks/use-modal';
 import {
   type PermissionCategory,
   type Role,
@@ -41,12 +42,11 @@ const roleFormSchema = z.object({
 type RoleFormValues = z.infer<typeof roleFormSchema>;
 
 interface RoleModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  editingRole: Role | null;
+  editingRole?: Role | null;
 }
 
-export function RoleModal({ isOpen, onClose, editingRole }: RoleModalProps) {
+export function RoleModal({ editingRole = null }: RoleModalProps) {
+  const hideModal = useHideModal();
   const { data: registry = [], isLoading: loadingRegistry } =
     useRolePermissionsRegistry();
 
@@ -78,24 +78,22 @@ export function RoleModal({ isOpen, onClose, editingRole }: RoleModalProps) {
   const selectedPermissions = watch('permissions') || [];
 
   useEffect(() => {
-    if (isOpen) {
-      if (editingRole) {
-        reset({
-          name: editingRole.name,
-          description: editingRole.description || '',
-          rank: editingRole.rank,
-          permissions: editingRole.permissions,
-        });
-      } else {
-        reset({
-          name: '',
-          description: '',
-          rank: 10,
-          permissions: [],
-        });
-      }
+    if (editingRole) {
+      reset({
+        name: editingRole.name,
+        description: editingRole.description || '',
+        rank: editingRole.rank,
+        permissions: editingRole.permissions,
+      });
+    } else {
+      reset({
+        name: '',
+        description: '',
+        rank: 10,
+        permissions: [],
+      });
     }
-  }, [isOpen, editingRole, reset]);
+  }, [editingRole, reset]);
 
   const handlePermissionToggle = (permId: string) => {
     const nextPerms = new Set(selectedPermissions);
@@ -156,7 +154,7 @@ export function RoleModal({ isOpen, onClose, editingRole }: RoleModalProps) {
         await updateRole({ id: editingRole.id, dto: payload });
         toast.success('Role updated successfully');
       }
-      onClose();
+      hideModal();
     } catch (err: unknown) {
       const axiosError = err as {
         response?: { data?: { message?: string | string[] } };
@@ -170,8 +168,8 @@ export function RoleModal({ isOpen, onClose, editingRole }: RoleModalProps) {
 
   return (
     <Modal
-      isOpen={isOpen}
-      onClose={onClose}
+      isOpen={true}
+      onClose={hideModal}
       size="xl"
       title={
         isCreating
@@ -355,7 +353,7 @@ export function RoleModal({ isOpen, onClose, editingRole }: RoleModalProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={onClose}
+              onClick={hideModal}
               disabled={isSaving}
             >
               Cancel

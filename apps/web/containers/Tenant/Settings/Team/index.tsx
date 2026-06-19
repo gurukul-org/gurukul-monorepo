@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
-import { useInviteMemberModal } from '@/hooks/use-modal';
+import { useShowInviteMemberModal } from '@/hooks/use-modal';
 import {
   useCancelInvitation,
   useResendInvitation,
@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 
 export default function TeamContainer() {
   const showError = useShowApiError();
-  const showInviteModal = useInviteMemberModal();
+  const showInviteModal = useShowInviteMemberModal();
 
   const {
     data: usersData,

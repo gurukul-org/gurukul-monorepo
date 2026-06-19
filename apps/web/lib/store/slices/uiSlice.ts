@@ -1,27 +1,17 @@
 import { type PayloadAction, createSlice } from '@reduxjs/toolkit';
 
-import { ModalType } from '../types/modal';
 import { SidePaneType } from '../types/sidepane';
 
 export interface UIState {
-  modal: {
-    isOpen: boolean;
-    type: ModalType | null;
-    payload: any;
-  };
   sidepane: {
     isOpen: boolean;
     type: SidePaneType | null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     payload: any;
   };
 }
 
 const initialState: UIState = {
-  modal: {
-    isOpen: false,
-    type: null,
-    payload: null,
-  },
   sidepane: {
     isOpen: false,
     type: null,
@@ -33,21 +23,9 @@ const uiSlice = createSlice({
   name: 'ui',
   initialState,
   reducers: {
-    showModal: (
-      state,
-      action: PayloadAction<{ type: ModalType; payload?: any }>,
-    ) => {
-      state.modal.isOpen = true;
-      state.modal.type = action.payload.type;
-      state.modal.payload = action.payload.payload ?? null;
-    },
-    hideModal: (state) => {
-      state.modal.isOpen = false;
-      state.modal.type = null;
-      state.modal.payload = null;
-    },
     showSidePane: (
       state,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       action: PayloadAction<{ type: SidePaneType; payload?: any }>,
     ) => {
       state.sidepane.isOpen = true;
@@ -62,7 +40,6 @@ const uiSlice = createSlice({
   },
 });
 
-export const { showModal, hideModal, showSidePane, hideSidePane } =
-  uiSlice.actions;
+export const { showSidePane, hideSidePane } = uiSlice.actions;
 
 export default uiSlice.reducer;

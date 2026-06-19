@@ -3,7 +3,7 @@
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
-import { useDummyModal } from '@/hooks/use-modal';
+import { useShowExampleDeletionModal } from '@/hooks/use-modal';
 import { useDummySidepane } from '@/hooks/use-sidepane';
 import { useSubdomain } from '@/hooks/use-subdomain';
 import { useCurrentTenant } from '@/services/api/requests/tenants';
@@ -15,7 +15,7 @@ export default function TenantDashboard() {
   const { data: tenant } = useCurrentTenant();
   const { data: profile } = useCurrentUserProfile();
 
-  const dummyModal = useDummyModal();
+  const openExampleDeletion = useShowExampleDeletionModal('demo-item-1');
   const dummySidepane = useDummySidepane();
 
   return (
@@ -36,12 +36,7 @@ export default function TenantDashboard() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button
-          size="sm"
-          onClick={() =>
-            dummyModal({ message: 'Hello from the type-safe modal!' })
-          }
-        >
+        <Button size="sm" onClick={openExampleDeletion}>
           Open Modal
         </Button>
         <Button
