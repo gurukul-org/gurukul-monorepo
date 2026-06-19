@@ -30,11 +30,14 @@ import {
 
 import type { Request, Response } from 'express';
 
+import { PERMS } from '@repo/permissions';
+
 import {
   GetCurrentTenant,
   GetCurrentUser,
   GetCurrentUserId,
   Public,
+  RequirePermissions,
   SkipTenantCheck,
 } from '../common/decorators';
 import {
@@ -392,12 +395,13 @@ export class UsersController {
 
   @Get()
   @UseGuards(AtGuard)
+  @RequirePermissions(PERMS.user.view)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'List tenant users',
     description:
-      'Returns all members of the current tenant. Only admins can perform this.',
+      'Returns all members of the current tenant. Only users with user.view permission can perform this.',
   })
   @ApiOkResponse({ description: 'Users retrieved successfully.' })
   @ApiForbiddenResponse({ description: 'Forbidden context.' })
@@ -406,6 +410,7 @@ export class UsersController {
     @GetCurrentUser('membershipId') callerMembershipId: string,
     @Query('limit') limit?: string,
     @Query('cursor') cursor?: string,
+    @Query('status') status?: string,
   ) {
     const parsedLimit = limit ? parseInt(limit, 10) : 10;
     return this.usersService.findAllTenantUsers(
@@ -413,17 +418,19 @@ export class UsersController {
       callerMembershipId,
       parsedLimit,
       cursor,
+      status,
     );
   }
 
   @Delete(':membershipId')
   @UseGuards(AtGuard)
+  @RequirePermissions(PERMS.user.delete)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Revoke user access',
     description:
-      "Revokes a user's access to the tenant. Only admins can perform this.",
+      "Revokes a user's access to the tenant. Only users with user.delete permission can perform this.",
   })
   @ApiOkResponse({ description: 'User access revoked successfully.' })
   @ApiForbiddenResponse({ description: 'Forbidden context.' })

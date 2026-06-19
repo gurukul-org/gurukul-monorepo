@@ -1,5 +1,7 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+
+import { UserQueryKey } from '../types/UserQueryKey';
 
 // DTO Types
 export interface InviteUserDto {
@@ -22,10 +24,14 @@ export interface ValidateInvitationResponseDto {
 }
 
 export const useInviteUser = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: InviteUserDto) => {
       const response = await axios.post('/tenants/invitations', data);
       return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [UserQueryKey.List] });
     },
   });
 };
@@ -54,6 +60,7 @@ export const useAcceptInvitation = () => {
 };
 
 export const useResendInvitation = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (membershipId: string) => {
       const response = await axios.post(
@@ -61,16 +68,23 @@ export const useResendInvitation = () => {
       );
       return response.data;
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [UserQueryKey.List] });
+    },
   });
 };
 
 export const useCancelInvitation = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (membershipId: string) => {
       const response = await axios.delete(
         `/tenants/invitations/${membershipId}`,
       );
       return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [UserQueryKey.List] });
     },
   });
 };

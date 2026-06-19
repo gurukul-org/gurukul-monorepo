@@ -1,8 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -20,6 +20,8 @@ import {
 
 @Injectable()
 export class InvitationsService {
+  private readonly logger = new Logger(InvitationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
@@ -134,6 +136,16 @@ export class InvitationsService {
       console.error('--- Error sending invitation email ---');
       console.error(error);
     }
+
+    this.logger.log(
+      `Invitation created structure: ${JSON.stringify({
+        action: 'INVITE_USER',
+        tenantId,
+        inviterId,
+        recipientEmail: dto.email,
+        roles: roles.map((r) => r.name),
+      })}`,
+    );
 
     return { message: 'Invitation sent successfully.' };
   }
@@ -299,6 +311,17 @@ export class InvitationsService {
       inviteLink,
     );
 
+    this.logger.log(
+      `Invitation resent structure: ${JSON.stringify({
+        action: 'RESEND_INVITATION',
+        tenantId,
+        membershipId,
+        recipientEmail: membership.user.email,
+        invitedById: membership.invitedById,
+        roles: membership.roles.map((r) => r.role.name),
+      })}`,
+    );
+
     return { message: 'Invitation resent successfully.' };
   }
 
@@ -308,6 +331,7 @@ export class InvitationsService {
   ): Promise<{ message: string }> {
     const membership = await this.prisma.tenantMembership.findUnique({
       where: { id: membershipId },
+      include: { user: true },
     });
 
     if (!membership || membership.tenantId !== tenantId) {
@@ -320,14 +344,40 @@ export class InvitationsService {
       );
     }
 
-    await this.prisma.tenantMembership.update({
-      where: { id: membership.id },
-      data: {
-        status: 'REMOVED',
-        invitationTokenHash: null,
-        invitationExpiresAt: null,
-      },
+    const userId = membership.userId;
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Delete matching assigned roles
+      await tx.membershipRole.deleteMany({
+        where: { tenantMembershipId: membershipId },
+      });
+
+      // 2. Delete the membership row
+      await tx.tenantMembership.delete({
+        where: { id: membershipId },
+      });
+
+      // 3. Count other memberships for the user across all tenants
+      const otherMembershipsCount = await tx.tenantMembership.count({
+        where: { userId },
+      });
+
+      // 4. If the user has no other memberships left, delete the user row
+      if (otherMembershipsCount === 0) {
+        await tx.user.delete({
+          where: { id: userId },
+        });
+      }
     });
+
+    this.logger.log(
+      `Invitation cancelled structure: ${JSON.stringify({
+        action: 'CANCEL_INVITATION',
+        tenantId,
+        membershipId,
+        recipientEmail: membership.user.email,
+      })}`,
+    );
 
     return { message: 'Invitation cancelled successfully.' };
   }

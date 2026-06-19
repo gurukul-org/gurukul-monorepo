@@ -118,6 +118,14 @@ export interface TenantUser {
   joinedAt: string | null;
   isAdmin: boolean;
   roles: TenantUserRole[];
+  invitedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TenantUsersResponse {
@@ -128,16 +136,16 @@ export interface TenantUsersResponse {
 export function useTenantUsers({
   limit = 10,
   cursor,
-}: { limit?: number; cursor?: string } = {}) {
+  status,
+}: { limit?: number; cursor?: string; status?: string } = {}) {
   return useQuery({
-    queryKey: [UserQueryKey.List, { limit, cursor }],
+    queryKey: [UserQueryKey.List, { limit, cursor, status }],
     queryFn: async () => {
       const { data } = await axios.get<TenantUsersResponse>('/users', {
-        params: { limit, cursor },
+        params: { limit, cursor, status },
       });
       return data;
     },
-    placeholderData: (prev) => prev,
   });
 }
 

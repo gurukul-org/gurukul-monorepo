@@ -8,7 +8,6 @@ import {
   Param,
   Post,
   Query,
-  Req,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -21,9 +20,15 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
-import type { Request } from 'express';
+import { PERMS } from '@repo/permissions';
 
-import { Public, SkipTenantCheck } from '../../common/decorators';
+import {
+  GetCurrentTenant,
+  GetCurrentUserId,
+  Public,
+  RequirePermissions,
+  SkipTenantCheck,
+} from '../../common/decorators';
 import { MessageResponseDto } from '../../common/dto';
 import {
   AcceptInvitationDto,
@@ -43,6 +48,7 @@ export class InvitationsController {
    * =========================
    */
   @Post()
+  @RequirePermissions(PERMS.user.invite)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -65,15 +71,9 @@ export class InvitationsController {
   })
   async inviteUser(
     @Body() dto: InviteUserDto,
-    @Req() req: Request,
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
   ): Promise<MessageResponseDto> {
-    const tenantId = req.user?.tenantId;
-    const userId = req.user?.sub;
-
-    if (!tenantId || !userId) {
-      throw new Error('Invalid authentication context: tenant or user missing');
-    }
-
     return this.invitationsService.inviteUser(dto, tenantId, userId);
   }
 
@@ -139,6 +139,7 @@ export class InvitationsController {
    * =========================
    */
   @Post(':id/resend')
+  @RequirePermissions(PERMS.user.invite)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -157,16 +158,8 @@ export class InvitationsController {
   })
   async resendInvitation(
     @Param('id') membershipId: string,
-    @Req() req: Request,
+    @GetCurrentTenant('id') tenantId: string,
   ): Promise<MessageResponseDto> {
-    const tenantId = req.user?.tenantId;
-
-    if (!tenantId) {
-      throw new Error(
-        'Invalid authentication context: tenantId missing from token',
-      );
-    }
-
     return this.invitationsService.resendInvitation(membershipId, tenantId);
   }
 
@@ -176,6 +169,7 @@ export class InvitationsController {
    * =========================
    */
   @Delete(':id')
+  @RequirePermissions(PERMS.user.delete)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -194,16 +188,8 @@ export class InvitationsController {
   })
   async cancelInvitation(
     @Param('id') membershipId: string,
-    @Req() req: Request,
+    @GetCurrentTenant('id') tenantId: string,
   ): Promise<MessageResponseDto> {
-    const tenantId = req.user?.tenantId;
-
-    if (!tenantId) {
-      throw new Error(
-        'Invalid authentication context: tenantId missing from token',
-      );
-    }
-
     return this.invitationsService.cancelInvitation(membershipId, tenantId);
   }
 }

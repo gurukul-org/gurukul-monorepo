@@ -32,14 +32,21 @@ export function useDummyModal() {
   );
 }
 
+export function useInviteMemberModal() {
+  const show = useShowModal();
+  return useCallback(() => {
+    show(ModalType.InviteMemberModal);
+  }, [show]);
+}
+
 // Keep a backward compatible useModal wrapper for any legacy uses
 export function useModal() {
   const show = useShowModal();
   const hide = useHideModal();
 
   const open = useCallback(
-    (type: string, data?: any) => {
-      show(type as ModalType, data);
+    (type: string, data?: unknown) => {
+      show(type as ModalType, data as ModalPayloadMap[ModalType]);
     },
     [show],
   );

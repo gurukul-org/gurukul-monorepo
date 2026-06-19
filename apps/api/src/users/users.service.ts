@@ -391,6 +391,9 @@ export class UsersService {
       );
       if (autoMembership) {
         membershipId = autoMembership.id;
+        const loaded = await this.loadMembershipScopes(autoMembership.id);
+        scopes = loaded.scopes;
+        isAdmin = loaded.isAdmin;
       }
     }
 
@@ -503,36 +506,21 @@ export class UsersService {
     callerMembershipId: string,
     limit = 10,
     cursor?: string,
+    status?: string,
   ) {
     const foundingMembership = await this.prisma.tenantMembership.findFirst({
       where: { tenantId },
       orderBy: { createdAt: 'asc' },
     });
-    const isCallerFounder = foundingMembership?.id === callerMembershipId;
 
-    const callerRoles = await this.prisma.membershipRole.findMany({
-      where: {
-        tenantMembershipId: callerMembershipId,
-        membership: { tenantId },
-      },
-      include: { role: true },
-    });
-
-    const isCallerAdmin =
-      isCallerFounder ||
-      callerRoles.some(
-        (r) =>
-          r.role.name.toLowerCase() === 'owner' ||
-          r.role.name.toLowerCase().includes('admin'),
-      );
-
-    if (!isCallerAdmin) {
-      throw new ForbiddenException('Only admins can view tenant users.');
-    }
-
+    const cleanStatus = status?.replace(/['"]/g, '');
     const take = limit > 0 ? limit : 10;
     const memberships = await this.prisma.tenantMembership.findMany({
-      where: { tenantId, deletedAt: null },
+      where: {
+        tenantId,
+        deletedAt: null,
+        status: cleanStatus ? cleanStatus : undefined,
+      },
       take: take + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
@@ -557,6 +545,14 @@ export class UsersService {
                 isAdmin: true,
               },
             },
+          },
+        },
+        invitedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
           },
         },
       },
@@ -588,6 +584,16 @@ export class UsersService {
           name: r.role.name,
           rank: r.role.rank,
         })),
+        invitedBy: m.invitedBy
+          ? {
+              id: m.invitedBy.id,
+              firstName: m.invitedBy.firstName,
+              lastName: m.invitedBy.lastName,
+              email: m.invitedBy.email,
+            }
+          : null,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
       };
     });
 
@@ -615,18 +621,6 @@ export class UsersService {
       },
       include: { role: true },
     });
-
-    const isCallerAdmin =
-      isCallerFounder ||
-      callerRoles.some(
-        (r) =>
-          r.role.name.toLowerCase() === 'owner' ||
-          r.role.name.toLowerCase().includes('admin'),
-      );
-
-    if (!isCallerAdmin) {
-      throw new ForbiddenException('Only admins can revoke tenant access.');
-    }
 
     if (callerMembershipId === targetMembershipId) {
       throw new BadRequestException('You cannot revoke your own access.');
