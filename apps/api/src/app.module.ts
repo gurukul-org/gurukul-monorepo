@@ -13,6 +13,7 @@ import { AppService } from './app.service';
 import { AtGuard } from './common/guards/at.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
+import { MembersModule } from './members/members.module';
 import { RolesModule } from './roles/roles.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { UsersModule } from './users/users.module';
@@ -52,6 +53,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     TenantsModule,
     RolesModule,
+    MembersModule,
   ],
   controllers: [AppController],
   providers: [
