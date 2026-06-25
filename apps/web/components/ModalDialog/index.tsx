@@ -2,6 +2,7 @@
 
 import { Fragment } from 'react';
 
+import { AcademicTermModal } from '@/components/modals/AcademicTermModal';
 import DeleteModal from '@/components/modals/Confirmations/DeleteModal';
 import ExampleDeletion from '@/components/modals/Confirmations/ExampleDeletion';
 import RevokeAccessModal from '@/components/modals/Confirmations/RevokeAccess';
@@ -19,6 +20,7 @@ const Modal: { [key in ModalType]?: React.ComponentType<any> } = {
   [ModalType.RoleModal]: RoleModal,
   [ModalType.RevokeAccessModal]: RevokeAccessModal,
   [ModalType.DeleteModal]: DeleteModal,
+  [ModalType.AcademicTermModal]: AcademicTermModal,
 };
 
 export default function ModalDialog() {
