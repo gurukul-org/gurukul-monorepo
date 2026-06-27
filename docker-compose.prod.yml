@@ -1,0 +1,19 @@
+services:
+  # Join the network of the existing `postgresql-k42d` compose project so we
+  # can resolve its `postgresql` service by name. DATABASE_URL in .env must
+  # use host `postgresql` (not `postgres`).
+  api:
+    networks:
+      - default
+      - hosted_db
+
+  web:
+    networks:
+      - default
+
+networks:
+  # Verify on VPS with `docker network ls` — Compose v2 names this
+  # `<project>_default`, but adjust here if Hostinger uses a different name.
+  hosted_db:
+    external: true
+    name: postgresql-k42d_default
