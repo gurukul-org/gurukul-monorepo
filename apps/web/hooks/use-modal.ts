@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { actions } from '@/lib/store/slices/modal';
 import { ModalPayload, ModalType } from '@/lib/store/types/modal';
 import { type AcademicTerm } from '@/services/api/requests/academic-terms';
+import { type Program } from '@/services/api/requests/programs';
 import { type Role } from '@/services/api/requests/roles';
 
 // Generic primitives — every per-modal hook below composes these.
@@ -62,6 +63,15 @@ export function useShowAcademicTermModal() {
   return useCallback(
     (editingTerm: AcademicTerm | null) =>
       showModal(ModalType.AcademicTermModal, { editingTerm }),
+    [showModal],
+  );
+}
+
+export function useShowProgramModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (editingProgram: Program | null) =>
+      showModal(ModalType.ProgramModal, { editingProgram }),
     [showModal],
   );
 }

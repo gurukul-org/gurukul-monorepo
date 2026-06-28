@@ -7,6 +7,7 @@ import DeleteModal from '@/components/modals/Confirmations/DeleteModal';
 import ExampleDeletion from '@/components/modals/Confirmations/ExampleDeletion';
 import RevokeAccessModal from '@/components/modals/Confirmations/RevokeAccess';
 import { InviteMemberModal } from '@/components/modals/InviteMemberModal';
+import { ProgramModal } from '@/components/modals/ProgramModal';
 import { RoleModal } from '@/components/modals/RoleModal';
 import { useModalPayload, useModalType } from '@/hooks/use-modal';
 import { ModalType } from '@/lib/store/types/modal';
@@ -21,6 +22,7 @@ const Modal: { [key in ModalType]?: React.ComponentType<any> } = {
   [ModalType.RevokeAccessModal]: RevokeAccessModal,
   [ModalType.DeleteModal]: DeleteModal,
   [ModalType.AcademicTermModal]: AcademicTermModal,
+  [ModalType.ProgramModal]: ProgramModal,
 };
 
 export default function ModalDialog() {
