@@ -199,7 +199,7 @@ export function AcademicTermModal({ editingTerm }: AcademicTermModalProps) {
               id="name"
               {...register('name')}
               disabled={isSaving || !!warning}
-              placeholder="e.g. Fall 2026"
+              placeholder="e.g. Term 1 (2026-27)"
               className="h-10 text-sm focus-visible:ring-primary/30"
               aria-invalid={!!errors.name}
             />
