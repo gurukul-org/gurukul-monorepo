@@ -24,6 +24,7 @@ import { useRequestLogout } from '@/services/api/requests/auth';
 import { useCurrentTenant } from '@/services/api/requests/tenants';
 import { useCurrentUserProfile } from '@/services/api/requests/users';
 import {
+  Calendar,
   ChevronDown,
   ChevronRight,
   LayoutDashboard,
@@ -42,6 +43,9 @@ export function AppSidebar() {
   const { data: profile } = useCurrentUserProfile();
 
   const [isErpOpen, setIsErpOpen] = useState(pathname.startsWith('/users'));
+  const [isAcademicsOpen, setIsAcademicsOpen] = useState(
+    pathname.startsWith('/academics'),
+  );
 
   return (
     <Sidebar collapsible="icon" className="!border-r-0">
@@ -106,6 +110,37 @@ export function AppSidebar() {
                   >
                     <Link href="/users">
                       <span>All Users</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              </SidebarMenuSub>
+            )}
+          </SidebarMenuItem>
+
+          {/* Academics Collapsible Link */}
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => setIsAcademicsOpen((prev) => !prev)}
+              className="w-full justify-start gap-3 transition-colors cursor-pointer"
+            >
+              <Calendar className="h-4 w-4 shrink-0" />
+              <span className="flex-1 text-left">Academics</span>
+              {isAcademicsOpen ? (
+                <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+              )}
+            </SidebarMenuButton>
+            {isAcademicsOpen && state !== 'collapsed' && (
+              <SidebarMenuSub className="mt-1 ml-4 pl-3 border-l border-sidebar-border flex flex-col gap-1">
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={pathname === '/academics/terms'}
+                    className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                  >
+                    <Link href="/academics/terms">
+                      <span>Academic Terms</span>
                     </Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>

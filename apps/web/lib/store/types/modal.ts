@@ -1,3 +1,4 @@
+import { type AcademicTerm } from '@/services/api/requests/academic-terms';
 import { type Role } from '@/services/api/requests/roles';
 
 // Add every modal you register, in declaration order.
@@ -9,6 +10,7 @@ export enum ModalType {
   RoleModal,
   RevokeAccessModal,
   DeleteModal,
+  AcademicTermModal,
 }
 
 // Union of every modal's payload shape. Each member should ideally
@@ -17,6 +19,7 @@ export type ModalPayload =
   | Record<string, never> // for modals with no payload
   | { id: string } // ExampleDeletion
   | { editingRole: Role | null } // RoleModal
+  | { editingTerm: AcademicTerm | null } // AcademicTermModal
   | { membershipId: string; userFullName: string } // RevokeAccessModal
   | {
       title: string;
