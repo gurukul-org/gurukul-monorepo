@@ -446,4 +446,54 @@ export class UsersController {
       targetMembershipId,
     );
   }
+
+  @Patch(':membershipId/suspend')
+  @UseGuards(AtGuard)
+  @RequirePermissions(PERMS.user.delete)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Suspend user access',
+    description:
+      "Suspends a user's access to the tenant. Only users with user.delete permission can perform this.",
+  })
+  @ApiOkResponse({ description: 'User access suspended successfully.' })
+  @ApiForbiddenResponse({ description: 'Forbidden context.' })
+  @ApiNotFoundResponse({ description: 'User membership not found.' })
+  async suspendTenantAccess(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUser('membershipId') callerMembershipId: string,
+    @Param('membershipId', ParseUUIDPipe) targetMembershipId: string,
+  ) {
+    return this.usersService.suspendTenantAccess(
+      tenantId,
+      callerMembershipId,
+      targetMembershipId,
+    );
+  }
+
+  @Patch(':membershipId/restore')
+  @UseGuards(AtGuard)
+  @RequirePermissions(PERMS.user.delete)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Restore user access',
+    description:
+      "Restores a user's access to the tenant. Only users with user.delete permission can perform this.",
+  })
+  @ApiOkResponse({ description: 'User access restored successfully.' })
+  @ApiForbiddenResponse({ description: 'Forbidden context.' })
+  @ApiNotFoundResponse({ description: 'User membership not found.' })
+  async restoreTenantAccess(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUser('membershipId') callerMembershipId: string,
+    @Param('membershipId', ParseUUIDPipe) targetMembershipId: string,
+  ) {
+    return this.usersService.restoreTenantAccess(
+      tenantId,
+      callerMembershipId,
+      targetMembershipId,
+    );
+  }
 }

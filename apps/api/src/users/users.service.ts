@@ -603,10 +603,11 @@ export class UsersService {
     };
   }
 
-  async revokeTenantAccess(
+  private async validateMembershipAction(
     tenantId: string,
     callerMembershipId: string,
     targetMembershipId: string,
+    action: string,
   ) {
     const foundingMembership = await this.prisma.tenantMembership.findFirst({
       where: { tenantId },
@@ -623,7 +624,7 @@ export class UsersService {
     });
 
     if (callerMembershipId === targetMembershipId) {
-      throw new BadRequestException('You cannot revoke your own access.');
+      throw new BadRequestException(`You cannot ${action} your own access.`);
     }
 
     const targetMembership = await this.prisma.tenantMembership.findFirst({
@@ -642,13 +643,13 @@ export class UsersService {
     const isTargetFounder = foundingMembership?.id === targetMembershipId;
     if (isTargetFounder) {
       throw new ForbiddenException(
-        'You cannot revoke access of the tenant owner.',
+        `You cannot ${action} access of the tenant owner.`,
       );
     }
 
     const isTargetAdmin = targetMembership.roles.some((r) => r.role.isAdmin);
     if (isTargetAdmin) {
-      throw new ForbiddenException('You cannot revoke access of admins.');
+      throw new ForbiddenException(`You cannot ${action} access of admins.`);
     }
 
     let callerMinRank = isCallerFounder ? 1 : Infinity;
@@ -669,11 +670,30 @@ export class UsersService {
 
     if (targetMinRank <= callerMinRank) {
       throw new ForbiddenException(
-        'You cannot revoke access of a user with equal or higher privilege than your own.',
+        `You cannot ${action} access of a user with equal or higher privilege than your own.`,
       );
     }
 
+    return targetMembership;
+  }
+
+  async revokeTenantAccess(
+    tenantId: string,
+    callerMembershipId: string,
+    targetMembershipId: string,
+  ) {
+    const targetMembership = await this.validateMembershipAction(
+      tenantId,
+      callerMembershipId,
+      targetMembershipId,
+      'revoke',
+    );
+
     await this.prisma.$transaction(async (tx) => {
+      await tx.membershipRole.deleteMany({
+        where: { tenantMembershipId: targetMembershipId },
+      });
+
       await tx.tenantMembership.update({
         where: { id: targetMembershipId },
         data: {
@@ -691,5 +711,68 @@ export class UsersService {
     });
 
     return { message: 'User access revoked successfully.' };
+  }
+
+  async suspendTenantAccess(
+    tenantId: string,
+    callerMembershipId: string,
+    targetMembershipId: string,
+  ) {
+    const targetMembership = await this.validateMembershipAction(
+      tenantId,
+      callerMembershipId,
+      targetMembershipId,
+      'suspend',
+    );
+
+    if (targetMembership.status !== 'ACTIVE') {
+      throw new BadRequestException('Membership is not active.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tenantMembership.update({
+        where: { id: targetMembershipId },
+        data: {
+          status: 'SUSPENDED',
+        },
+      });
+
+      await tx.session.deleteMany({
+        where: {
+          userId: targetMembership.userId,
+          tenantId,
+        },
+      });
+    });
+
+    return { message: 'User access suspended successfully.' };
+  }
+
+  async restoreTenantAccess(
+    tenantId: string,
+    callerMembershipId: string,
+    targetMembershipId: string,
+  ) {
+    const targetMembership = await this.validateMembershipAction(
+      tenantId,
+      callerMembershipId,
+      targetMembershipId,
+      'restore',
+    );
+
+    if (targetMembership.status !== 'SUSPENDED') {
+      throw new BadRequestException('Membership is not suspended.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tenantMembership.update({
+        where: { id: targetMembershipId },
+        data: {
+          status: 'ACTIVE',
+        },
+      });
+    });
+
+    return { message: 'User access restored successfully.' };
   }
 }
