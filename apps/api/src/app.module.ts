@@ -8,6 +8,7 @@ import { PrismaModule } from 'nestjs-prisma';
 import * as path from 'path';
 import { Pool } from 'pg';
 
+import { AcademicTermsModule } from './academic-terms/academic-terms.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AtGuard } from './common/guards/at.guard';
@@ -54,6 +55,7 @@ import { UsersModule } from './users/users.module';
     TenantsModule,
     RolesModule,
     MembersModule,
+    AcademicTermsModule,
   ],
   controllers: [AppController],
   providers: [
