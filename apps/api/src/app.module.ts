@@ -11,9 +11,13 @@ import { Pool } from 'pg';
 import { AcademicTermsModule } from './academic-terms/academic-terms.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ClassesModule } from './classes/classes.module';
 import { AtGuard } from './common/guards/at.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
+import { CoursesModule } from './courses/courses.module';
+import { InstructorsModule } from './instructors/instructors.module';
+import { ProgramsModule } from './programs/programs.module';
 import { RolesModule } from './roles/roles.module';
 import { StudentsModule } from './students/students.module';
 import { TenantsModule } from './tenants/tenants.module';
@@ -56,6 +60,10 @@ import { UsersModule } from './users/users.module';
     RolesModule,
     AcademicTermsModule,
     StudentsModule,
+    ProgramsModule,
+    ClassesModule,
+    InstructorsModule,
+    CoursesModule,
   ],
   controllers: [AppController],
   providers: [
@@ -74,4 +82,4 @@ import { UsersModule } from './users/users.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

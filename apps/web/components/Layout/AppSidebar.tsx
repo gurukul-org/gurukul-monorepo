@@ -18,6 +18,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { usePermission } from '@/hooks/use-permission';
 import { useSubdomain } from '@/hooks/use-subdomain';
 import { useAuthUser } from '@/lib/store/auth';
 import { useRequestLogout } from '@/services/api/requests/auth';
@@ -33,6 +34,8 @@ import {
   Users,
 } from 'lucide-react';
 
+import { PERMS } from '@repo/permissions';
+
 export function AppSidebar() {
   const pathname = usePathname();
   const user = useAuthUser();
@@ -41,6 +44,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const { data: tenant } = useCurrentTenant();
   const { data: profile } = useCurrentUserProfile();
+  const { hasPermission } = usePermission();
 
   const [isErpOpen, setIsErpOpen] = useState(pathname.startsWith('/users'));
   const [isAcademicsOpen, setIsAcademicsOpen] = useState(
@@ -133,17 +137,67 @@ export function AppSidebar() {
             </SidebarMenuButton>
             {isAcademicsOpen && state !== 'collapsed' && (
               <SidebarMenuSub className="mt-1 ml-4 pl-3 border-l border-sidebar-border flex flex-col gap-1">
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton
-                    asChild
-                    isActive={pathname === '/academics/terms'}
-                    className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
-                  >
-                    <Link href="/academics/terms">
-                      <span>Academic Terms</span>
-                    </Link>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
+                {hasPermission(PERMS.academicTerm.view) && (
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={pathname === '/academics/terms'}
+                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                    >
+                      <Link href="/academics/terms">
+                        <span>Academic Terms</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )}
+                {hasPermission(PERMS.program.view) && (
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={
+                        pathname === '/academics/programs' ||
+                        pathname.startsWith('/academics/programs/')
+                      }
+                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                    >
+                      <Link href="/academics/programs">
+                        <span>Academic Programs</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )}
+                {hasPermission(PERMS.course.view) && (
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={
+                        pathname === '/academics/courses' ||
+                        pathname.startsWith('/academics/courses/')
+                      }
+                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                    >
+                      <Link href="/academics/courses">
+                        <span>Courses</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )}
+                {hasPermission(PERMS.class.view) && (
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={
+                        pathname === '/academics/classes' ||
+                        pathname.startsWith('/academics/classes/')
+                      }
+                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                    >
+                      <Link href="/academics/classes">
+                        <span>Classes</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )}
               </SidebarMenuSub>
             )}
           </SidebarMenuItem>
