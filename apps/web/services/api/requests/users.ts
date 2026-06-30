@@ -107,6 +107,13 @@ export interface TenantUserRole {
   rank: number;
 }
 
+export interface MemberActor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
 export interface TenantUser {
   membershipId: string;
   userId: string;
@@ -118,14 +125,30 @@ export interface TenantUser {
   joinedAt: string | null;
   isAdmin: boolean;
   roles: TenantUserRole[];
-  invitedBy?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  } | null;
+  invitedBy?: MemberActor | null;
+  updatedBy?: MemberActor | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+/** Full member profile returned by GET /users/:membershipId. */
+export interface MemberDetail {
+  membershipId: string;
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  status: string;
+  joinedAt: string | null;
+  isFounder: boolean;
+  isAdmin: boolean;
+  roles: TenantUserRole[];
+  invitedBy: MemberActor | null;
+  createdBy: MemberActor | null;
+  updatedBy: MemberActor | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TenantUsersResponse {
@@ -134,7 +157,7 @@ export interface TenantUsersResponse {
 }
 
 export function useTenantUsers({
-  limit = 10,
+  limit = 25,
   cursor,
   status,
 }: { limit?: number; cursor?: string; status?: string } = {}) {
@@ -146,6 +169,17 @@ export function useTenantUsers({
       });
       return data;
     },
+  });
+}
+
+export function useTenantMember(membershipId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [UserQueryKey.Detail, membershipId],
+    queryFn: async () => {
+      const { data } = await axios.get<MemberDetail>(`/users/${membershipId}`);
+      return data;
+    },
+    enabled: enabled && !!membershipId,
   });
 }
 
@@ -163,6 +197,79 @@ export function useRevokeUserAccess() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [UserQueryKey.List] });
       toast.success(data.message || 'User access revoked successfully');
+    },
+    onError: (err) => showError(err),
+  });
+}
+
+export function useChangeMemberRoles() {
+  const queryClient = useQueryClient();
+  const showError = useShowApiError();
+
+  return useMutation({
+    mutationFn: async ({
+      membershipId,
+      roleIds,
+    }: {
+      membershipId: string;
+      roleIds: string[];
+    }) => {
+      const { data } = await axios.patch<{ message: string }>(
+        `/users/${membershipId}/roles`,
+        { roleIds },
+      );
+      return data;
+    },
+    onSuccess: (data, { membershipId }) => {
+      queryClient.invalidateQueries({ queryKey: [UserQueryKey.List] });
+      queryClient.invalidateQueries({
+        queryKey: [UserQueryKey.Detail, membershipId],
+      });
+      toast.success(data.message || 'Member roles updated successfully');
+    },
+    onError: (err) => showError(err),
+  });
+}
+
+export function useSuspendMember() {
+  const queryClient = useQueryClient();
+  const showError = useShowApiError();
+
+  return useMutation({
+    mutationFn: async (membershipId: string) => {
+      const { data } = await axios.post<{ message: string }>(
+        `/users/${membershipId}/suspend`,
+      );
+      return data;
+    },
+    onSuccess: (data, membershipId) => {
+      queryClient.invalidateQueries({ queryKey: [UserQueryKey.List] });
+      queryClient.invalidateQueries({
+        queryKey: [UserQueryKey.Detail, membershipId],
+      });
+      toast.success(data.message || 'Member suspended successfully');
+    },
+    onError: (err) => showError(err),
+  });
+}
+
+export function useReactivateMember() {
+  const queryClient = useQueryClient();
+  const showError = useShowApiError();
+
+  return useMutation({
+    mutationFn: async (membershipId: string) => {
+      const { data } = await axios.post<{ message: string }>(
+        `/users/${membershipId}/reactivate`,
+      );
+      return data;
+    },
+    onSuccess: (data, membershipId) => {
+      queryClient.invalidateQueries({ queryKey: [UserQueryKey.List] });
+      queryClient.invalidateQueries({
+        queryKey: [UserQueryKey.Detail, membershipId],
+      });
+      toast.success(data.message || 'Member reactivated successfully');
     },
     onError: (err) => showError(err),
   });
