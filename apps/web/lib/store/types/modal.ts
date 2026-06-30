@@ -1,4 +1,6 @@
 import { type AcademicTerm } from '@/services/api/requests/academic-terms';
+import { type Class } from '@/services/api/requests/classes';
+import { type Course } from '@/services/api/requests/courses';
 import { type Program } from '@/services/api/requests/programs';
 import { type Role } from '@/services/api/requests/roles';
 
@@ -13,6 +15,8 @@ export enum ModalType {
   DeleteModal,
   AcademicTermModal,
   ProgramModal,
+  ClassModal,
+  CourseModal,
 }
 
 // Union of every modal's payload shape. Each member should ideally
@@ -23,6 +27,8 @@ export type ModalPayload =
   | { editingRole: Role | null } // RoleModal
   | { editingTerm: AcademicTerm | null } // AcademicTermModal
   | { editingProgram: Program | null } // ProgramModal
+  | { editingClass: Class | null } // ClassModal
+  | { editingCourse: Course | null } // CourseModal
   | { membershipId: string; userFullName: string } // RevokeAccessModal
   | {
       title: string;
