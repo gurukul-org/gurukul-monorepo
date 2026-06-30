@@ -12,64 +12,55 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useHideModal } from '@/hooks/use-modal';
 import {
-  AcademicTerm,
-  useCreateAcademicTerm,
-  useUpdateAcademicTerm,
-} from '@/services/api/requests/academic-terms';
+  Program,
+  useCreateProgram,
+  useUpdateProgram,
+} from '@/services/api/requests/programs';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
 import { ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-const academicTermFormSchema = z
-  .object({
-    name: z
-      .string()
-      .trim()
-      .min(2, 'Name must be between 2 and 60 characters')
-      .max(60, 'Name must be between 2 and 60 characters'),
-    startDate: z.string().min(1, 'Start date is required'),
-    endDate: z.string().min(1, 'End date is required'),
-  })
-  .refine(
-    (data) => {
-      const start = new Date(data.startDate);
-      const end = new Date(data.endDate);
-      return end > start;
-    },
-    {
-      message: 'End date must be after the start date',
-      path: ['endDate'],
-    },
-  );
+const programFormSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Name must be between 2 and 120 characters')
+    .max(120, 'Name must be between 2 and 120 characters'),
+  code: z
+    .string()
+    .trim()
+    .min(1, 'Code must be between 1 and 20 characters')
+    .max(20, 'Code must be between 1 and 20 characters')
+    .regex(
+      /^[a-zA-Z0-9-]+$/,
+      'Code must be alphanumeric and can contain hyphens only.',
+    ),
+  description: z.string().trim().optional(),
+});
 
-type FormValues = z.infer<typeof academicTermFormSchema>;
+type FormValues = z.infer<typeof programFormSchema>;
 
-interface AcademicTermModalProps {
-  editingTerm: AcademicTerm | null;
+interface ProgramModalProps {
+  editingProgram: Program | null;
 }
 
-const formatDateForInput = (dateString?: string) => {
-  if (!dateString) return '';
-  return dateString.split('T')[0];
-};
-
-export function AcademicTermModal({ editingTerm }: AcademicTermModalProps) {
+export function ProgramModal({ editingProgram }: ProgramModalProps) {
   const hideModal = useHideModal();
   const showError = useShowApiError();
 
-  const { mutateAsync: createTerm, isPending: isCreating } =
-    useCreateAcademicTerm();
-  const { mutateAsync: updateTerm, isPending: isUpdating } =
-    useUpdateAcademicTerm();
+  const { mutateAsync: createProgram, isPending: isCreating } =
+    useCreateProgram();
+  const { mutateAsync: updateProgram, isPending: isUpdating } =
+    useUpdateProgram();
 
   const [warning, setWarning] = useState<{
     message: string;
-    type: 'overlap' | 'has_classes';
     data: FormValues;
   } | null>(null);
 
@@ -78,35 +69,34 @@ export function AcademicTermModal({ editingTerm }: AcademicTermModalProps) {
     handleSubmit,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(academicTermFormSchema),
+    resolver: zodResolver(programFormSchema),
     defaultValues: {
-      name: editingTerm?.name || '',
-      startDate: formatDateForInput(editingTerm?.startDate),
-      endDate: formatDateForInput(editingTerm?.endDate),
+      name: editingProgram?.name || '',
+      code: editingProgram?.code || '',
+      description: editingProgram?.description || '',
     },
   });
 
   const onFormSubmit = async (data: FormValues, force = false) => {
     try {
-      if (editingTerm) {
-        await updateTerm({
-          id: editingTerm.id,
+      if (editingProgram) {
+        await updateProgram({
+          id: editingProgram.id,
           dto: {
             name: data.name,
-            startDate: data.startDate,
-            endDate: data.endDate,
+            code: data.code,
+            description: data.description || undefined,
             ignoreWarnings: force,
           },
         });
-        toast.success('Academic term updated successfully!');
+        toast.success('Program updated successfully!');
       } else {
-        await createTerm({
+        await createProgram({
           name: data.name,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          ignoreWarnings: force,
+          code: data.code,
+          description: data.description || undefined,
         });
-        toast.success('Academic term created successfully!');
+        toast.success('Program created successfully!');
       }
       setWarning(null);
       hideModal();
@@ -117,10 +107,6 @@ export function AcademicTermModal({ editingTerm }: AcademicTermModalProps) {
           setWarning({
             message:
               errorData.details || errorData.message || 'Validation warning',
-            type:
-              errorData.message === 'OVERLAP_WARNING'
-                ? 'overlap'
-                : 'has_classes',
             data,
           });
           return;
@@ -136,11 +122,11 @@ export function AcademicTermModal({ editingTerm }: AcademicTermModalProps) {
     <Modal
       isOpen={true}
       onClose={hideModal}
-      title={editingTerm ? 'Edit Academic Term' : 'Create Academic Term'}
+      title={editingProgram ? 'Edit Program' : 'Create Program'}
       description={
-        editingTerm
-          ? 'Modify details for this academic term. Changing dates for a term with classes will require confirmation.'
-          : 'Define a new academic term period for your institution.'
+        editingProgram
+          ? 'Modify details for this school program. Changing the unique code will require confirmation.'
+          : 'Define a new school program for grouping courses.'
       }
     >
       {warning && (
@@ -188,65 +174,67 @@ export function AcademicTermModal({ editingTerm }: AcademicTermModalProps) {
         className="space-y-6"
       >
         <FieldGroup className="gap-5">
-          <Field data-invalid={!!errors.name}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2">
+              <Field data-invalid={!!errors.name}>
+                <FieldLabel
+                  htmlFor="name"
+                  className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80"
+                >
+                  Program Name
+                </FieldLabel>
+                <Input
+                  id="name"
+                  {...register('name')}
+                  disabled={isSaving || !!warning}
+                  placeholder="e.g. 9th Grade Program"
+                  className="h-10 text-sm focus-visible:ring-primary/30"
+                  aria-invalid={!!errors.name}
+                />
+                {errors.name && <FieldError>{errors.name.message}</FieldError>}
+              </Field>
+            </div>
+
+            <div>
+              <Field data-invalid={!!errors.code}>
+                <FieldLabel
+                  htmlFor="code"
+                  className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80"
+                >
+                  Program Code
+                </FieldLabel>
+                <Input
+                  id="code"
+                  {...register('code')}
+                  disabled={isSaving || !!warning}
+                  placeholder="e.g. GRADE-9"
+                  className="h-10 text-sm focus-visible:ring-primary/30"
+                  aria-invalid={!!errors.code}
+                />
+                {errors.code && <FieldError>{errors.code.message}</FieldError>}
+              </Field>
+            </div>
+          </div>
+
+          <Field data-invalid={!!errors.description}>
             <FieldLabel
-              htmlFor="name"
+              htmlFor="description"
               className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80"
             >
-              Term Name
+              Description
             </FieldLabel>
-            <Input
-              id="name"
-              {...register('name')}
+            <Textarea
+              id="description"
+              {...register('description')}
               disabled={isSaving || !!warning}
-              placeholder="e.g. Term 1 (2026-27)"
-              className="h-10 text-sm focus-visible:ring-primary/30"
-              aria-invalid={!!errors.name}
+              placeholder="Provide a brief description of this grade program..."
+              className="min-h-[100px] text-sm focus-visible:ring-primary/30"
+              aria-invalid={!!errors.description}
             />
-            {errors.name && <FieldError>{errors.name.message}</FieldError>}
+            {errors.description && (
+              <FieldError>{errors.description.message}</FieldError>
+            )}
           </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field data-invalid={!!errors.startDate}>
-              <FieldLabel
-                htmlFor="startDate"
-                className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80"
-              >
-                Start Date
-              </FieldLabel>
-              <Input
-                id="startDate"
-                type="date"
-                {...register('startDate')}
-                disabled={isSaving || !!warning}
-                className="h-10 text-sm focus-visible:ring-primary/30"
-                aria-invalid={!!errors.startDate}
-              />
-              {errors.startDate && (
-                <FieldError>{errors.startDate.message}</FieldError>
-              )}
-            </Field>
-
-            <Field data-invalid={!!errors.endDate}>
-              <FieldLabel
-                htmlFor="endDate"
-                className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80"
-              >
-                End Date
-              </FieldLabel>
-              <Input
-                id="endDate"
-                type="date"
-                {...register('endDate')}
-                disabled={isSaving || !!warning}
-                className="h-10 text-sm focus-visible:ring-primary/30"
-                aria-invalid={!!errors.endDate}
-              />
-              {errors.endDate && (
-                <FieldError>{errors.endDate.message}</FieldError>
-              )}
-            </Field>
-          </div>
         </FieldGroup>
 
         <div className="flex w-full items-center justify-end gap-2 pt-4 border-t">
@@ -261,9 +249,9 @@ export function AcademicTermModal({ editingTerm }: AcademicTermModalProps) {
           <Button type="submit" disabled={isSaving || !!warning}>
             {isSaving
               ? 'Saving...'
-              : editingTerm
+              : editingProgram
                 ? 'Save Changes'
-                : 'Create Term'}
+                : 'Create Program'}
           </Button>
         </div>
       </form>

@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "classes" ADD COLUMN     "period" VARCHAR(100),
+ADD COLUMN     "room" VARCHAR(100),
+ADD COLUMN     "status" VARCHAR(50) NOT NULL DEFAULT 'ACTIVE';
