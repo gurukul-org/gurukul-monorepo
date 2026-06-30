@@ -28,6 +28,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
+  GraduationCap,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -46,7 +47,9 @@ export function AppSidebar() {
   const { data: profile } = useCurrentUserProfile();
   const { hasPermission } = usePermission();
 
-  const [isErpOpen, setIsErpOpen] = useState(pathname.startsWith('/users'));
+  const [isErpOpen, setIsErpOpen] = useState(
+    pathname.startsWith('/users'),
+  );
   const [isAcademicsOpen, setIsAcademicsOpen] = useState(
     pathname.startsWith('/academics'),
   );
@@ -117,6 +120,24 @@ export function AppSidebar() {
                     </Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
+
+                {hasPermission(PERMS.student.view) && (
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={
+                        pathname === '/users/students' ||
+                        pathname.startsWith('/users/students/')
+                      }
+                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                    >
+                      <Link href="/users/students">
+                        <GraduationCap className="h-3.5 w-3.5" />
+                        <span>Students</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )}
               </SidebarMenuSub>
             )}
           </SidebarMenuItem>

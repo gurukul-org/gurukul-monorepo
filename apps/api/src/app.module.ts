@@ -16,6 +16,7 @@ import { AtGuard } from './common/guards/at.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
 import { CoursesModule } from './courses/courses.module';
+import { EnrolmentsModule } from './enrolments/enrolments.module';
 import { InstructorsModule } from './instructors/instructors.module';
 import { ProgramsModule } from './programs/programs.module';
 import { RolesModule } from './roles/roles.module';
@@ -64,6 +65,7 @@ import { UsersModule } from './users/users.module';
     ClassesModule,
     InstructorsModule,
     CoursesModule,
+    EnrolmentsModule,
   ],
   controllers: [AppController],
   providers: [

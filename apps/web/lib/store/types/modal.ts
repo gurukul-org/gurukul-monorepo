@@ -3,6 +3,7 @@ import { type Class } from '@/services/api/requests/classes';
 import { type Course } from '@/services/api/requests/courses';
 import { type Program } from '@/services/api/requests/programs';
 import { type Role } from '@/services/api/requests/roles';
+import { type Student, type StudentListItem } from '@/services/api/requests/students';
 
 // Add every modal you register, in declaration order.
 // `None` MUST be the first/zero value — it's the closed state.
@@ -17,6 +18,8 @@ export enum ModalType {
   ProgramModal,
   ClassModal,
   CourseModal,
+  StudentModal,
+  StudentStatusModal,
 }
 
 // Union of every modal's payload shape. Each member should ideally
@@ -29,6 +32,8 @@ export type ModalPayload =
   | { editingProgram: Program | null } // ProgramModal
   | { editingClass: Class | null } // ClassModal
   | { editingCourse: Course | null } // CourseModal
+  | { editingStudent: StudentListItem | null } // StudentModal
+  | { student: Student } // StudentStatusModal
   | { membershipId: string; userFullName: string } // RevokeAccessModal
   | {
       title: string;

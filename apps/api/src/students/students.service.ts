@@ -131,7 +131,7 @@ export class StudentsService {
           include: {
             class: {
               include: {
-                course: { select: { id: true, name: true, code: true } },
+                program: { select: { id: true, name: true, code: true } },
                 academicTerm: {
                   select: { id: true, name: true, startDate: true, endDate: true },
                 },
@@ -432,7 +432,7 @@ export class StudentsService {
         class: {
           id: e.class.id,
           name: e.class.name,
-          course: e.class.course,
+          program: e.class.program,
           academicTerm: e.class.academicTerm,
         },
       })),
