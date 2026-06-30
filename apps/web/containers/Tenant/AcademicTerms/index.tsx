@@ -54,7 +54,7 @@ import { toast } from 'sonner';
 import { PERMS } from '@repo/permissions';
 
 export default function TenantAcademicTermsContainer() {
-  const [activeTab, setActiveTab] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<string>('active');
 
   const { hasPermission } = usePermission();
   const showAcademicTermModal = useShowAcademicTermModal();
@@ -391,11 +391,11 @@ export default function TenantAcademicTermsContainer() {
       <div className="border-b pb-1 border-zinc-200 dark:border-zinc-800">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList variant="line" className="h-9">
-            <TabsTrigger value="all">All Terms</TabsTrigger>
             <TabsTrigger value="active">Active</TabsTrigger>
             <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
             <TabsTrigger value="past">Past</TabsTrigger>
             <TabsTrigger value="archived">Archived</TabsTrigger>
+            <TabsTrigger value="all">All Terms</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>

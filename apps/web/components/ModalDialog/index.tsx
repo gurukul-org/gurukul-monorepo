@@ -10,6 +10,7 @@ import RevokeAccessModal from '@/components/modals/Confirmations/RevokeAccess';
 import SuspendMemberModal from '@/components/modals/Confirmations/SuspendMember';
 import { InviteMemberModal } from '@/components/modals/InviteMemberModal';
 import { MemberProfileModal } from '@/components/modals/MemberProfileModal';
+import { ProgramModal } from '@/components/modals/ProgramModal';
 import { RoleModal } from '@/components/modals/RoleModal';
 import { useModalPayload, useModalType } from '@/hooks/use-modal';
 import { ModalType } from '@/lib/store/types/modal';
@@ -27,6 +28,7 @@ const Modal: { [key in ModalType]?: React.ComponentType<any> } = {
   [ModalType.MemberProfileModal]: MemberProfileModal,
   [ModalType.ChangeRoleModal]: ChangeRoleModal,
   [ModalType.SuspendMemberModal]: SuspendMemberModal,
+  [ModalType.ProgramModal]: ProgramModal,
 };
 
 export default function ModalDialog() {

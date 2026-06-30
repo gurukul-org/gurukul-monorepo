@@ -1,4 +1,5 @@
 import { type AcademicTerm } from '@/services/api/requests/academic-terms';
+import { type Program } from '@/services/api/requests/programs';
 import { type Role } from '@/services/api/requests/roles';
 
 // Add every modal you register, in declaration order.
@@ -14,6 +15,7 @@ export enum ModalType {
   MemberProfileModal,
   ChangeRoleModal,
   SuspendMemberModal,
+  ProgramModal,
 }
 
 // Union of every modal's payload shape. Each member should ideally
@@ -26,6 +28,8 @@ export type ModalPayload =
   | { membershipId: string; userFullName: string } // RevokeAccessModal / SuspendMemberModal
   | { membershipId: string } // MemberProfileModal
   | { membershipId: string; currentRoleIds: string[]; userFullName: string } // ChangeRoleModal
+  | { editingProgram: Program | null } // ProgramModal
+  | { membershipId: string; userFullName: string } // RevokeAccessModal
   | {
       title: string;
       subtitle: string;
