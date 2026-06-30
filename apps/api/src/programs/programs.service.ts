@@ -63,18 +63,16 @@ export class ProgramsService {
         },
         courses: {
           where: { deletedAt: null },
+        },
+        classes: {
+          where: { deletedAt: null },
           include: {
-            classes: {
-              where: { deletedAt: null },
-              include: {
-                enrolments: {
-                  where: {
-                    status: 'ACTIVE',
-                    deletedAt: null,
-                  },
-                  select: { id: true },
-                },
+            enrolments: {
+              where: {
+                status: 'ACTIVE',
+                deletedAt: null,
               },
+              select: { id: true },
             },
           },
         },
@@ -86,11 +84,8 @@ export class ProgramsService {
 
     return programs.map((program) => {
       const courseCount = program.courses.length;
-      const activeEnrollmentCount = program.courses.reduce((sum, course) => {
-        return (
-          sum +
-          course.classes.reduce((cSum, cls) => cSum + cls.enrolments.length, 0)
-        );
+      const activeEnrollmentCount = program.classes.reduce((sum, cls) => {
+        return sum + cls.enrolments.length;
       }, 0);
 
       return {
@@ -135,16 +130,14 @@ export class ProgramsService {
         },
         courses: {
           where: { deletedAt: null },
+        },
+        classes: {
+          where: { deletedAt: null },
           include: {
-            classes: {
-              where: { deletedAt: null },
-              include: {
-                _count: {
-                  select: {
-                    enrolments: {
-                      where: { status: 'ACTIVE', deletedAt: null },
-                    },
-                  },
+            _count: {
+              select: {
+                enrolments: {
+                  where: { status: 'ACTIVE', deletedAt: null },
                 },
               },
             },
@@ -157,11 +150,13 @@ export class ProgramsService {
       throw new NotFoundException('Program not found');
     }
 
-    const coursesWithDetails = program.courses.map((course) => {
-      const courseEnrollmentCount = course.classes.reduce((sum, cls) => {
-        return sum + cls._count.enrolments;
-      }, 0);
+    const totalEnrollmentCount = program.classes.reduce((sum, cls) => {
+      return sum + cls._count.enrolments;
+    }, 0);
 
+    const coursesWithDetails = program.courses.map((course) => {
+      // In this system, students in a section take all courses under that program.
+      // So active enrollment for each course is equal to the total enrollment of the program.
       return {
         id: course.id,
         name: course.name,
@@ -169,14 +164,9 @@ export class ProgramsService {
         description: course.description,
         credits: course.credits,
         createdAt: course.createdAt,
-        activeEnrollmentCount: courseEnrollmentCount,
+        activeEnrollmentCount: totalEnrollmentCount,
       };
     });
-
-    const totalEnrollmentCount = coursesWithDetails.reduce(
-      (sum, c) => sum + c.activeEnrollmentCount,
-      0,
-    );
 
     return {
       id: program.id,
