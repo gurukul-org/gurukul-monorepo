@@ -144,6 +144,20 @@ export function AppSidebar() {
                     </Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={
+                      pathname === '/academics/programs' ||
+                      pathname.startsWith('/academics/programs/')
+                    }
+                    className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                  >
+                    <Link href="/academics/programs">
+                      <span>Academic Programs</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
               </SidebarMenuSub>
             )}
           </SidebarMenuItem>
