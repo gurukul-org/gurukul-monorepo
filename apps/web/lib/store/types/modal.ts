@@ -11,6 +11,9 @@ export enum ModalType {
   RevokeAccessModal,
   DeleteModal,
   AcademicTermModal,
+  MemberProfileModal,
+  ChangeRoleModal,
+  SuspendMemberModal,
 }
 
 // Union of every modal's payload shape. Each member should ideally
@@ -20,7 +23,9 @@ export type ModalPayload =
   | { id: string } // ExampleDeletion
   | { editingRole: Role | null } // RoleModal
   | { editingTerm: AcademicTerm | null } // AcademicTermModal
-  | { membershipId: string; userFullName: string } // RevokeAccessModal
+  | { membershipId: string; userFullName: string } // RevokeAccessModal / SuspendMemberModal
+  | { membershipId: string } // MemberProfileModal
+  | { membershipId: string; currentRoleIds: string[]; userFullName: string } // ChangeRoleModal
   | {
       title: string;
       subtitle: string;

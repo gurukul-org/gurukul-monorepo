@@ -54,6 +54,8 @@ model User {
 
   memberships         TenantMembership[] @relation("UserMemberships")
   invitedMemberships  TenantMembership[] @relation("InvitedBy")
+  createdMemberships  TenantMembership[] @relation("MembershipCreatedBy")
+  updatedMemberships  TenantMembership[] @relation("MembershipUpdatedBy")
   assignedRoles       MembershipRole[]   @relation("AssignedBy")
   assignedInstructors ClassInstructor[]  @relation("InstructorAssignedBy")
 
@@ -88,6 +90,8 @@ model TenantMembership {
   invitedById         String?   @map("invited_by") @db.Uuid
   invitationTokenHash String?   @unique @map("invitation_token_hash") @db.VarChar(255)
   invitationExpiresAt DateTime? @map("invitation_expires_at") @db.Timestamp(6)
+  createdById         String?   @map("created_by") @db.Uuid
+  updatedById         String?   @map("updated_by") @db.Uuid
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   deletedAt           DateTime? @map("deleted_at") @db.Timestamp(6)
@@ -95,6 +99,8 @@ model TenantMembership {
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user             User              @relation("UserMemberships", fields: [userId], references: [id], onDelete: Cascade)
   invitedBy        User?             @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+  creator          User?             @relation("MembershipCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updater          User?             @relation("MembershipUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
   roles            MembershipRole[]
   classInstructors ClassInstructor[]
   studentProfiles  StudentProfile[]
