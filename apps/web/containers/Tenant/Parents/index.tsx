@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table';
 import {
   useShowDeleteModal,
+  useShowInviteMemberModal,
   useShowParentModal,
   useShowParentProfileModal,
 } from '@/hooks/use-modal';
@@ -37,6 +38,7 @@ import {
 } from '@tanstack/react-table';
 import {
   Loader2,
+  Mail,
   MoreHorizontal,
   Plus,
   Search,
@@ -57,6 +59,7 @@ export default function ParentsContainer() {
   const showParentModal = useShowParentModal();
   const showParentProfile = useShowParentProfileModal();
   const showDeleteModal = useShowDeleteModal();
+  const showInviteMemberModal = useShowInviteMemberModal();
   const { mutateAsync: deleteParent } = useDeleteParent();
 
   const handleConfirmDelete = async (parent: ParentListItem) => {
@@ -201,12 +204,21 @@ export default function ParentsContainer() {
             links.
           </p>
         </div>
-        <Button
-          onClick={() => showParentModal(null)}
-          className="h-10 gap-1.5 font-semibold"
-        >
-          <Plus className="h-4 w-4" /> Create Parent
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            onClick={() => showInviteMemberModal('Parent')}
+            className="h-10 gap-1.5 font-semibold"
+          >
+            <Mail className="h-4 w-4" /> Invite Parent
+          </Button>
+          <Button
+            onClick={() => showParentModal(null)}
+            className="h-10 gap-1.5 font-semibold"
+          >
+            <Plus className="h-4 w-4" /> Create Parent
+          </Button>
+        </div>
       </div>
 
       {/* Filter and Search Panel */}

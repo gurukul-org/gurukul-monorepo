@@ -36,6 +36,7 @@ export enum ModalType {
 // come from its modal's own `types.ts` so payloads stay co-located.
 export type ModalPayload =
   | Record<string, never> // for modals with no payload
+  | { presetRoleName?: string } // InviteMemberModal payload
   | { id: string } // ExampleDeletion
   | { editingRole: Role | null } // RoleModal
   | { editingTerm: AcademicTerm | null } // AcademicTermModal

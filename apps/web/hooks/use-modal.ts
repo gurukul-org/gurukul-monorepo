@@ -51,7 +51,8 @@ export function useShowExampleDeletionModal(id: string) {
 export function useShowInviteMemberModal() {
   const showModal = useShowModal();
   return useCallback(
-    () => showModal(ModalType.InviteMemberModal, {}),
+    (presetRoleName?: string) =>
+      showModal(ModalType.InviteMemberModal, { presetRoleName }),
     [showModal],
   );
 }
