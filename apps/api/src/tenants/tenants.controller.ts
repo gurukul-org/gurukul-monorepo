@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
   NotFoundException,
+  Patch,
   Post,
   Req,
   Res,
@@ -15,6 +17,7 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -24,7 +27,14 @@ import {
 
 import type { Request, Response } from 'express';
 
-import { GetCurrentUserId, SkipTenantCheck } from '../common/decorators';
+import { PERMS } from '@repo/permissions';
+
+import {
+  GetCurrentTenant,
+  GetCurrentUserId,
+  RequirePermissions,
+  SkipTenantCheck,
+} from '../common/decorators';
 import {
   AccessTokenResponseDto,
   ConflictErrorResponseDto,
@@ -33,7 +43,12 @@ import {
   UnauthorizedErrorResponseDto,
 } from '../common/dto';
 import { setRefreshTokenCookie } from '../users/cookies.util';
-import { CreateTenantDto, CurrentTenantResponseDto } from './dto';
+import {
+  CreateTenantDto,
+  CurrentTenantResponseDto,
+  TenantSettingsResponseDto,
+  UpdateTenantDto,
+} from './dto';
 import { TenantsService } from './tenants.service';
 
 @ApiTags('Tenants')
@@ -70,6 +85,44 @@ export class TenantsController {
     }
     const { id, subdomain, name, type } = req.tenant;
     return { id, subdomain, name, type };
+  }
+
+  @Get('current/settings')
+  @RequirePermissions(PERMS.tenant.view)
+  @ApiOperation({ summary: 'Get workspace settings' })
+  @ApiOkResponse({
+    type: TenantSettingsResponseDto,
+    description: 'Workspace settings retrieved successfully.',
+  })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async getSettings(
+    @GetCurrentTenant('id') tenantId: string,
+  ): Promise<TenantSettingsResponseDto> {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return this.tenantsService.getTenantSettings(tenantId);
+  }
+
+  @Patch('current')
+  @RequirePermissions(PERMS.tenant.edit)
+  @ApiOperation({ summary: 'Rename workspace' })
+  @ApiOkResponse({
+    type: TenantSettingsResponseDto,
+    description: 'Workspace renamed successfully.',
+  })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async updateTenant(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentTenant('subdomain') subdomain: string,
+    @GetCurrentUserId() actorUserId: string,
+    @Body() dto: UpdateTenantDto,
+  ): Promise<TenantSettingsResponseDto> {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return this.tenantsService.updateTenant(
+      tenantId,
+      subdomain,
+      actorUserId,
+      dto,
+    );
   }
 
   @SkipTenantCheck()
