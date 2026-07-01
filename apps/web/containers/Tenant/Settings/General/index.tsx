@@ -1,6 +1,8 @@
 'use client';
 
 import * as React from 'react';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 
 import { PermissionGate } from '@/components/permission-gate';
 import { Button } from '@/components/ui/button';
@@ -18,12 +20,11 @@ import {
   useWorkspaceSettings,
 } from '@/services/api/requests/tenants';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PERMS } from '@repo/permissions';
 import { Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
+
+import { PERMS } from '@repo/permissions';
 
 const nameSchema = z.object({
   name: z
@@ -70,12 +71,7 @@ export default function GeneralContainer() {
   const { hasPermission } = usePermission();
   const canEdit = hasPermission(PERMS.tenant.edit);
 
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-  } = useWorkspaceSettings();
+  const { data, isLoading, isError, refetch } = useWorkspaceSettings();
 
   const { mutateAsync, isPending } = useUpdateTenant();
 

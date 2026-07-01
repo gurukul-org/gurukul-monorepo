@@ -1,7 +1,7 @@
 'use client';
 
-import type { TenantType } from '@/lib/api/types';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
+import type { TenantType } from '@/lib/api/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import axios from 'axios';
