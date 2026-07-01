@@ -8,6 +8,10 @@ import { type Class } from '@/services/api/requests/classes';
 import { type Course } from '@/services/api/requests/courses';
 import { type Program } from '@/services/api/requests/programs';
 import { type Role } from '@/services/api/requests/roles';
+import {
+  type Student,
+  type StudentListItem,
+} from '@/services/api/requests/students';
 
 // Generic primitives — every per-modal hook below composes these.
 export function useShowModal() {
@@ -147,6 +151,32 @@ export function useShowCourseModal() {
   return useCallback(
     (editingCourse: Course | null) =>
       showModal(ModalType.CourseModal, { editingCourse }),
+    [showModal],
+  );
+}
+
+export function useShowStudentModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (editingStudent: StudentListItem | null) =>
+      showModal(ModalType.StudentModal, { editingStudent }),
+    [showModal],
+  );
+}
+
+export function useShowStudentStatusModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (student: Student) => showModal(ModalType.StudentStatusModal, { student }),
+    [showModal],
+  );
+}
+
+export function useShowStudentProfileModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (studentId: string) =>
+      showModal(ModalType.StudentProfileModal, { studentId }),
     [showModal],
   );
 }
