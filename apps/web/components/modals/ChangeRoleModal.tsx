@@ -4,8 +4,13 @@ import { useMemo, useState } from 'react';
 
 import { Modal } from '@/components/modals/Modal';
 import { useHideModal } from '@/hooks/use-modal';
+import {
+  type RoleSwap,
+  useAddMemberRoles,
+  useRemoveMemberRoles,
+  useReplaceMemberRoles,
+} from '@/services/api/requests/members';
 import { useRoles } from '@/services/api/requests/roles';
-import { useChangeMemberRoles } from '@/services/api/requests/users';
 import { Loader2 } from 'lucide-react';
 
 interface ChangeRoleModalProps {
@@ -21,11 +26,14 @@ export function ChangeRoleModal({
 }: ChangeRoleModalProps) {
   const hideModal = useHideModal();
   const { data: roles, isLoading } = useRoles();
-  const { mutateAsync: changeRoles, isPending } = useChangeMemberRoles();
+  const { mutateAsync: addRoles } = useAddMemberRoles();
+  const { mutateAsync: removeRoles } = useRemoveMemberRoles();
+  const { mutateAsync: replaceRoles } = useReplaceMemberRoles();
 
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(currentRoleIds),
   );
+  const [isSaving, setIsSaving] = useState(false);
 
   const toggle = (roleId: string) => {
     setSelected((prev) => {
@@ -45,8 +53,51 @@ export function ChangeRoleModal({
 
   const handleSave = async () => {
     if (selected.size === 0) return;
-    await changeRoles({ membershipId, roleIds: Array.from(selected) });
-    hideModal();
+    setIsSaving(true);
+    try {
+      const current = new Set(currentRoleIds);
+      const added = Array.from(selected).filter((id) => !current.has(id));
+      const removed = currentRoleIds.filter((id) => !selected.has(id));
+
+      if (added.length > 0 && removed.length > 0) {
+        // Swap (Replace) roles
+        const swaps: RoleSwap[] = [];
+        const swapCount = Math.min(added.length, removed.length);
+        for (let i = 0; i < swapCount; i++) {
+          const removeRoleId = removed[i];
+          const addRoleId = added[i];
+          if (removeRoleId && addRoleId) {
+            swaps.push({ removeRoleId, addRoleId });
+          }
+        }
+        await replaceRoles({ membershipId, swaps });
+
+        // If there are left over additions or removals, execute them
+        if (added.length > swapCount) {
+          await addRoles({
+            membershipId,
+            roleIds: added.slice(swapCount),
+          });
+        }
+        if (removed.length > swapCount) {
+          await removeRoles({
+            membershipId,
+            roleIds: removed.slice(swapCount),
+          });
+        }
+      } else if (added.length > 0) {
+        // Pure Add roles
+        await addRoles({ membershipId, roleIds: added });
+      } else if (removed.length > 0) {
+        // Pure Remove roles
+        await removeRoles({ membershipId, roleIds: removed });
+      }
+      hideModal();
+    } catch (err) {
+      console.error('Error changing roles:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -59,13 +110,13 @@ export function ChangeRoleModal({
       primaryAction={{
         label: 'Save Roles',
         onClick: handleSave,
-        loading: isPending,
-        disabled: isPending || selected.size === 0 || !hasChanges,
+        loading: isSaving,
+        disabled: isSaving || selected.size === 0 || !hasChanges,
       }}
       secondaryAction={{
         label: 'Cancel',
         onClick: hideModal,
-        disabled: isPending,
+        disabled: isSaving,
       }}
     >
       {isLoading ? (
