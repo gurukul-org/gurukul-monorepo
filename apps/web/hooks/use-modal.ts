@@ -132,3 +132,21 @@ export function useShowSuspendMemberModal() {
     [showModal],
   );
 }
+
+export function useShowClassModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (editingClass: Class | null) =>
+      showModal(ModalType.ClassModal, { editingClass }),
+    [showModal],
+  );
+}
+
+export function useShowCourseModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (editingCourse: Course | null) =>
+      showModal(ModalType.CourseModal, { editingCourse }),
+    [showModal],
+  );
+}

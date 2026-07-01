@@ -14,6 +14,7 @@ import { ProgramModal } from '@/components/modals/ProgramModal';
 import { RoleModal } from '@/components/modals/RoleModal';
 import { useModalPayload, useModalType } from '@/hooks/use-modal';
 import { ModalType } from '@/lib/store/types/modal';
+
 import { ClassModal } from '../modals/ClassModal';
 import { CourseModal } from '../modals/CourseModal';
 
