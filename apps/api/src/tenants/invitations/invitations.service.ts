@@ -65,6 +65,8 @@ export class InvitationsService {
       },
     });
 
+    let removedMembershipId: string | null = null;
+
     if (existingUser && existingUser.memberships.length > 0) {
       const membership = existingUser.memberships[0];
       if (membership.status === 'INVITED') {
@@ -72,7 +74,11 @@ export class InvitationsService {
           'User is already invited to this tenant. You can resend the invitation.',
         );
       }
-      throw new ConflictException('User is already a member of this tenant.');
+      if (membership.status === 'REMOVED' || membership.deletedAt !== null) {
+        removedMembershipId = membership.id;
+      } else {
+        throw new ConflictException('User is already a member of this tenant.');
+      }
     }
 
     const token = randomBytes(32).toString('hex');
@@ -97,22 +103,44 @@ export class InvitationsService {
         userId = newUser.id;
       }
 
-      // Create membership
-      const membership = await prisma.tenantMembership.create({
-        data: {
-          userId,
-          tenantId,
-          status: 'INVITED',
-          invitedById: inviterId,
-          invitationTokenHash,
-          invitationExpiresAt,
-        },
-      });
+      let membershipId: string;
+
+      if (removedMembershipId) {
+        await prisma.tenantMembership.update({
+          where: { id: removedMembershipId },
+          data: {
+            status: 'INVITED',
+            invitedById: inviterId,
+            invitationTokenHash,
+            invitationExpiresAt,
+            deletedAt: null,
+            joinedAt: null,
+          },
+        });
+        membershipId = removedMembershipId;
+
+        // Clean any residual roles
+        await prisma.membershipRole.deleteMany({
+          where: { tenantMembershipId: membershipId },
+        });
+      } else {
+        const membership = await prisma.tenantMembership.create({
+          data: {
+            userId,
+            tenantId,
+            status: 'INVITED',
+            invitedById: inviterId,
+            invitationTokenHash,
+            invitationExpiresAt,
+          },
+        });
+        membershipId = membership.id;
+      }
 
       // Assign roles
       if (dto.roleIds.length > 0) {
         const membershipRolesData = dto.roleIds.map((roleId) => ({
-          tenantMembershipId: membership.id,
+          tenantMembershipId: membershipId,
           roleId,
           assignedById: inviterId,
         }));

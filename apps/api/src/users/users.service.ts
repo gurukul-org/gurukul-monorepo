@@ -504,7 +504,7 @@ export class UsersService {
   async findAllTenantUsers(
     tenantId: string,
     callerMembershipId: string,
-    limit = 10,
+    limit = 25,
     cursor?: string,
     status?: string,
   ) {
@@ -514,7 +514,7 @@ export class UsersService {
     });
 
     const cleanStatus = status?.replace(/['"]/g, '');
-    const take = limit > 0 ? limit : 10;
+    const take = limit > 0 ? limit : 25;
     const memberships = await this.prisma.tenantMembership.findMany({
       where: {
         tenantId,
@@ -524,7 +524,9 @@ export class UsersService {
       take: take + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
-      orderBy: { id: 'asc' },
+      // Default sort: most recently joined first. `id` is the keyset
+      // tiebreaker so cursor pagination stays deterministic.
+      orderBy: [{ joinedAt: { sort: 'desc', nulls: 'last' } }, { id: 'asc' }],
       include: {
         user: {
           select: {
@@ -548,6 +550,14 @@ export class UsersService {
           },
         },
         invitedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        updater: {
           select: {
             id: true,
             firstName: true,
@@ -592,6 +602,14 @@ export class UsersService {
               email: m.invitedBy.email,
             }
           : null,
+        updatedBy: m.updater
+          ? {
+              id: m.updater.id,
+              firstName: m.updater.firstName,
+              lastName: m.updater.lastName,
+              email: m.updater.email,
+            }
+          : null,
         createdAt: m.createdAt,
         updatedAt: m.updatedAt,
       };
@@ -603,16 +621,104 @@ export class UsersService {
     };
   }
 
-  async revokeTenantAccess(
+  /**
+   * Fetch a single tenant member with the detail needed for the profile view:
+   * roles, status, join date, who invited them, and who last changed the record.
+   */
+  async getTenantMember(tenantId: string, membershipId: string) {
+    const foundingMembership = await this.prisma.tenantMembership.findFirst({
+      where: { tenantId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const m = await this.prisma.tenantMembership.findFirst({
+      where: { id: membershipId, tenantId, deletedAt: null },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+        roles: {
+          include: {
+            role: {
+              select: { id: true, name: true, rank: true, isAdmin: true },
+            },
+          },
+        },
+        invitedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        creator: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        updater: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+
+    if (!m) {
+      throw new NotFoundException('User membership not found in this tenant.');
+    }
+
+    const isFounder = foundingMembership?.id === m.id;
+    const hasAdminRole = m.roles.some((r) => r.role.isAdmin);
+
+    return {
+      membershipId: m.id,
+      userId: m.user.id,
+      email: m.user.email,
+      firstName: m.user.firstName,
+      lastName: m.user.lastName,
+      phone: m.user.phone,
+      status: m.status,
+      joinedAt: m.joinedAt,
+      isFounder,
+      isAdmin: isFounder || hasAdminRole,
+      roles: m.roles.map((r) => ({
+        id: r.role.id,
+        name: r.role.name,
+        rank: r.role.rank,
+      })),
+      invitedBy: m.invitedBy ?? null,
+      createdBy: m.creator ?? null,
+      updatedBy: m.updater ?? null,
+      createdAt: m.createdAt,
+      updatedAt: m.updatedAt,
+    };
+  }
+
+  /**
+   * Shared privilege guard for member-management actions (revoke, suspend,
+   * change roles). Enforces the same hierarchy rules everywhere:
+   *  - you cannot act on yourself,
+   *  - you cannot act on the tenant owner (founding membership),
+   *  - you cannot act on an admin,
+   *  - you cannot act on a member with equal or higher privilege than your own.
+   * Returns the loaded target membership and the caller's highest privilege.
+   */
+  private async loadManageableTarget(
     tenantId: string,
     callerMembershipId: string,
     targetMembershipId: string,
+    action: string,
   ) {
     const foundingMembership = await this.prisma.tenantMembership.findFirst({
       where: { tenantId },
       orderBy: { createdAt: 'asc' },
     });
     const isCallerFounder = foundingMembership?.id === callerMembershipId;
+
+    if (callerMembershipId === targetMembershipId) {
+      throw new BadRequestException(
+        `You cannot ${action} your own membership.`,
+      );
+    }
 
     const callerRoles = await this.prisma.membershipRole.findMany({
       where: {
@@ -622,33 +728,23 @@ export class UsersService {
       include: { role: true },
     });
 
-    if (callerMembershipId === targetMembershipId) {
-      throw new BadRequestException('You cannot revoke your own access.');
-    }
-
-    const targetMembership = await this.prisma.tenantMembership.findFirst({
+    const target = await this.prisma.tenantMembership.findFirst({
       where: { id: targetMembershipId, tenantId, deletedAt: null },
-      include: {
-        roles: {
-          include: { role: true },
-        },
-      },
+      include: { roles: { include: { role: true } } },
     });
 
-    if (!targetMembership) {
+    if (!target) {
       throw new NotFoundException('User membership not found in this tenant.');
     }
 
     const isTargetFounder = foundingMembership?.id === targetMembershipId;
     if (isTargetFounder) {
-      throw new ForbiddenException(
-        'You cannot revoke access of the tenant owner.',
-      );
+      throw new ForbiddenException(`You cannot ${action} the tenant owner.`);
     }
 
-    const isTargetAdmin = targetMembership.roles.some((r) => r.role.isAdmin);
+    const isTargetAdmin = target.roles.some((r) => r.role.isAdmin);
     if (isTargetAdmin) {
-      throw new ForbiddenException('You cannot revoke access of admins.');
+      throw new ForbiddenException(`You cannot ${action} an admin.`);
     }
 
     let callerMinRank = isCallerFounder ? 1 : Infinity;
@@ -659,37 +755,176 @@ export class UsersService {
       );
     }
 
-    let targetMinRank = isTargetFounder ? 1 : Infinity;
-    if (targetMembership.roles.length > 0) {
-      targetMinRank = Math.min(
-        targetMinRank,
-        ...targetMembership.roles.map((r) => r.role.rank),
-      );
+    let targetMinRank = Infinity;
+    if (target.roles.length > 0) {
+      targetMinRank = Math.min(...target.roles.map((r) => r.role.rank));
     }
 
     if (targetMinRank <= callerMinRank) {
       throw new ForbiddenException(
-        'You cannot revoke access of a user with equal or higher privilege than your own.',
+        `You cannot ${action} a member with equal or higher privilege than your own.`,
       );
+    }
+
+    return { target, callerMinRank };
+  }
+
+  async revokeTenantAccess(
+    tenantId: string,
+    callerMembershipId: string,
+    actorUserId: string,
+    targetMembershipId: string,
+  ) {
+    const { target } = await this.loadManageableTarget(
+      tenantId,
+      callerMembershipId,
+      targetMembershipId,
+      'remove',
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      // Unassign all roles — a removed member keeps no privileges.
+      await tx.membershipRole.deleteMany({
+        where: { tenantMembershipId: targetMembershipId },
+      });
+
+      // Mark REMOVED but DO NOT soft-delete the record: the member stays
+      // visible in the directory with a "Removed" badge for audit history,
+      // and the row can be re-invited via the standard invitation flow.
+      await tx.tenantMembership.update({
+        where: { id: targetMembershipId },
+        data: {
+          status: 'REMOVED',
+          updatedById: actorUserId,
+        },
+      });
+
+      // Invalidate active sessions immediately so access is lost at once.
+      await tx.session.deleteMany({
+        where: { userId: target.userId, tenantId },
+      });
+    });
+
+    return { message: 'Member removed successfully.' };
+  }
+
+  async suspendMember(
+    tenantId: string,
+    callerMembershipId: string,
+    actorUserId: string,
+    targetMembershipId: string,
+  ) {
+    const { target } = await this.loadManageableTarget(
+      tenantId,
+      callerMembershipId,
+      targetMembershipId,
+      'suspend',
+    );
+
+    if (target.status === 'SUSPENDED') {
+      throw new BadRequestException('This member is already suspended.');
+    }
+    if (target.status !== 'ACTIVE') {
+      throw new BadRequestException('Only active members can be suspended.');
     }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.tenantMembership.update({
         where: { id: targetMembershipId },
-        data: {
-          status: 'REMOVED',
-          deletedAt: new Date(),
-        },
+        data: { status: 'SUSPENDED', updatedById: actorUserId },
       });
 
+      // Terminate the suspended member's sessions in this tenant immediately.
       await tx.session.deleteMany({
-        where: {
-          userId: targetMembership.userId,
-          tenantId,
-        },
+        where: { userId: target.userId, tenantId },
       });
     });
 
-    return { message: 'User access revoked successfully.' };
+    return { message: 'Member suspended successfully.' };
+  }
+
+  async reactivateMember(
+    tenantId: string,
+    callerMembershipId: string,
+    actorUserId: string,
+    targetMembershipId: string,
+  ) {
+    const { target } = await this.loadManageableTarget(
+      tenantId,
+      callerMembershipId,
+      targetMembershipId,
+      'reactivate',
+    );
+
+    if (target.status !== 'SUSPENDED') {
+      throw new BadRequestException(
+        'Only suspended members can be reactivated.',
+      );
+    }
+
+    await this.prisma.tenantMembership.update({
+      where: { id: targetMembershipId },
+      data: { status: 'ACTIVE', updatedById: actorUserId },
+    });
+
+    return { message: 'Member reactivated successfully.' };
+  }
+
+  async changeMemberRoles(
+    tenantId: string,
+    callerMembershipId: string,
+    actorUserId: string,
+    targetMembershipId: string,
+    roleIds: string[],
+  ) {
+    const { callerMinRank } = await this.loadManageableTarget(
+      tenantId,
+      callerMembershipId,
+      targetMembershipId,
+      'change roles of',
+    );
+
+    const uniqueRoleIds = Array.from(new Set(roleIds));
+
+    const roles = await this.prisma.role.findMany({
+      where: { id: { in: uniqueRoleIds }, tenantId, deletedAt: null },
+    });
+
+    if (roles.length !== uniqueRoleIds.length) {
+      throw new BadRequestException(
+        'One or more roles were not found in this tenant.',
+      );
+    }
+
+    // Prevent privilege escalation: you cannot grant a role with equal or
+    // higher privilege (rank <= your own highest) than you hold.
+    const tooPowerful = roles.find((r) => r.rank <= callerMinRank);
+    if (tooPowerful) {
+      throw new ForbiddenException(
+        'You cannot assign a role with equal or higher privilege than your own.',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.membershipRole.deleteMany({
+        where: { tenantMembershipId: targetMembershipId },
+      });
+
+      await tx.membershipRole.createMany({
+        data: uniqueRoleIds.map((roleId) => ({
+          tenantMembershipId: targetMembershipId,
+          roleId,
+          assignedById: actorUserId,
+        })),
+      });
+
+      // Touch updatedAt and record who made the change.
+      await tx.tenantMembership.update({
+        where: { id: targetMembershipId },
+        data: { updatedById: actorUserId },
+      });
+    });
+
+    return { message: 'Member roles updated successfully.' };
   }
 }

@@ -4,6 +4,9 @@ import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { actions } from '@/lib/store/slices/modal';
 import { ModalPayload, ModalType } from '@/lib/store/types/modal';
 import { type AcademicTerm } from '@/services/api/requests/academic-terms';
+import { type Class } from '@/services/api/requests/classes';
+import { type Course } from '@/services/api/requests/courses';
+import { type Program } from '@/services/api/requests/programs';
 import { type Role } from '@/services/api/requests/roles';
 
 // Generic primitives — every per-modal hook below composes these.
@@ -66,6 +69,15 @@ export function useShowAcademicTermModal() {
   );
 }
 
+export function useShowProgramModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (editingProgram: Program | null) =>
+      showModal(ModalType.ProgramModal, { editingProgram }),
+    [showModal],
+  );
+}
+
 export function useShowRevokeAccessModal(
   membershipId: string,
   userFullName: string,
@@ -87,6 +99,54 @@ export function useShowDeleteModal() {
       confirmButtonText?: string;
       onConfirm: () => void | Promise<void>;
     }) => showModal(ModalType.DeleteModal, payload),
+    [showModal],
+  );
+}
+
+export function useShowMemberProfileModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (membershipId: string) =>
+      showModal(ModalType.MemberProfileModal, { membershipId }),
+    [showModal],
+  );
+}
+
+export function useShowChangeRoleModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (payload: {
+      membershipId: string;
+      currentRoleIds: string[];
+      userFullName: string;
+    }) => showModal(ModalType.ChangeRoleModal, payload),
+    [showModal],
+  );
+}
+
+export function useShowSuspendMemberModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (membershipId: string, userFullName: string) =>
+      showModal(ModalType.SuspendMemberModal, { membershipId, userFullName }),
+    [showModal],
+  );
+}
+
+export function useShowClassModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (editingClass: Class | null) =>
+      showModal(ModalType.ClassModal, { editingClass }),
+    [showModal],
+  );
+}
+
+export function useShowCourseModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (editingCourse: Course | null) =>
+      showModal(ModalType.CourseModal, { editingCourse }),
     [showModal],
   );
 }
