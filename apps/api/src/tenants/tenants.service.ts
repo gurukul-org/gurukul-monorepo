@@ -4,6 +4,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 
 import { Tenant } from '@prisma/client';
@@ -27,6 +28,8 @@ import {
 
 @Injectable()
 export class TenantsService {
+  private readonly logger = new Logger(TenantsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
@@ -191,13 +194,31 @@ export class TenantsService {
   async updateTenant(
     tenantId: string,
     subdomain: string,
+    actorUserId: string,
     dto: UpdateTenantDto,
   ): Promise<TenantSettingsResponseDto> {
+    const oldTenant = await this.prisma.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+
     await this.prisma.tenant.update({
       where: { id: tenantId },
       data: { name: dto.name },
     });
     await this.invalidateTenantCache(subdomain);
+
+    this.logger.log(
+      `Workspace renamed structure: ${JSON.stringify({
+        action: 'RENAME_WORKSPACE',
+        tenantId,
+        actorUserId,
+        oldName: oldTenant.name,
+        newName: dto.name,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
+
     return this.getTenantSettings(tenantId);
   }
 

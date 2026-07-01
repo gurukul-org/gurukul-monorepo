@@ -113,10 +113,16 @@ export class TenantsController {
   async updateTenant(
     @GetCurrentTenant('id') tenantId: string,
     @GetCurrentTenant('subdomain') subdomain: string,
+    @GetCurrentUserId() actorUserId: string,
     @Body() dto: UpdateTenantDto,
   ): Promise<TenantSettingsResponseDto> {
     if (!tenantId) throw new ForbiddenException('Tenant context required.');
-    return this.tenantsService.updateTenant(tenantId, subdomain, dto);
+    return this.tenantsService.updateTenant(
+      tenantId,
+      subdomain,
+      actorUserId,
+      dto,
+    );
   }
 
   @SkipTenantCheck()
