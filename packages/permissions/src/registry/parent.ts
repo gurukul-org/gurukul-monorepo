@@ -39,12 +39,19 @@ const deletePerm: PermissionEntry = {
   label: 'Delete parent profiles',
 };
 
+const invite: PermissionEntry = {
+  id: id('invite-parents'),
+  feature: 'parent',
+  kind: 'create',
+  label: 'Invite new parents',
+};
+
 const all: PermissionEntry = {
   id: id('all-parent'),
   feature: 'parent',
   kind: 'all',
   label: 'All',
-  grants: [view.id, viewOwn.id, create.id, edit.id, deletePerm.id],
+  grants: [view.id, viewOwn.id, create.id, edit.id, deletePerm.id, invite.id],
 };
 
 export const parentFeature: FeatureDefinition = {
@@ -60,5 +67,6 @@ export const parentFeature: FeatureDefinition = {
     [create.id]: create,
     [edit.id]: edit,
     [deletePerm.id]: deletePerm,
+    [invite.id]: invite,
   },
 };

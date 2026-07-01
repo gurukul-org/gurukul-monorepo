@@ -136,6 +136,24 @@ export function AppSidebar() {
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
                 )}
+
+                {hasPermission(PERMS.parent.view) && (
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={
+                        pathname === '/users/parents' ||
+                        pathname.startsWith('/users/parents/')
+                      }
+                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                    >
+                      <Link href="/users/parents">
+                        <Users className="h-3.5 w-3.5" />
+                        <span>Parents</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )}
               </SidebarMenuSub>
             )}
           </SidebarMenuItem>

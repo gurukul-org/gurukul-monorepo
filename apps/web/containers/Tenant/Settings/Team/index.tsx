@@ -68,7 +68,7 @@ export default function TeamContainer() {
             Manage your tenant members and roles.
           </p>
         </div>
-        <Button onClick={showInviteModal} disabled={isAnyMutating}>
+        <Button onClick={() => showInviteModal()} disabled={isAnyMutating}>
           Invite Member
         </Button>
       </div>

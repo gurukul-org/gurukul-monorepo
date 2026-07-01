@@ -6,6 +6,7 @@ import { ModalPayload, ModalType } from '@/lib/store/types/modal';
 import { type AcademicTerm } from '@/services/api/requests/academic-terms';
 import { type Class } from '@/services/api/requests/classes';
 import { type Course } from '@/services/api/requests/courses';
+import { type ParentListItem } from '@/services/api/requests/parents';
 import { type Program } from '@/services/api/requests/programs';
 import { type Role } from '@/services/api/requests/roles';
 import {
@@ -50,7 +51,8 @@ export function useShowExampleDeletionModal(id: string) {
 export function useShowInviteMemberModal() {
   const showModal = useShowModal();
   return useCallback(
-    () => showModal(ModalType.InviteMemberModal, {}),
+    (presetRoleName?: string) =>
+      showModal(ModalType.InviteMemberModal, { presetRoleName }),
     [showModal],
   );
 }
@@ -177,6 +179,23 @@ export function useShowStudentProfileModal() {
   return useCallback(
     (studentId: string) =>
       showModal(ModalType.StudentProfileModal, { studentId }),
+    [showModal],
+  );
+}
+
+export function useShowParentModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (editingParent: ParentListItem | null) =>
+      showModal(ModalType.ParentModal, { editingParent }),
+    [showModal],
+  );
+}
+
+export function useShowParentProfileModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (parentId: string) => showModal(ModalType.ParentProfileModal, { parentId }),
     [showModal],
   );
 }

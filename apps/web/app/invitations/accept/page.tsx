@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -17,11 +17,26 @@ function AcceptInvitationForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  const [rollNumber, setRollNumber] = useState('');
+  const [admissionDate, setAdmissionDate] = useState('');
+  const [emergencyPhone, setEmergencyPhone] = useState('');
+
   const {
     data: validationResult,
     isLoading: isValidating,
     error: validationError,
   } = useValidateInvitation(token);
+
+  useEffect(() => {
+    if (validationResult) {
+      if (validationResult.rollNumber)
+        setRollNumber(validationResult.rollNumber);
+      if (validationResult.admissionDate)
+        setAdmissionDate(validationResult.admissionDate);
+      if (validationResult.emergencyPhone)
+        setEmergencyPhone(validationResult.emergencyPhone);
+    }
+  }, [validationResult]);
 
   const { mutate: acceptInvitation, isPending: isAccepting } =
     useAcceptInvitation();
@@ -83,10 +98,31 @@ function AcceptInvitationForm() {
       return;
     }
 
+    const lowerRoles = validationResult.roles.map((r) => r.toLowerCase());
+    const isStudent = lowerRoles.includes('student');
+    const isParent = lowerRoles.includes('parent');
+
+    if (isStudent && (!rollNumber || !admissionDate)) {
+      setError(
+        'Roll number and admission date are required to complete student profile setup.',
+      );
+      return;
+    }
+
+    if (isParent && !emergencyPhone) {
+      setError(
+        'Emergency phone number is required to complete parent profile setup.',
+      );
+      return;
+    }
+
     acceptInvitation(
       {
         token,
         password: validationResult.requiresPasswordSetup ? password : undefined,
+        rollNumber: isStudent ? rollNumber : undefined,
+        admissionDate: isStudent ? admissionDate : undefined,
+        emergencyPhone: isParent ? emergencyPhone : undefined,
       },
       {
         onSuccess: () => {
@@ -101,6 +137,10 @@ function AcceptInvitationForm() {
       },
     );
   };
+
+  const lowerRoles = validationResult.roles.map((r) => r.toLowerCase());
+  const isStudent = lowerRoles.includes('student');
+  const isParent = lowerRoles.includes('parent');
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
@@ -149,6 +189,80 @@ function AcceptInvitationForm() {
               <p className="mt-1 text-xs text-gray-500">
                 Must be at least 8 characters.
               </p>
+            </div>
+          )}
+
+          {/* Student Profile Completion Steps */}
+          {isStudent && (
+            <div className="space-y-4 rounded-lg border border-zinc-200 p-4 bg-zinc-50/50">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                Complete Student Profile
+              </h3>
+
+              <div>
+                <label
+                  htmlFor="rollNumber"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Roll Number
+                </label>
+                <input
+                  id="rollNumber"
+                  type="text"
+                  required
+                  disabled={!!validationResult.rollNumber}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-zinc-100 disabled:text-zinc-500"
+                  value={rollNumber}
+                  onChange={(e) => setRollNumber(e.target.value)}
+                  placeholder="e.g. STU-2026-001"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="admissionDate"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Admission Date
+                </label>
+                <input
+                  id="admissionDate"
+                  type="date"
+                  required
+                  disabled={!!validationResult.admissionDate}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-zinc-100 disabled:text-zinc-500"
+                  value={admissionDate}
+                  onChange={(e) => setAdmissionDate(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Parent Profile Completion Steps */}
+          {isParent && (
+            <div className="space-y-4 rounded-lg border border-zinc-200 p-4 bg-zinc-50/50">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                Complete Parent Profile
+              </h3>
+
+              <div>
+                <label
+                  htmlFor="emergencyPhone"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Emergency Contact Phone
+                </label>
+                <input
+                  id="emergencyPhone"
+                  type="text"
+                  required
+                  disabled={!!validationResult.emergencyPhone}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:bg-zinc-100 disabled:text-zinc-500"
+                  value={emergencyPhone}
+                  onChange={(e) => setEmergencyPhone(e.target.value)}
+                  placeholder="e.g. +91 99999 99999"
+                />
+              </div>
             </div>
           )}
 

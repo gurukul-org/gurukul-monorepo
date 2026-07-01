@@ -251,7 +251,7 @@ export function StudentModal({ editingStudent }: StudentModalProps) {
               </FieldLabel>
               <button
                 type="button"
-                onClick={showInviteModal}
+                onClick={() => showInviteModal('Student')}
                 disabled={isSaving}
                 className="text-[10px] font-semibold text-primary hover:underline"
               >

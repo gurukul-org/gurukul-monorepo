@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table';
 import {
   useShowDeleteModal,
+  useShowInviteMemberModal,
   useShowStudentModal,
   useShowStudentProfileModal,
   useShowStudentStatusModal,
@@ -42,6 +43,7 @@ import {
   ChevronRight,
   GraduationCap,
   Loader2,
+  Mail,
   MoreVertical,
   Pencil,
   Plus,
@@ -188,6 +190,7 @@ export default function TenantStudentsContainer() {
   );
 
   const showStudentModal = useShowStudentModal();
+  const showInviteMemberModal = useShowInviteMemberModal();
 
   const { data, isLoading, isError, refetch } = useStudents({
     search: search.trim() || undefined,
@@ -364,13 +367,20 @@ export default function TenantStudentsContainer() {
             Manage student profiles, enrolments, and linked guardians.
           </p>
         </div>
-        <Button
-          onClick={() => showStudentModal(null)}
-          className="gap-2 shrink-0"
-        >
-          <Plus className="h-4 w-4" />
-          Add Student
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            onClick={() => showInviteMemberModal('Student')}
+            className="gap-2"
+          >
+            <Mail className="h-4 w-4" />
+            Invite Student
+          </Button>
+          <Button onClick={() => showStudentModal(null)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Student
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
