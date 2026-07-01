@@ -76,7 +76,9 @@ export function StudentStatusModal({ student }: StudentStatusModalProps) {
         id: student.id,
         dto: { status: targetStatus, ignoreWarnings: force },
       });
-      toast.success(`Student status changed to ${STATUS_LABELS[targetStatus]}.`);
+      toast.success(
+        `Student status changed to ${STATUS_LABELS[targetStatus]}.`,
+      );
       setEnrolmentWarning(null);
       hideModal();
     } catch (err: unknown) {

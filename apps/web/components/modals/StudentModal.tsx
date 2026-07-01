@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Modal } from '@/components/modals/Modal';
@@ -11,12 +12,13 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
-import { useHideModal } from '@/hooks/use-modal';
+import { useHideModal, useShowInviteMemberModal } from '@/hooks/use-modal';
 import {
   StudentListItem,
   useCreateStudent,
   useUpdateStudent,
 } from '@/services/api/requests/students';
+import { useTenantUsers } from '@/services/api/requests/users';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -25,7 +27,7 @@ import { z } from 'zod';
 // Schema
 // ---------------------------------------------------------------------------
 
-const createSchema = z.object({
+const studentSchema = z.object({
   rollNumber: z
     .string()
     .trim()
@@ -42,17 +44,7 @@ const createSchema = z.object({
     .or(z.literal('')),
 });
 
-const editSchema = z.object({
-  admissionDate: z.string().optional(),
-  tenantMembershipId: z
-    .string()
-    .uuid('Must be a valid UUID.')
-    .optional()
-    .or(z.literal('')),
-});
-
-type CreateValues = z.infer<typeof createSchema>;
-type EditValues = z.infer<typeof editSchema>;
+type StudentValues = z.infer<typeof studentSchema>;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -69,6 +61,7 @@ interface StudentModalProps {
 export function StudentModal({ editingStudent }: StudentModalProps) {
   const hideModal = useHideModal();
   const showError = useShowApiError();
+  const showInviteModal = useShowInviteMemberModal();
   const isEditing = !!editingStudent;
 
   const { mutateAsync: createStudent, isPending: isCreating } =
@@ -78,15 +71,30 @@ export function StudentModal({ editingStudent }: StudentModalProps) {
 
   const isSaving = isCreating || isUpdating;
 
-  // Use different schemas for create vs edit
+  // Fetch tenant members to let the user link an existing user profile with Student role
+  const { data: usersData, isLoading: isLoadingUsers } = useTenantUsers({
+    limit: 100,
+  });
+
+  const studentMembers = useMemo(() => {
+    if (!usersData?.users) return [];
+    // Allow active or invited users who possess the "Student" role.
+    return usersData.users.filter((u) =>
+      u.roles.some((r) => r.name.toLowerCase() === 'student'),
+    );
+  }, [usersData]);
+
   const {
     register,
     handleSubmit,
+    watch,
+    reset,
     formState: { errors },
-  } = useForm<CreateValues | EditValues>({
-    resolver: zodResolver(isEditing ? editSchema : createSchema),
+  } = useForm<StudentValues>({
+    resolver: zodResolver(studentSchema),
     defaultValues: isEditing
       ? {
+          rollNumber: editingStudent.rollNumber,
           admissionDate: editingStudent.admissionDate
             ? new Date(editingStudent.admissionDate).toISOString().split('T')[0]
             : '',
@@ -99,24 +107,41 @@ export function StudentModal({ editingStudent }: StudentModalProps) {
         },
   });
 
-  const onSubmit = async (raw: CreateValues | EditValues) => {
+  // Watch the rollNumber field to detect modifications when editing
+  const watchedRollNumber = watch('rollNumber');
+  const rollNumberChanged =
+    isEditing && watchedRollNumber !== editingStudent.rollNumber;
+  const [confirmedRollChange, setConfirmedRollChange] = useState(false);
+
+  // If the rollNumber changes back, reset the confirmation checkbox
+  useEffect(() => {
+    if (!rollNumberChanged) {
+      setConfirmedRollChange(false);
+    }
+  }, [rollNumberChanged]);
+
+  const onSubmit = async (values: StudentValues) => {
     try {
       if (isEditing) {
-        const vals = raw as EditValues;
+        if (rollNumberChanged && !confirmedRollChange) {
+          toast.error('Please confirm the roll number change.');
+          return;
+        }
+
         await updateStudent({
           id: editingStudent.id,
           dto: {
-            admissionDate: vals.admissionDate || undefined,
-            tenantMembershipId: vals.tenantMembershipId || undefined,
+            rollNumber: values.rollNumber,
+            admissionDate: values.admissionDate || undefined,
+            tenantMembershipId: values.tenantMembershipId || undefined,
           },
         });
         toast.success('Student updated successfully!');
       } else {
-        const vals = raw as CreateValues;
         await createStudent({
-          rollNumber: vals.rollNumber,
-          admissionDate: vals.admissionDate || undefined,
-          tenantMembershipId: vals.tenantMembershipId || undefined,
+          rollNumber: values.rollNumber,
+          admissionDate: values.admissionDate || undefined,
+          tenantMembershipId: values.tenantMembershipId || undefined,
         });
         toast.success('Student profile created successfully!');
       }
@@ -133,7 +158,7 @@ export function StudentModal({ editingStudent }: StudentModalProps) {
       title={isEditing ? 'Edit Student Profile' : 'Create Student Profile'}
       description={
         isEditing
-          ? 'Update the admission date or portal account link. Roll number cannot be changed.'
+          ? 'Update student details. Roll number changes require explicit confirmation.'
           : 'Create a new student record. Roll number must be unique within the tenant.'
       }
       size="md"
@@ -145,7 +170,7 @@ export function StudentModal({ editingStudent }: StudentModalProps) {
             : 'Create Student',
         onClick: handleSubmit(onSubmit),
         loading: isSaving,
-        disabled: isSaving,
+        disabled: isSaving || (rollNumberChanged && !confirmedRollChange),
       }}
       secondaryAction={{
         label: 'Cancel',
@@ -155,44 +180,48 @@ export function StudentModal({ editingStudent }: StudentModalProps) {
     >
       <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
         <FieldGroup className="gap-5">
-          {/* Roll Number — create only */}
-          {!isEditing && (
-            <Field data-invalid={!!(errors as Record<string, unknown>).rollNumber}>
-              <FieldLabel
-                htmlFor="rollNumber"
-                className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80"
-              >
-                Roll Number <span className="text-red-500">*</span>
-              </FieldLabel>
-              <Input
-                id="rollNumber"
-                {...register('rollNumber' as keyof CreateValues)}
-                disabled={isSaving}
-                placeholder="e.g. STU-2026-001"
-                className="h-10 text-sm focus-visible:ring-primary/30"
-              />
-              {(errors as Record<string, { message?: string }>).rollNumber && (
-                <FieldError>
-                  {(errors as Record<string, { message?: string }>).rollNumber?.message}
-                </FieldError>
-              )}
-            </Field>
-          )}
+          {/* Roll Number */}
+          <Field data-invalid={!!errors.rollNumber}>
+            <FieldLabel
+              htmlFor="rollNumber"
+              className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80"
+            >
+              Roll Number <span className="text-red-500">*</span>
+            </FieldLabel>
+            <Input
+              id="rollNumber"
+              {...register('rollNumber')}
+              disabled={isSaving}
+              placeholder="e.g. STU-2026-001"
+              className="h-10 text-sm focus-visible:ring-primary/30"
+            />
+            {errors.rollNumber && (
+              <FieldError>{errors.rollNumber.message}</FieldError>
+            )}
+          </Field>
 
-          {/* Read-only roll number display for edit mode */}
-          {isEditing && (
-            <div className="rounded-md bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-                Roll Number
-              </span>
-              <span className="text-sm font-mono font-medium text-zinc-700 dark:text-zinc-300">
-                {editingStudent.rollNumber}
-              </span>
+          {/* Roll Number Change Warning Checkbox (edit mode only) */}
+          {rollNumberChanged && (
+            <div className="flex items-start gap-3 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-3.5">
+              <input
+                id="confirmRollChange"
+                type="checkbox"
+                checked={confirmedRollChange}
+                onChange={(e) => setConfirmedRollChange(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+              />
+              <label
+                htmlFor="confirmRollChange"
+                className="text-xs text-amber-800 dark:text-amber-300 font-medium select-none"
+              >
+                I confirm that changing this roll number impacts external
+                references like ID cards.
+              </label>
             </div>
           )}
 
           {/* Admission Date */}
-          <Field data-invalid={!!(errors as Record<string, unknown>).admissionDate}>
+          <Field data-invalid={!!errors.admissionDate}>
             <FieldLabel
               htmlFor="admissionDate"
               className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80"
@@ -206,47 +235,50 @@ export function StudentModal({ editingStudent }: StudentModalProps) {
               disabled={isSaving}
               className="h-10 text-sm focus-visible:ring-primary/30"
             />
-            {(errors as Record<string, { message?: string }>).admissionDate && (
-              <FieldError>
-                {(errors as Record<string, { message?: string }>).admissionDate?.message}
-              </FieldError>
+            {errors.admissionDate && (
+              <FieldError>{errors.admissionDate.message}</FieldError>
             )}
           </Field>
 
-          {/* Portal Account Link */}
-          <Field
-            data-invalid={
-              !!(errors as Record<string, unknown>).tenantMembershipId
-            }
-          >
-            <FieldLabel
-              htmlFor="tenantMembershipId"
-              className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80"
-            >
-              Portal Membership ID{' '}
-              <span className="text-muted-foreground/60 font-normal normal-case">
-                (optional)
-              </span>
-            </FieldLabel>
-            <Input
+          {/* Portal Account Select Dropdown with Inline Link */}
+          <Field data-invalid={!!errors.tenantMembershipId}>
+            <div className="flex items-center justify-between">
+              <FieldLabel
+                htmlFor="tenantMembershipId"
+                className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80"
+              >
+                Portal Student Account
+              </FieldLabel>
+              <button
+                type="button"
+                onClick={showInviteModal}
+                disabled={isSaving}
+                className="text-[10px] font-semibold text-primary hover:underline"
+              >
+                Invite student inline
+              </button>
+            </div>
+
+            <select
               id="tenantMembershipId"
               {...register('tenantMembershipId')}
-              disabled={isSaving}
-              placeholder="UUID of an active tenant membership"
-              className="h-10 text-sm font-mono focus-visible:ring-primary/30"
-            />
-            <p className="text-[10px] text-muted-foreground/70 mt-1">
-              Link to an existing member with the Student role to grant portal
-              access. Leave blank to create an unlinked profile.
+              disabled={isSaving || isLoadingUsers}
+              className="mt-1 block w-full h-10 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
+            >
+              <option value="">
+                -- Select an existing member with Student role (optional) --
+              </option>
+              {studentMembers.map((u) => (
+                <option key={u.membershipId} value={u.membershipId}>
+                  {u.firstName} {u.lastName} ({u.email})
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-muted-foreground/70 mt-1.5">
+              Links this profile to their portal login account.
             </p>
-            {(errors as Record<string, { message?: string }>)
-              .tenantMembershipId && (
-              <FieldError>
-                {
-                  (errors as Record<string, { message?: string }>)
-                    .tenantMembershipId?.message
-                }
-              </FieldError>
+            {errors.tenantMembershipId && (
+              <FieldError>{errors.tenantMembershipId.message}</FieldError>
             )}
           </Field>
         </FieldGroup>
