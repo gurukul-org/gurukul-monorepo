@@ -54,7 +54,7 @@ export function useParents(params?: {
       const { data } = await axios.get<{
         parents: ParentListItem[];
         nextCursor: string | null;
-      }>('/api/parents', { params });
+      }>('/parents', { params });
       return data;
     },
   });
@@ -64,7 +64,7 @@ export function useParentDetail(id: string) {
   return useQuery({
     queryKey: ['parents', id],
     queryFn: async () => {
-      const { data } = await axios.get<ParentDetail>(`/api/parents/${id}`);
+      const { data } = await axios.get<ParentDetail>(`/parents/${id}`);
       return data;
     },
     enabled: !!id,
@@ -75,7 +75,7 @@ export function useCreateParent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (dto: CreateParentDto) => {
-      const { data } = await axios.post<ParentDetail>('/api/parents', dto);
+      const { data } = await axios.post<ParentDetail>('/parents', dto);
       return data;
     },
     onSuccess: () => {
@@ -88,10 +88,7 @@ export function useUpdateParent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, dto }: { id: string; dto: UpdateParentDto }) => {
-      const { data } = await axios.patch<ParentDetail>(
-        `/api/parents/${id}`,
-        dto,
-      );
+      const { data } = await axios.patch<ParentDetail>(`/parents/${id}`, dto);
       return data;
     },
     onSuccess: (data) => {
@@ -106,7 +103,7 @@ export function useDeleteParent() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { data } = await axios.delete<{ message: string }>(
-        `/api/parents/${id}`,
+        `/parents/${id}`,
       );
       return data;
     },
