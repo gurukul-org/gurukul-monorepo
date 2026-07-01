@@ -23,6 +23,7 @@ export const branchManager: DefaultRoleDefinition = {
     PERMS.user.view.id,
     PERMS.user.invite.id,
     PERMS.user.edit.id,
+    PERMS.user.suspend.id,
     // Operations
     PERMS.enrolment.all.id,
     PERMS.fee.all.id,

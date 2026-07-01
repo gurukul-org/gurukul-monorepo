@@ -28,12 +28,19 @@ const deletePerm: PermissionEntry = {
   label: 'Deactivate or remove users',
 };
 
+const suspend: PermissionEntry = {
+  id: id('suspend-users'),
+  feature: 'user',
+  kind: 'custom',
+  label: 'Suspend or reactivate users',
+};
+
 const all: PermissionEntry = {
   id: id('all-user'),
   feature: 'user',
   kind: 'all',
   label: 'All',
-  grants: [view.id, invite.id, edit.id, deletePerm.id],
+  grants: [view.id, invite.id, edit.id, deletePerm.id, suspend.id],
 };
 
 export const userFeature: FeatureDefinition = {
@@ -48,5 +55,6 @@ export const userFeature: FeatureDefinition = {
     [invite.id]: invite,
     [edit.id]: edit,
     [deletePerm.id]: deletePerm,
+    [suspend.id]: suspend,
   },
 };

@@ -4,6 +4,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 
 import { Tenant } from '@prisma/client';
@@ -14,7 +15,11 @@ import { DEFAULT_ROLES } from '@repo/permissions';
 
 import { Tokens } from '../users/types';
 import { UsersService } from '../users/users.service';
-import { CreateTenantDto } from './dto';
+import {
+  CreateTenantDto,
+  TenantSettingsResponseDto,
+  UpdateTenantDto,
+} from './dto';
 import {
   RESERVED_SUBDOMAINS,
   SUBDOMAIN_REGEX,
@@ -23,6 +28,8 @@ import {
 
 @Injectable()
 export class TenantsService {
+  private readonly logger = new Logger(TenantsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
@@ -169,6 +176,50 @@ export class TenantsService {
       scopes,
       isAdmin,
     );
+  }
+
+  async getTenantSettings(
+    tenantId: string,
+  ): Promise<TenantSettingsResponseDto> {
+    const tenant = await this.prisma.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { id: true, name: true, subdomain: true, createdAt: true },
+    });
+    const memberCount = await this.prisma.tenantMembership.count({
+      where: { tenantId, status: 'ACTIVE', deletedAt: null },
+    });
+    return { ...tenant, memberCount };
+  }
+
+  async updateTenant(
+    tenantId: string,
+    subdomain: string,
+    actorUserId: string,
+    dto: UpdateTenantDto,
+  ): Promise<TenantSettingsResponseDto> {
+    const oldTenant = await this.prisma.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { name: dto.name },
+    });
+    await this.invalidateTenantCache(subdomain);
+
+    this.logger.log(
+      `Workspace renamed structure: ${JSON.stringify({
+        action: 'RENAME_WORKSPACE',
+        tenantId,
+        actorUserId,
+        oldName: oldTenant.name,
+        newName: dto.name,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
+
+    return this.getTenantSettings(tenantId);
   }
 
   private cacheKey(subdomain: string): string {

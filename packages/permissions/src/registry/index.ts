@@ -154,6 +154,7 @@ export const PERMS = {
     invite: p('user', 'invite-users'),
     edit: p('user', 'edit-users'),
     delete: p('user', 'delete-users'),
+    suspend: p('user', 'suspend-users'),
   },
   role: {
     all: FEATURES.role.all,

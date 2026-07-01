@@ -1,7 +1,8 @@
 'use client';
 
+import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import type { TenantType } from '@/lib/api/types';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import axios from 'axios';
 
@@ -24,6 +25,49 @@ export function useCurrentTenant(enabled = true) {
     enabled,
     retry: false,
     staleTime: 60 * 60 * 1000,
+  });
+}
+
+export interface WorkspaceSettings {
+  id: string;
+  name: string;
+  subdomain: string;
+  createdAt: string;
+  memberCount: number;
+}
+
+export function useWorkspaceSettings() {
+  return useQuery({
+    queryKey: [TenantQueryKey.Settings],
+    queryFn: async () => {
+      const { data } = await axios.get<WorkspaceSettings>(
+        '/tenants/current/settings',
+      );
+      return data;
+    },
+  });
+}
+
+export function useUpdateTenant() {
+  const queryClient = useQueryClient();
+  const showError = useShowApiError();
+  return useMutation({
+    mutationFn: async (payload: { name: string }) => {
+      const { data } = await axios.patch<WorkspaceSettings>(
+        '/tenants/current',
+        payload,
+      );
+      return data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: [TenantQueryKey.Settings],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [TenantQueryKey.Current],
+      });
+    },
+    onError: (err) => showError(err),
   });
 }
 
