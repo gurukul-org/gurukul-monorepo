@@ -10,7 +10,8 @@ export const STUDENT_STATUS = {
   INACTIVE: 'INACTIVE',
 } as const;
 
-export type StudentStatus = (typeof STUDENT_STATUS)[keyof typeof STUDENT_STATUS];
+export type StudentStatus =
+  (typeof STUDENT_STATUS)[keyof typeof STUDENT_STATUS];
 
 export const ALL_STUDENT_STATUSES = Object.values(STUDENT_STATUS);
 
@@ -19,17 +20,16 @@ export const ALL_STUDENT_STATUSES = Object.values(STUDENT_STATUS);
  * GRADUATED is terminal — no outbound transitions.
  * INACTIVE can be reversed to ACTIVE.
  */
-export const STUDENT_STATUS_TRANSITIONS: Record<StudentStatus, StudentStatus[]> =
-  {
-    [STUDENT_STATUS.ACTIVE]: [
-      STUDENT_STATUS.SUSPENDED,
-      STUDENT_STATUS.GRADUATED,
-      STUDENT_STATUS.INACTIVE,
-    ],
-    [STUDENT_STATUS.SUSPENDED]: [
-      STUDENT_STATUS.ACTIVE,
-      STUDENT_STATUS.INACTIVE,
-    ],
-    [STUDENT_STATUS.INACTIVE]: [STUDENT_STATUS.ACTIVE],
-    [STUDENT_STATUS.GRADUATED]: [], // terminal
-  };
+export const STUDENT_STATUS_TRANSITIONS: Record<
+  StudentStatus,
+  StudentStatus[]
+> = {
+  [STUDENT_STATUS.ACTIVE]: [
+    STUDENT_STATUS.SUSPENDED,
+    STUDENT_STATUS.GRADUATED,
+    STUDENT_STATUS.INACTIVE,
+  ],
+  [STUDENT_STATUS.SUSPENDED]: [STUDENT_STATUS.ACTIVE, STUDENT_STATUS.INACTIVE],
+  [STUDENT_STATUS.INACTIVE]: [STUDENT_STATUS.ACTIVE],
+  [STUDENT_STATUS.GRADUATED]: [], // terminal
+};

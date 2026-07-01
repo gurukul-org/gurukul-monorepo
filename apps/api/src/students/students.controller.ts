@@ -31,12 +31,12 @@ import {
   GetCurrentUserId,
   RequirePermissions,
 } from '../common/decorators';
-import { ALL_STUDENT_STATUSES } from './students.constants';
 import {
   ChangeStudentStatusDto,
   CreateStudentDto,
   UpdateStudentDto,
 } from './dto';
+import { ALL_STUDENT_STATUSES } from './students.constants';
 import { StudentsService } from './students.service';
 
 @ApiTags('Students')
@@ -56,15 +56,27 @@ export class StudentsController {
       'Returns a paginated list of students for the current tenant. ' +
       'Supports free-text search by name or roll number and filtering by status.',
   })
-  @ApiQuery({ name: 'search', required: false, description: 'Search by name or roll number' })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Search by name or roll number',
+  })
   @ApiQuery({
     name: 'status',
     required: false,
     enum: ALL_STUDENT_STATUSES,
     description: 'Filter by student status',
   })
-  @ApiQuery({ name: 'limit', required: false, description: 'Page size (default 20)' })
-  @ApiQuery({ name: 'cursor', required: false, description: 'Cursor for next page' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Page size (default 20)',
+  })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    description: 'Cursor for next page',
+  })
   @ApiOkResponse({ description: 'Students retrieved successfully.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   async findAll(
@@ -172,7 +184,9 @@ export class StudentsController {
   })
   @ApiOkResponse({ description: 'Student status updated successfully.' })
   @ApiNotFoundResponse({ description: 'Student not found.' })
-  @ApiForbiddenResponse({ description: 'Insufficient permissions or terminal status.' })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions or terminal status.',
+  })
   async changeStatus(
     @GetCurrentTenant('id') tenantId: string,
     @GetCurrentUserId() userId: string,
@@ -201,9 +215,10 @@ export class StudentsController {
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   async remove(
     @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     if (!tenantId) throw new ForbiddenException('Tenant context required.');
-    return this.studentsService.remove(tenantId, id);
+    return this.studentsService.remove(tenantId, userId, id);
   }
 }

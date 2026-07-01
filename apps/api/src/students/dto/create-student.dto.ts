@@ -31,8 +31,7 @@ export class CreateStudentDto {
   @IsNotEmpty()
   @MaxLength(50)
   @Matches(/^[a-zA-Z0-9\-]+$/, {
-    message:
-      'Roll number may only contain letters, digits, and hyphens.',
+    message: 'Roll number may only contain letters, digits, and hyphens.',
   })
   rollNumber: string;
 

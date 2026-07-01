@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 
@@ -40,6 +41,8 @@ const MEMBERSHIP_WITH_USER = {
 
 @Injectable()
 export class StudentsService {
+  private readonly logger = new Logger(StudentsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   // ---------------------------------------------------------------------------
@@ -80,9 +83,7 @@ export class StudentsService {
       : {};
 
     const statusFilter =
-      status && STUDENT_STATUS[status as StudentStatus]
-        ? { status }
-        : {};
+      status && STUDENT_STATUS[status as StudentStatus] ? { status } : {};
 
     const students = await this.prisma.studentProfile.findMany({
       where: {
@@ -133,7 +134,12 @@ export class StudentsService {
               include: {
                 program: { select: { id: true, name: true, code: true } },
                 academicTerm: {
-                  select: { id: true, name: true, startDate: true, endDate: true },
+                  select: {
+                    id: true,
+                    name: true,
+                    startDate: true,
+                    endDate: true,
+                  },
                 },
               },
             },
@@ -194,6 +200,17 @@ export class StudentsService {
       },
     });
 
+    this.logger.log(
+      `Student created structure: ${JSON.stringify({
+        action: 'CREATE_STUDENT',
+        studentId: student.id,
+        tenantId,
+        actorUserId: userId,
+        rollNumber: dto.rollNumber,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
+
     return this.findOne(tenantId, student.id);
   }
 
@@ -222,6 +239,23 @@ export class StudentsService {
       await this.validateMembershipLink(tenantId, dto.tenantMembershipId);
     }
 
+    // Roll number edit uniqueness check
+    if (dto.rollNumber && dto.rollNumber !== student.rollNumber) {
+      const duplicate = await this.prisma.studentProfile.findFirst({
+        where: {
+          tenantId,
+          rollNumber: dto.rollNumber,
+          deletedAt: null,
+          id: { not: id },
+        },
+      });
+      if (duplicate) {
+        throw new ConflictException(
+          `Roll number "${dto.rollNumber}" is already in use within this tenant.`,
+        );
+      }
+    }
+
     await this.prisma.studentProfile.update({
       where: { id },
       data: {
@@ -231,9 +265,29 @@ export class StudentsService {
         ...(dto.admissionDate && {
           admissionDate: new Date(dto.admissionDate),
         }),
+        ...(dto.rollNumber && {
+          rollNumber: dto.rollNumber,
+        }),
         updatedBy: userId,
       },
     });
+
+    this.logger.log(
+      `Student updated structure: ${JSON.stringify({
+        action: 'UPDATE_STUDENT',
+        studentId: id,
+        tenantId,
+        actorUserId: userId,
+        changes: {
+          ...(dto.rollNumber && { rollNumber: dto.rollNumber }),
+          ...(dto.admissionDate && { admissionDate: dto.admissionDate }),
+          ...(dto.tenantMembershipId !== undefined && {
+            tenantMembershipId: dto.tenantMembershipId,
+          }),
+        },
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
 
     return this.findOne(tenantId, id);
   }
@@ -261,7 +315,7 @@ export class StudentsService {
     // Guard: GRADUATED is terminal
     if (currentStatus === STUDENT_STATUS.GRADUATED) {
       throw new ForbiddenException(
-        'A graduated student\'s status cannot be changed.',
+        "A graduated student's status cannot be changed.",
       );
     }
 
@@ -312,13 +366,25 @@ export class StudentsService {
       },
     });
 
+    this.logger.log(
+      `Student status changed structure: ${JSON.stringify({
+        action: 'CHANGE_STUDENT_STATUS',
+        studentId: id,
+        tenantId,
+        actorUserId: userId,
+        oldStatus: currentStatus,
+        newStatus: targetStatus,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
+
     return this.findOne(tenantId, id);
   }
 
   // ---------------------------------------------------------------------------
   // DELETE — hard-delete only if zero enrolments ever; reject otherwise
   // ---------------------------------------------------------------------------
-  async remove(tenantId: string, id: string) {
+  async remove(tenantId: string, userId: string, id: string) {
     const student = await this.prisma.studentProfile.findFirst({
       where: { id, tenantId },
     });
@@ -340,6 +406,16 @@ export class StudentsService {
 
     await this.prisma.studentProfile.delete({ where: { id } });
 
+    this.logger.log(
+      `Student deleted structure: ${JSON.stringify({
+        action: 'DELETE_STUDENT',
+        studentId: id,
+        tenantId,
+        actorUserId: userId,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
+
     return { message: 'Student deleted successfully.' };
   }
 
@@ -356,7 +432,12 @@ export class StudentsService {
     tenantMembershipId: string,
   ): Promise<void> {
     const membership = await this.prisma.tenantMembership.findFirst({
-      where: { id: tenantMembershipId, tenantId, status: 'ACTIVE', deletedAt: null },
+      where: {
+        id: tenantMembershipId,
+        tenantId,
+        status: 'ACTIVE',
+        deletedAt: null,
+      },
     });
 
     if (!membership) {
@@ -416,11 +497,17 @@ export class StudentsService {
       // Lightweight audit trail using existing columns
       audit: {
         createdBy: s.creator
-          ? { id: s.creator.id, name: `${s.creator.firstName} ${s.creator.lastName}` }
+          ? {
+              id: s.creator.id,
+              name: `${s.creator.firstName} ${s.creator.lastName}`,
+            }
           : null,
         createdAt: s.createdAt,
         updatedBy: s.updater
-          ? { id: s.updater.id, name: `${s.updater.firstName} ${s.updater.lastName}` }
+          ? {
+              id: s.updater.id,
+              name: `${s.updater.firstName} ${s.updater.lastName}`,
+            }
           : null,
         updatedAt: s.updatedAt,
         deletedAt: s.deletedAt,
