@@ -57,6 +57,7 @@ import {
 import { clearRefreshTokenCookie, setRefreshTokenCookie } from './cookies.util';
 import {
   ChangeEmailDto,
+  ChangeMemberRolesDto,
   ChangePasswordDto,
   ForgotPasswordDto,
   LoginDto,
@@ -412,13 +413,116 @@ export class UsersController {
     @Query('cursor') cursor?: string,
     @Query('status') status?: string,
   ) {
-    const parsedLimit = limit ? parseInt(limit, 10) : 10;
+    const parsedLimit = limit ? parseInt(limit, 10) : 25;
     return this.usersService.findAllTenantUsers(
       tenantId,
       callerMembershipId,
       parsedLimit,
       cursor,
       status,
+    );
+  }
+
+  @Get(':membershipId')
+  @UseGuards(AtGuard)
+  @RequirePermissions(PERMS.user.view)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get a tenant member',
+    description:
+      'Returns the full profile of a single tenant member, including roles, status, join date, and who last changed the record. Requires user.view permission.',
+  })
+  @ApiOkResponse({ description: 'Member retrieved successfully.' })
+  @ApiForbiddenResponse({ description: 'Forbidden context.' })
+  @ApiNotFoundResponse({ description: 'User membership not found.' })
+  async getTenantMember(
+    @GetCurrentTenant('id') tenantId: string,
+    @Param('membershipId', ParseUUIDPipe) membershipId: string,
+  ) {
+    return this.usersService.getTenantMember(tenantId, membershipId);
+  }
+
+  @Patch(':membershipId/roles')
+  @UseGuards(AtGuard)
+  @RequirePermissions(PERMS.user.edit)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Change a member's roles",
+    description:
+      "Replaces a member's assigned roles with the provided set. Requires user.edit permission.",
+  })
+  @ApiOkResponse({ description: 'Member roles updated successfully.' })
+  @ApiForbiddenResponse({ description: 'Forbidden context.' })
+  @ApiNotFoundResponse({ description: 'User membership not found.' })
+  async changeMemberRoles(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUser('membershipId') callerMembershipId: string,
+    @GetCurrentUserId() actorUserId: string,
+    @Param('membershipId', ParseUUIDPipe) targetMembershipId: string,
+    @Body() dto: ChangeMemberRolesDto,
+  ) {
+    return this.usersService.changeMemberRoles(
+      tenantId,
+      callerMembershipId,
+      actorUserId,
+      targetMembershipId,
+      dto.roleIds,
+    );
+  }
+
+  @Post(':membershipId/suspend')
+  @UseGuards(AtGuard)
+  @RequirePermissions(PERMS.user.suspend)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Suspend a member',
+    description:
+      'Suspends an active member and terminates their sessions in this tenant. Requires user.suspend permission.',
+  })
+  @ApiOkResponse({ description: 'Member suspended successfully.' })
+  @ApiForbiddenResponse({ description: 'Forbidden context.' })
+  @ApiNotFoundResponse({ description: 'User membership not found.' })
+  async suspendMember(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUser('membershipId') callerMembershipId: string,
+    @GetCurrentUserId() actorUserId: string,
+    @Param('membershipId', ParseUUIDPipe) targetMembershipId: string,
+  ) {
+    return this.usersService.suspendMember(
+      tenantId,
+      callerMembershipId,
+      actorUserId,
+      targetMembershipId,
+    );
+  }
+
+  @Post(':membershipId/reactivate')
+  @UseGuards(AtGuard)
+  @RequirePermissions(PERMS.user.suspend)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Reactivate a member',
+    description:
+      'Reactivates a suspended member, restoring their ACTIVE status. Requires user.suspend permission.',
+  })
+  @ApiOkResponse({ description: 'Member reactivated successfully.' })
+  @ApiForbiddenResponse({ description: 'Forbidden context.' })
+  @ApiNotFoundResponse({ description: 'User membership not found.' })
+  async reactivateMember(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUser('membershipId') callerMembershipId: string,
+    @GetCurrentUserId() actorUserId: string,
+    @Param('membershipId', ParseUUIDPipe) targetMembershipId: string,
+  ) {
+    return this.usersService.reactivateMember(
+      tenantId,
+      callerMembershipId,
+      actorUserId,
+      targetMembershipId,
     );
   }
 
@@ -438,11 +542,13 @@ export class UsersController {
   async revokeTenantAccess(
     @GetCurrentTenant('id') tenantId: string,
     @GetCurrentUser('membershipId') callerMembershipId: string,
+    @GetCurrentUserId() actorUserId: string,
     @Param('membershipId', ParseUUIDPipe) targetMembershipId: string,
   ) {
     return this.usersService.revokeTenantAccess(
       tenantId,
       callerMembershipId,
+      actorUserId,
       targetMembershipId,
     );
   }

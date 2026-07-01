@@ -19,9 +19,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useShowModal } from '@/hooks/use-modal';
+import {
+  useShowChangeRoleModal,
+  useShowMemberProfileModal,
+  useShowModal,
+  useShowSuspendMemberModal,
+} from '@/hooks/use-modal';
+import { usePermission } from '@/hooks/use-permission';
+import { useAuthUser } from '@/lib/store/auth';
 import { ModalType } from '@/lib/store/types/modal';
-import { TenantUser, useTenantUsers } from '@/services/api/requests/users';
+import {
+  TenantUser,
+  useReactivateMember,
+  useTenantUsers,
+} from '@/services/api/requests/users';
 import {
   ColumnDef,
   flexRender,
@@ -34,40 +45,87 @@ import {
   ChevronRight,
   Loader2,
   MoreVertical,
+  PauseCircle,
+  PlayCircle,
   Search,
   ShieldAlert,
-  UserMinus,
+  Trash2,
+  UserRoundCog,
   Users2,
 } from 'lucide-react';
 
+import { PERMS } from '@repo/permissions';
+
+// The directory defaults to active members (the people who currently have
+// access); the filter lets an owner inspect suspended members too.
+// Mirrors the real TenantMembership lifecycle statuses — there is no "all"
+// status; the directory always filters by a concrete status (default ACTIVE).
+const STATUS_FILTERS = [
+  { label: 'Active', value: 'ACTIVE' },
+  { label: 'Suspended', value: 'SUSPENDED' },
+  { label: 'Removed', value: 'REMOVED' },
+] as const;
+
+const STATUS_BADGE: Record<string, string> = {
+  ACTIVE:
+    'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60',
+  INVITED:
+    'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900/60',
+  SUSPENDED:
+    'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60',
+  REMOVED:
+    'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/60',
+};
+
+function roleBadgeClass(name: string) {
+  const n = name.toLowerCase();
+  if (n === 'owner' || n === 'founder')
+    return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60';
+  if (n.includes('admin'))
+    return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60';
+  if (n.includes('teacher') || n.includes('instructor') || n.includes('tutor'))
+    return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/60';
+  if (n.includes('student') || n.includes('pupil'))
+    return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60';
+  return 'bg-zinc-50 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700';
+}
+
 export default function TenantUsersContainer() {
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(25);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>(
     [],
   );
-
-  // Local state for searching/filtering
+  const [statusFilter, setStatusFilter] =
+    useState<(typeof STATUS_FILTERS)[number]['value']>('ACTIVE');
   const [globalFilter, setGlobalFilter] = useState('');
 
-  // Local state for row selection
-  const [rowSelection, setRowSelection] = useState({});
-
+  const authUser = useAuthUser();
+  const showMemberProfile = useShowMemberProfileModal();
+  const openChangeRole = useShowChangeRoleModal();
+  const openSuspend = useShowSuspendMemberModal();
   const showModal = useShowModal();
+  const { mutateAsync: reactivate } = useReactivateMember();
+  const { hasPermission } = usePermission();
+  const canEdit = hasPermission(PERMS.user.edit);
+  const canSuspend = hasPermission(PERMS.user.suspend);
+  const canDelete = hasPermission(PERMS.user.delete);
 
-  // API hooks
   const { data, isLoading, isError, refetch } = useTenantUsers({
     limit,
     cursor,
+    status: statusFilter,
   });
 
-  const isPendingState = false;
+  const resetPaging = () => {
+    setCursor(undefined);
+    setCursorHistory([]);
+  };
 
   const handleNextPage = () => {
     if (data?.nextCursor) {
       setCursorHistory((prev) => [...prev, cursor]);
       setCursor(data.nextCursor);
-      setRowSelection({});
     }
   };
 
@@ -76,65 +134,46 @@ export default function TenantUsersContainer() {
     const previous = prevHistory.pop();
     setCursorHistory(prevHistory);
     setCursor(previous);
-    setRowSelection({});
   };
 
   const handlePageSizeChange = (newSize: number) => {
     setLimit(newSize);
-    setCursor(undefined);
-    setCursorHistory([]);
-    setRowSelection({});
+    resetPaging();
+  };
+
+  const handleStatusChange = (
+    value: (typeof STATUS_FILTERS)[number]['value'],
+  ) => {
+    setStatusFilter(value);
+    resetPaging();
   };
 
   const columns = useMemo<ColumnDef<TenantUser>[]>(
     () => [
       {
-        id: 'select',
-        header: ({ table }) => (
-          <div className="px-1 flex items-center">
-            <input
-              type="checkbox"
-              checked={table.getIsAllPageRowsSelected()}
-              disabled={isPendingState}
-              onChange={table.getToggleAllPageRowsSelectedHandler()}
-              className="rounded border-zinc-300 dark:border-zinc-700 text-primary focus:ring-primary focus:ring-offset-2 h-4 w-4 dark:bg-zinc-900 bg-white cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          </div>
-        ),
-        cell: ({ row }) => (
-          <div className="px-1 flex items-center">
-            <input
-              type="checkbox"
-              checked={row.getIsSelected()}
-              disabled={!row.getCanSelect() || isPendingState}
-              onChange={row.getToggleSelectedHandler()}
-              className="rounded border-zinc-300 dark:border-zinc-700 text-primary focus:ring-primary focus:ring-offset-2 h-4 w-4 dark:bg-zinc-900 bg-white cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          </div>
-        ),
-      },
-      {
         accessorKey: 'name',
         header: 'Name',
+        accessorFn: (u) => `${u.firstName} ${u.lastName} ${u.email}`,
         cell: ({ row }) => {
           const u = row.original;
+          const isSelf = authUser?.membershipId === u.membershipId;
           const initials =
             `${u.firstName?.charAt(0) || ''}${u.lastName?.charAt(0) || ''}`.toUpperCase() ||
             'U';
           return (
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 shrink-0 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center text-xs font-semibold uppercase">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-semibold uppercase text-primary">
                 {initials}
               </div>
-              <div className="flex flex-col overflow-hidden">
-                <span className="font-medium text-zinc-900 dark:text-zinc-50 truncate max-w-[150px] sm:max-w-xs">
+              <div className="flex min-w-0 flex-col">
+                <span className="flex items-center gap-1.5 truncate font-medium text-zinc-900 dark:text-zinc-50">
                   {u.firstName} {u.lastName}
+                  {isSelf && (
+                    <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0 text-[9px] font-semibold uppercase tracking-wide text-primary">
+                      You
+                    </span>
+                  )}
                 </span>
-                {u.phone && (
-                  <span className="text-[10px] text-muted-foreground truncate">
-                    {u.phone}
-                  </span>
-                )}
               </div>
             </div>
           );
@@ -144,7 +183,7 @@ export default function TenantUsersContainer() {
         accessorKey: 'email',
         header: 'Email',
         cell: ({ row }) => (
-          <span className="text-zinc-600 dark:text-zinc-300 truncate max-w-[200px] inline-block">
+          <span className="inline-block max-w-[200px] truncate text-zinc-600 dark:text-zinc-300">
             {row.original.email}
           </span>
         ),
@@ -155,67 +194,50 @@ export default function TenantUsersContainer() {
         cell: ({ row }) => {
           const roles = row.original.roles;
           if (roles.length === 0) {
-            return <span className="text-muted-foreground text-xs">—</span>;
+            return <span className="text-xs text-muted-foreground">—</span>;
           }
           return (
             <div className="flex flex-wrap gap-1.5">
-              {roles.map((r) => {
-                let colorClass =
-                  'bg-zinc-50 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700';
-                const name = r.name.toLowerCase();
-                if (name === 'owner' || name === 'founder') {
-                  colorClass =
-                    'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60';
-                } else if (name.includes('admin')) {
-                  colorClass =
-                    'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60';
-                } else if (
-                  name.includes('teacher') ||
-                  name.includes('instructor') ||
-                  name.includes('tutor')
-                ) {
-                  colorClass =
-                    'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/60';
-                } else if (name.includes('student') || name.includes('pupil')) {
-                  colorClass =
-                    'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60';
-                } else if (
-                  name.includes('accountant') ||
-                  name.includes('finance')
-                ) {
-                  colorClass =
-                    'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900/60';
-                } else if (
-                  name.includes('receptionist') ||
-                  name.includes('front desk')
-                ) {
-                  colorClass =
-                    'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900/60';
-                }
-                return (
-                  <span
-                    key={r.id}
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${colorClass}`}
-                  >
-                    {r.name}
-                  </span>
-                );
-              })}
+              {roles.map((r) => (
+                <span
+                  key={r.id}
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${roleBadgeClass(
+                    r.name,
+                  )}`}
+                >
+                  {r.name}
+                </span>
+              ))}
             </div>
           );
         },
       },
       {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => {
+          const status = row.original.status;
+          return (
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                STATUS_BADGE[status] ?? STATUS_BADGE.REMOVED
+              }`}
+            >
+              {status}
+            </span>
+          );
+        },
+      },
+      {
         accessorKey: 'joinedAt',
-        header: 'Joined At',
+        header: 'Joined',
         cell: ({ row }) => {
           const joinedAt = row.original.joinedAt;
           if (!joinedAt)
             return <span className="text-muted-foreground">—</span>;
-          const date = new Date(joinedAt);
           return (
             <span className="text-zinc-500">
-              {date.toLocaleDateString(undefined, {
+              {new Date(joinedAt).toLocaleDateString(undefined, {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
@@ -225,84 +247,121 @@ export default function TenantUsersContainer() {
         },
       },
       {
-        accessorKey: 'status',
-        header: 'Status',
+        id: 'updatedBy',
+        header: 'Updated By',
         cell: ({ row }) => {
-          const status = row.original.status;
-          let badgeClass =
-            'bg-zinc-50 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700';
-          if (status === 'ACTIVE') {
-            badgeClass =
-              'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60';
-          } else if (status === 'INVITED') {
-            badgeClass =
-              'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900/60';
-          } else if (status === 'SUSPENDED') {
-            badgeClass =
-              'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60';
-          } else if (status === 'REMOVED') {
-            badgeClass =
-              'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/60';
-          }
+          const by = row.original.updatedBy;
+          return by ? (
+            <span className="text-zinc-600 dark:text-zinc-300">
+              {by.firstName} {by.lastName}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
+        },
+      },
+      {
+        id: 'updatedAt',
+        header: 'Updated At',
+        cell: ({ row }) => {
+          const at = row.original.updatedAt;
+          if (!at) return <span className="text-muted-foreground">—</span>;
           return (
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border uppercase ${badgeClass}`}
-            >
-              {status}
+            <span className="text-zinc-500">
+              {new Date(at).toLocaleString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
             </span>
           );
         },
       },
       {
         id: 'actions',
-        header: () => <div className="text-right">Actions</div>,
+        header: () => <span className="sr-only">Actions</span>,
         cell: ({ row }) => {
           const u = row.original;
-          const isRevokable = !u.isAdmin;
+          if (!canEdit && !canSuspend && !canDelete) return null;
+          // Removed members are read-only in the directory — they keep no
+          // roles or access, and returning staff come back via the invite flow.
+          if (u.status === 'REMOVED') return null;
+          const isSelf = authUser?.membershipId === u.membershipId;
+          const canMutate = !isSelf && !u.isAdmin;
+          const isSuspended = u.status === 'SUSPENDED';
+          const name = `${u.firstName} ${u.lastName}`;
           return (
-            <div className="flex justify-end">
+            <div
+              className="flex justify-end"
+              onClick={(e) => e.stopPropagation()}
+            >
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon-sm"
                     className="h-8 w-8 p-0"
-                    disabled={isPendingState}
                   >
                     <MoreVertical className="h-4 w-4" />
-                    <span className="sr-only">Open menu</span>
+                    <span className="sr-only">Open actions</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="w-48 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800"
+                  className="w-48 border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
                 >
-                  {isRevokable ? (
+                  {canEdit && (
+                    <DropdownMenuItem
+                      disabled={!canMutate}
+                      className="cursor-pointer"
+                      onClick={() =>
+                        openChangeRole({
+                          membershipId: u.membershipId,
+                          currentRoleIds: u.roles.map((r) => r.id),
+                          userFullName: name,
+                        })
+                      }
+                    >
+                      <UserRoundCog className="mr-2 h-4 w-4" />
+                      Change Role
+                    </DropdownMenuItem>
+                  )}
+                  {canSuspend &&
+                    (isSuspended ? (
+                      <DropdownMenuItem
+                        disabled={!canMutate}
+                        className="cursor-pointer"
+                        onClick={() => reactivate(u.membershipId)}
+                      >
+                        <PlayCircle className="mr-2 h-4 w-4" />
+                        Reactivate
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        disabled={!canMutate || u.status !== 'ACTIVE'}
+                        className="cursor-pointer"
+                        onClick={() => openSuspend(u.membershipId, name)}
+                      >
+                        <PauseCircle className="mr-2 h-4 w-4" />
+                        Suspend
+                      </DropdownMenuItem>
+                    ))}
+                  {canDelete && (
                     <DropdownMenuItem
                       variant="destructive"
-                      onClick={() => {
+                      disabled={!canMutate}
+                      className="cursor-pointer"
+                      onClick={() =>
                         showModal(ModalType.RevokeAccessModal, {
                           membershipId: u.membershipId,
-                          userFullName: `${u.firstName} ${u.lastName}`,
-                        });
-                      }}
-                      className="cursor-pointer"
+                          userFullName: name,
+                        })
+                      }
                     >
-                      <UserMinus className="mr-2 h-4 w-4" />
-                      <span>Revoke Access</span>
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem
-                      disabled
-                      className="text-muted-foreground/60 cursor-not-allowed flex flex-col items-start gap-1 p-2 focus:bg-transparent"
-                    >
-                      <div className="flex items-center gap-1.5 font-medium text-xs">
-                        <ShieldAlert className="h-3.5 w-3.5" />
-                        <span>Revocation Blocked</span>
-                      </div>
-                      <span className="text-[10px] font-normal leading-normal text-muted-foreground/80">
-                        Admin access cannot be revoked
-                      </span>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remove
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -312,113 +371,117 @@ export default function TenantUsersContainer() {
         },
       },
     ],
-    [isPendingState],
+    [
+      authUser?.membershipId,
+      canEdit,
+      canSuspend,
+      canDelete,
+      openChangeRole,
+      openSuspend,
+      showModal,
+      reactivate,
+    ],
   );
 
   const table = useReactTable({
     data: data?.users ?? [],
     columns,
-    state: {
-      globalFilter,
-      rowSelection,
-    },
+    state: { globalFilter },
     onGlobalFilterChange: setGlobalFilter,
-    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
   });
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-900 pb-5">
+    <div className="animate-in fade-in space-y-6 duration-300">
+      {/* Title */}
+      <div className="flex flex-col justify-between gap-4 border-b border-zinc-100 pb-5 sm:flex-row sm:items-center dark:border-zinc-900">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              User Directory
+              Member Directory
             </h1>
             <Users2 className="h-5 w-5 text-primary" />
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your workspace memberships, view roles, and revoke member
-            access.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Everyone with access to this workspace. Select a member to view
+            their full profile and manage their access.
           </p>
         </div>
       </div>
 
-      {/* Filter and Limit controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Controls */}
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search name or email..."
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            disabled={isPendingState}
-            className="pl-9 h-9"
+            className="h-9 pl-9"
           />
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-muted-foreground">Rows per page:</span>
-          <select
-            value={limit}
-            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-            disabled={isPendingState}
-            className="h-9 w-20 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring disabled:opacity-50"
-          >
-            {[5, 10, 20, 50].map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Status:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) =>
+                handleStatusChange(
+                  e.target.value as (typeof STATUS_FILTERS)[number]['value'],
+                )
+              }
+              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring"
+            >
+              {STATUS_FILTERS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Rows:</span>
+            <select
+              value={limit}
+              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              className="h-9 w-20 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring"
+            >
+              {[10, 25, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Selection Summary if any selected */}
-      {Object.keys(rowSelection).length > 0 && (
-        <div className="bg-primary/5 border border-primary/20 rounded-md p-3 flex items-center justify-between text-xs text-primary animate-in fade-in duration-200">
-          <span className="font-semibold">
-            {Object.keys(rowSelection).length} user
-            {Object.keys(rowSelection).length > 1 ? 's' : ''} selected
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs px-2 hover:bg-primary/10"
-            disabled={isPendingState}
-            onClick={() => setRowSelection({})}
-          >
-            Clear selection
-          </Button>
-        </div>
-      )}
-
-      {/* Main Table area */}
-      <div className="border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden bg-white dark:bg-zinc-950">
+      {/* Table */}
+      <div className="overflow-hidden rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center p-20 gap-3">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          <div className="flex flex-col items-center justify-center gap-3 p-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <span className="text-xs text-muted-foreground">
-              Loading users...
+              Loading members...
             </span>
           </div>
         ) : isError ? (
-          <div className="flex flex-col items-center justify-center p-20 gap-3 text-red-500">
+          <div className="flex flex-col items-center justify-center gap-3 p-20 text-red-500">
             <ShieldAlert className="h-8 w-8" />
             <span className="text-xs font-semibold">
-              Failed to load user directory
+              Failed to load member directory
             </span>
             <Button size="sm" variant="outline" onClick={() => refetch()}>
               Try again
             </Button>
           </div>
-        ) : data?.users.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-20 gap-3 text-center">
+        ) : (data?.users.length ?? 0) === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 p-20 text-center">
             <Users2 className="h-8 w-8 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">
-              No users found in this tenant.
+              No members found for this filter.
             </span>
           </div>
         ) : (
@@ -443,7 +506,8 @@ export default function TenantUsersContainer() {
               {table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="data-[state=selected]:bg-muted hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 border-b border-zinc-100 dark:border-zinc-900"
+                  onClick={() => showMemberProfile(row.original.membershipId)}
+                  className="cursor-pointer border-b border-zinc-100 hover:bg-zinc-50/70 dark:border-zinc-900 dark:hover:bg-zinc-900/20"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
@@ -463,20 +527,18 @@ export default function TenantUsersContainer() {
         )}
       </div>
 
-      {/* Pagination controls */}
+      {/* Pagination */}
       {!isLoading && !isError && data && (
-        <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-900">
+        <div className="flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-900">
           <div className="text-xs text-muted-foreground">
-            {cursorHistory.length > 0
-              ? `Page ${cursorHistory.length + 1}`
-              : 'Page 1'}
+            Page {cursorHistory.length + 1}
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={handlePrevPage}
-              disabled={cursorHistory.length === 0 || isPendingState}
+              disabled={cursorHistory.length === 0}
               className="h-8 gap-1"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -486,7 +548,7 @@ export default function TenantUsersContainer() {
               variant="outline"
               size="sm"
               onClick={handleNextPage}
-              disabled={!data.nextCursor || isPendingState}
+              disabled={!data.nextCursor}
               className="h-8 gap-1"
             >
               <span>Next</span>

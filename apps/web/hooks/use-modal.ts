@@ -103,6 +103,36 @@ export function useShowDeleteModal() {
   );
 }
 
+export function useShowMemberProfileModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (membershipId: string) =>
+      showModal(ModalType.MemberProfileModal, { membershipId }),
+    [showModal],
+  );
+}
+
+export function useShowChangeRoleModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (payload: {
+      membershipId: string;
+      currentRoleIds: string[];
+      userFullName: string;
+    }) => showModal(ModalType.ChangeRoleModal, payload),
+    [showModal],
+  );
+}
+
+export function useShowSuspendMemberModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (membershipId: string, userFullName: string) =>
+      showModal(ModalType.SuspendMemberModal, { membershipId, userFullName }),
+    [showModal],
+  );
+}
+
 export function useShowClassModal() {
   const showModal = useShowModal();
   return useCallback(

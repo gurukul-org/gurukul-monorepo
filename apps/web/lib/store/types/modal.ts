@@ -14,6 +14,9 @@ export enum ModalType {
   RevokeAccessModal,
   DeleteModal,
   AcademicTermModal,
+  MemberProfileModal,
+  ChangeRoleModal,
+  SuspendMemberModal,
   ProgramModal,
   ClassModal,
   CourseModal,
@@ -26,6 +29,9 @@ export type ModalPayload =
   | { id: string } // ExampleDeletion
   | { editingRole: Role | null } // RoleModal
   | { editingTerm: AcademicTerm | null } // AcademicTermModal
+  | { membershipId: string; userFullName: string } // RevokeAccessModal / SuspendMemberModal
+  | { membershipId: string } // MemberProfileModal
+  | { membershipId: string; currentRoleIds: string[]; userFullName: string } // ChangeRoleModal
   | { editingProgram: Program | null } // ProgramModal
   | { editingClass: Class | null } // ClassModal
   | { editingCourse: Course | null } // CourseModal
