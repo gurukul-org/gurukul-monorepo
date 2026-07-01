@@ -36,7 +36,14 @@ export class EnrolmentsService {
             status: true,
             membership: {
               select: {
-                user: { select: { id: true, firstName: true, lastName: true, email: true } },
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                  },
+                },
               },
             },
           },
@@ -72,7 +79,14 @@ export class EnrolmentsService {
             status: true,
             membership: {
               select: {
-                user: { select: { id: true, firstName: true, lastName: true, email: true } },
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                  },
+                },
               },
             },
           },
@@ -115,7 +129,11 @@ export class EnrolmentsService {
     const cls = await this.prisma.class.findFirst({
       where: { id: dto.classId, tenantId, deletedAt: null },
       include: {
-        _count: { select: { enrolments: { where: { status: 'ACTIVE', deletedAt: null } } } },
+        _count: {
+          select: {
+            enrolments: { where: { status: 'ACTIVE', deletedAt: null } },
+          },
+        },
       },
     });
     if (!cls) {
@@ -166,11 +184,7 @@ export class EnrolmentsService {
   // ---------------------------------------------------------------------------
   // UPDATE — change enrolment status (ACTIVE → WITHDRAWN | COMPLETED)
   // ---------------------------------------------------------------------------
-  async update(
-    tenantId: string,
-    id: string,
-    dto: UpdateEnrolmentDto,
-  ) {
+  async update(tenantId: string, id: string, dto: UpdateEnrolmentDto) {
     const enrolment = await this.prisma.enrolment.findFirst({
       where: { id, tenantId, deletedAt: null },
     });

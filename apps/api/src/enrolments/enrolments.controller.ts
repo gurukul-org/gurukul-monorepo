@@ -51,7 +51,11 @@ export class EnrolmentsController {
   })
   @ApiQuery({ name: 'studentProfileId', required: false })
   @ApiQuery({ name: 'classId', required: false })
-  @ApiQuery({ name: 'status', required: false, enum: ['ACTIVE', 'WITHDRAWN', 'COMPLETED'] })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['ACTIVE', 'WITHDRAWN', 'COMPLETED'],
+  })
   @ApiOkResponse({ description: 'Enrolments retrieved successfully.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   async findAll(
