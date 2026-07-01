@@ -78,6 +78,7 @@ export interface CreateStudentDto {
 }
 
 export interface UpdateStudentDto {
+  rollNumber?: string;
   admissionDate?: string;
   tenantMembershipId?: string | null;
 }

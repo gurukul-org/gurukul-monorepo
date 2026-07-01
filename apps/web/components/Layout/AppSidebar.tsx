@@ -47,9 +47,7 @@ export function AppSidebar() {
   const { data: profile } = useCurrentUserProfile();
   const { hasPermission } = usePermission();
 
-  const [isErpOpen, setIsErpOpen] = useState(
-    pathname.startsWith('/users'),
-  );
+  const [isErpOpen, setIsErpOpen] = useState(pathname.startsWith('/users'));
   const [isAcademicsOpen, setIsAcademicsOpen] = useState(
     pathname.startsWith('/academics'),
   );
