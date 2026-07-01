@@ -171,7 +171,7 @@ export function ParentModal({ editingParent }: ParentModalProps) {
               </FieldLabel>
               <button
                 type="button"
-                onClick={showInviteModal}
+                onClick={() => showInviteModal('Parent')}
                 disabled={isSaving}
                 className="text-[10px] font-semibold text-primary hover:underline"
               >
