@@ -22,6 +22,7 @@ import {
 import {
   useShowDeleteModal,
   useShowStudentModal,
+  useShowStudentProfileModal,
   useShowStudentStatusModal,
 } from '@/hooks/use-modal';
 import {
@@ -55,10 +56,7 @@ import { toast } from 'sonner';
 // Status badge helper
 // ---------------------------------------------------------------------------
 
-const STATUS_BADGE: Record<
-  string,
-  { label: string; className: string }
-> = {
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   ACTIVE: {
     label: 'Active',
     className:
@@ -238,21 +236,26 @@ export default function TenantStudentsContainer() {
         header: 'Student',
         cell: ({ row }) => {
           const s = row.original;
+          const showProfile = useShowStudentProfileModal();
           const initials = s.name
             ? s.name
                 .split(' ')
-                .map((n) => n[0])
+                .map((n: string) => n[0])
                 .slice(0, 2)
                 .join('')
                 .toUpperCase()
             : s.rollNumber.slice(0, 2).toUpperCase();
           return (
-            <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => showProfile(s.id)}
+              className="flex items-center gap-3 text-left hover:opacity-80 focus:outline-none"
+            >
               <div className="h-9 w-9 shrink-0 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center text-xs font-semibold uppercase">
                 {initials}
               </div>
               <div className="flex flex-col overflow-hidden">
-                <span className="font-medium text-zinc-900 dark:text-zinc-50 truncate max-w-[180px]">
+                <span className="font-medium text-zinc-900 dark:text-zinc-50 hover:text-primary hover:underline truncate max-w-[180px]">
                   {s.name ?? (
                     <span className="text-muted-foreground italic">
                       No portal account
@@ -265,7 +268,7 @@ export default function TenantStudentsContainer() {
                   </span>
                 )}
               </div>
-            </div>
+            </button>
           );
         },
       },
