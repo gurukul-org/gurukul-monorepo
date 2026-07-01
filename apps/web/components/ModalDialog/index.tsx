@@ -10,6 +10,8 @@ import RevokeAccessModal from '@/components/modals/Confirmations/RevokeAccess';
 import SuspendMemberModal from '@/components/modals/Confirmations/SuspendMember';
 import { InviteMemberModal } from '@/components/modals/InviteMemberModal';
 import { MemberProfileModal } from '@/components/modals/MemberProfileModal';
+import { ParentModal } from '@/components/modals/ParentModal';
+import { ParentProfileModal } from '@/components/modals/ParentProfileModal';
 import { ProgramModal } from '@/components/modals/ProgramModal';
 import { RoleModal } from '@/components/modals/RoleModal';
 import { StudentModal } from '@/components/modals/StudentModal';
@@ -41,6 +43,8 @@ const Modal: { [key in ModalType]?: React.ComponentType<any> } = {
   [ModalType.StudentModal]: StudentModal,
   [ModalType.StudentStatusModal]: StudentStatusModal,
   [ModalType.StudentProfileModal]: StudentProfileModal,
+  [ModalType.ParentModal]: ParentModal,
+  [ModalType.ParentProfileModal]: ParentProfileModal,
 };
 
 export default function ModalDialog() {
