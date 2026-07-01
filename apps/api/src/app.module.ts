@@ -19,6 +19,7 @@ import { CoursesModule } from './courses/courses.module';
 import { EnrolmentsModule } from './enrolments/enrolments.module';
 import { InstructorsModule } from './instructors/instructors.module';
 import { MembersModule } from './members/members.module';
+import { ParentsModule } from './parents/parents.module';
 import { ProgramsModule } from './programs/programs.module';
 import { RolesModule } from './roles/roles.module';
 import { StudentsModule } from './students/students.module';
@@ -68,6 +69,7 @@ import { UsersModule } from './users/users.module';
     InstructorsModule,
     CoursesModule,
     EnrolmentsModule,
+    ParentsModule,
   ],
   controllers: [AppController],
   providers: [
