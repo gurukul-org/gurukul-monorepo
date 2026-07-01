@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 
@@ -16,6 +17,8 @@ const OWNER_ROLE_NAME = 'Owner';
 
 @Injectable()
 export class MembersService {
+  private readonly logger = new Logger(MembersService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   // ---------------------------------------------------------------------------
@@ -81,6 +84,17 @@ export class MembersService {
         where: { userId: targetMembership.userId, tenantId },
       });
     });
+
+    this.logger.log(
+      `Roles added structure: ${JSON.stringify({
+        action: 'ADD_MEMBER_ROLES',
+        tenantId,
+        actorUserId: callerUserId,
+        targetMembershipId,
+        addedRoleIds: dto.roleIds,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
 
     return {
       message: 'Roles added successfully. Member session invalidated.',
@@ -166,7 +180,20 @@ export class MembersService {
       });
     });
 
-    return { message: 'Roles removed successfully. Member session invalidated.' };
+    this.logger.log(
+      `Roles removed structure: ${JSON.stringify({
+        action: 'REMOVE_MEMBER_ROLES',
+        tenantId,
+        actorUserId: callerUserId,
+        targetMembershipId,
+        removedRoleIds: dto.roleIds,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
+
+    return {
+      message: 'Roles removed successfully. Member session invalidated.',
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -292,7 +319,9 @@ export class MembersService {
       });
 
       // Add new roles — only the genuinely new ones (not already present and not removed)
-      const toCreate = rolesToAdd.filter((r) => !currentRoleIds.has(r.id) || removeIds.includes(r.id));
+      const toCreate = rolesToAdd.filter(
+        (r) => !currentRoleIds.has(r.id) || removeIds.includes(r.id),
+      );
       if (toCreate.length > 0) {
         await tx.membershipRole.createMany({
           data: toCreate.map((role) => ({
@@ -314,6 +343,17 @@ export class MembersService {
       where: { id: targetMembershipId },
       include: { roles: { include: { role: true } } },
     });
+
+    this.logger.log(
+      `Roles replaced structure: ${JSON.stringify({
+        action: 'REPLACE_MEMBER_ROLES',
+        tenantId,
+        actorUserId: callerUserId,
+        targetMembershipId,
+        swaps: dto.swaps,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
 
     return {
       message: 'Roles replaced successfully. Member session invalidated.',

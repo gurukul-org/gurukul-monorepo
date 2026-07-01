@@ -49,7 +49,7 @@ export class MembersController {
     description:
       'Assigns one or more additional roles to an existing member. ' +
       'Supports hybrid-responsibility scenarios (e.g. an HOD who also teaches). ' +
-      'Duplicate role assignments are rejected. The member\'s active sessions are ' +
+      "Duplicate role assignments are rejected. The member's active sessions are " +
       'invalidated so new permissions take effect on their next request.',
   })
   @ApiCreatedResponse({
@@ -96,7 +96,7 @@ export class MembersController {
       'Removes one or more specific roles from a member without revoking their access entirely. ' +
       'The member must retain at least one role. ' +
       'An Owner cannot remove their own Owner role (self-demotion prevention). ' +
-      'The member\'s active sessions are invalidated so reduced permissions take effect immediately.',
+      "The member's active sessions are invalidated so reduced permissions take effect immediately.",
   })
   @ApiOkResponse({
     description: 'Roles removed successfully.',
@@ -135,12 +135,12 @@ export class MembersController {
   @RequirePermissions(PERMS.user.edit)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Replace a member\'s roles',
+    summary: "Replace a member's roles",
     description:
       'Atomically removes one role and assigns another per swap pair. ' +
       'Supports multiple swap pairs in a single request. ' +
       'All guards apply: rank enforcement, self-demotion prevention, last-role guard, and duplicate check. ' +
-      'The member\'s active sessions are invalidated so the new permissions take effect on their next request.',
+      "The member's active sessions are invalidated so the new permissions take effect on their next request.",
   })
   @ApiOkResponse({
     description: 'Roles replaced successfully.',
