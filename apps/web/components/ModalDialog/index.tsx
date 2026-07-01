@@ -13,6 +13,7 @@ import { MemberProfileModal } from '@/components/modals/MemberProfileModal';
 import { ProgramModal } from '@/components/modals/ProgramModal';
 import { RoleModal } from '@/components/modals/RoleModal';
 import { StudentModal } from '@/components/modals/StudentModal';
+import { StudentProfileModal } from '@/components/modals/StudentProfileModal';
 import { StudentStatusModal } from '@/components/modals/StudentStatusModal';
 import { useModalPayload, useModalType } from '@/hooks/use-modal';
 import { ModalType } from '@/lib/store/types/modal';
@@ -39,6 +40,7 @@ const Modal: { [key in ModalType]?: React.ComponentType<any> } = {
   [ModalType.CourseModal]: CourseModal,
   [ModalType.StudentModal]: StudentModal,
   [ModalType.StudentStatusModal]: StudentStatusModal,
+  [ModalType.StudentProfileModal]: StudentProfileModal,
 };
 
 export default function ModalDialog() {
