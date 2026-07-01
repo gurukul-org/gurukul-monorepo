@@ -17,6 +17,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
 import { CoursesModule } from './courses/courses.module';
 import { InstructorsModule } from './instructors/instructors.module';
+import { MembersModule } from './members/members.module';
 import { ProgramsModule } from './programs/programs.module';
 import { RolesModule } from './roles/roles.module';
 import { TenantsModule } from './tenants/tenants.module';
@@ -57,6 +58,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     TenantsModule,
     RolesModule,
+    MembersModule,
     AcademicTermsModule,
     ProgramsModule,
     ClassesModule,
