@@ -1,6 +1,7 @@
 import { type AcademicTerm } from '@/services/api/requests/academic-terms';
 import { type Class } from '@/services/api/requests/classes';
 import { type Course } from '@/services/api/requests/courses';
+import { type ParentListItem } from '@/services/api/requests/parents';
 import { type Program } from '@/services/api/requests/programs';
 import { type Role } from '@/services/api/requests/roles';
 import {
@@ -27,6 +28,8 @@ export enum ModalType {
   StudentModal,
   StudentStatusModal,
   StudentProfileModal,
+  ParentModal,
+  ParentProfileModal,
 }
 
 // Union of every modal's payload shape. Each member should ideally
@@ -45,6 +48,8 @@ export type ModalPayload =
   | { editingStudent: StudentListItem | null } // StudentModal
   | { student: Student } // StudentStatusModal
   | { studentId: string } // StudentProfileModal
+  | { editingParent: ParentListItem | null } // ParentModal
+  | { parentId: string } // ParentProfileModal
   | { membershipId: string; userFullName: string } // RevokeAccessModal
   | {
       title: string;
