@@ -12,6 +12,8 @@ import { PrismaService } from 'nestjs-prisma';
 import {
   ChangeStudentStatusDto,
   CreateStudentDto,
+  LinkParentDto,
+  UpdateParentLinkDto,
   UpdateStudentDto,
 } from './dto';
 import {
@@ -481,6 +483,182 @@ export class StudentsService {
     };
   }
 
+  // ---------------------------------------------------------------------------
+  // PARENT RELATIONSHIPS
+  // ---------------------------------------------------------------------------
+  async linkParent(
+    tenantId: string,
+    studentId: string,
+    userId: string,
+    dto: LinkParentDto,
+  ) {
+    // 1. Verify student profile exists
+    const student = await this.prisma.studentProfile.findFirst({
+      where: { id: studentId, tenantId, deletedAt: null },
+    });
+    if (!student) throw new NotFoundException('Student profile not found.');
+
+    // 2. Verify parent profile exists
+    const parent = await this.prisma.parentProfile.findFirst({
+      where: { id: dto.parentProfileId, tenantId, deletedAt: null },
+    });
+    if (!parent) throw new NotFoundException('Parent profile not found.');
+
+    // 3. OTHER validation
+    if (dto.relationship === 'OTHER' && !dto.relationshipDescription?.trim()) {
+      throw new BadRequestException(
+        'Relationship description is required for OTHER relationship type.',
+      );
+    }
+
+    // 4. Verify not already linked
+    const existing = await this.prisma.studentParent.findUnique({
+      where: {
+        studentProfileId_parentProfileId: {
+          studentProfileId: studentId,
+          parentProfileId: dto.parentProfileId,
+        },
+      },
+    });
+    if (existing) {
+      throw new ConflictException(
+        'This parent is already linked to this student.',
+      );
+    }
+
+    await this.prisma.studentParent.create({
+      data: {
+        studentProfileId: studentId,
+        parentProfileId: dto.parentProfileId,
+        relationship: dto.relationship,
+        relationshipDescription: dto.relationshipDescription ?? null,
+      },
+    });
+
+    this.logger.log(
+      `Student parent link created structure: ${JSON.stringify({
+        action: 'LINK_STUDENT_PARENT',
+        studentProfileId: studentId,
+        parentProfileId: dto.parentProfileId,
+        relationship: dto.relationship,
+        relationshipDescription: dto.relationshipDescription ?? null,
+        actorUserId: userId,
+        tenantId,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
+
+    return this.findOne(tenantId, studentId);
+  }
+
+  async editParentLink(
+    tenantId: string,
+    studentId: string,
+    parentProfileId: string,
+    userId: string,
+    dto: UpdateParentLinkDto,
+  ) {
+    // 1. Verify link exists
+    const link = await this.prisma.studentParent.findUnique({
+      where: {
+        studentProfileId_parentProfileId: {
+          studentProfileId: studentId,
+          parentProfileId,
+        },
+      },
+      include: {
+        student: true,
+      },
+    });
+    if (!link || link.student.tenantId !== tenantId) {
+      throw new NotFoundException(
+        'Student parent relationship link not found.',
+      );
+    }
+
+    // 2. OTHER validation
+    if (dto.relationship === 'OTHER' && !dto.relationshipDescription?.trim()) {
+      throw new BadRequestException(
+        'Relationship description is required for OTHER relationship type.',
+      );
+    }
+
+    await this.prisma.studentParent.update({
+      where: {
+        studentProfileId_parentProfileId: {
+          studentProfileId: studentId,
+          parentProfileId,
+        },
+      },
+      data: {
+        relationship: dto.relationship,
+        relationshipDescription: dto.relationshipDescription ?? null,
+      },
+    });
+
+    this.logger.log(
+      `Student parent link updated structure: ${JSON.stringify({
+        action: 'UPDATE_STUDENT_PARENT_LINK',
+        studentProfileId: studentId,
+        parentProfileId,
+        relationship: dto.relationship,
+        relationshipDescription: dto.relationshipDescription ?? null,
+        actorUserId: userId,
+        tenantId,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
+
+    return this.findOne(tenantId, studentId);
+  }
+
+  async unlinkParent(
+    tenantId: string,
+    studentId: string,
+    parentProfileId: string,
+    userId: string,
+  ) {
+    // 1. Verify link exists
+    const link = await this.prisma.studentParent.findUnique({
+      where: {
+        studentProfileId_parentProfileId: {
+          studentProfileId: studentId,
+          parentProfileId,
+        },
+      },
+      include: {
+        student: true,
+      },
+    });
+    if (!link || link.student.tenantId !== tenantId) {
+      throw new NotFoundException(
+        'Student parent relationship link not found.',
+      );
+    }
+
+    await this.prisma.studentParent.delete({
+      where: {
+        studentProfileId_parentProfileId: {
+          studentProfileId: studentId,
+          parentProfileId,
+        },
+      },
+    });
+
+    this.logger.log(
+      `Student parent link deleted structure: ${JSON.stringify({
+        action: 'UNLINK_STUDENT_PARENT',
+        studentProfileId: studentId,
+        parentProfileId,
+        actorUserId: userId,
+        tenantId,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
+
+    return { message: 'Parent unlinked successfully.' };
+  }
+
   /**
    * Full shape returned in detail and mutation responses.
    */
@@ -526,6 +704,7 @@ export class StudentsService {
       parents: (s.parents ?? []).map((sp: any) => ({
         parentProfileId: sp.parentProfileId,
         relationship: sp.relationship,
+        relationshipDescription: sp.relationshipDescription,
         parentName: sp.parent?.membership?.user
           ? `${sp.parent.membership.user.firstName} ${sp.parent.membership.user.lastName}`
           : null,

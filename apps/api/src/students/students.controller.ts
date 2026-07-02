@@ -34,6 +34,8 @@ import {
 import {
   ChangeStudentStatusDto,
   CreateStudentDto,
+  LinkParentDto,
+  UpdateParentLinkDto,
   UpdateStudentDto,
 } from './dto';
 import { ALL_STUDENT_STATUSES } from './students.constants';
@@ -220,5 +222,73 @@ export class StudentsController {
   ) {
     if (!tenantId) throw new ForbiddenException('Tenant context required.');
     return this.studentsService.remove(tenantId, userId, id);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Parent Relationships
+  // ---------------------------------------------------------------------------
+
+  @Post(':id/parents')
+  @RequirePermissions(PERMS.student.linkParent)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Link parent to student',
+    description: 'Links an existing parent profile to the student.',
+  })
+  @ApiOkResponse({ description: 'Parent linked successfully.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async linkParent(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: LinkParentDto,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return this.studentsService.linkParent(tenantId, id, userId, dto);
+  }
+
+  @Patch(':id/parents/:parentId')
+  @RequirePermissions(PERMS.student.editParentLink)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update student parent relationship type',
+    description: 'Updates relationship and description on an existing link.',
+  })
+  @ApiOkResponse({ description: 'Relationship updated successfully.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async editParentLink(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('parentId', ParseUUIDPipe) parentId: string,
+    @Body() dto: UpdateParentLinkDto,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return this.studentsService.editParentLink(
+      tenantId,
+      id,
+      parentId,
+      userId,
+      dto,
+    );
+  }
+
+  @Delete(':id/parents/:parentId')
+  @RequirePermissions(PERMS.student.unlinkParent)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Unlink parent from student',
+    description: 'Deletes the student-parent relationship record.',
+  })
+  @ApiOkResponse({ description: 'Parent unlinked successfully.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async unlinkParent(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('parentId', ParseUUIDPipe) parentId: string,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return this.studentsService.unlinkParent(tenantId, id, parentId, userId);
   }
 }
