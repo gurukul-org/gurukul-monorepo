@@ -27,6 +27,7 @@ export interface StudentEnrolment {
 export interface StudentParent {
   parentProfileId: string;
   relationship: string;
+  relationshipDescription?: string | null;
   parentName: string | null;
   parentEmail: string | null;
   emergencyPhone: string | null;
@@ -200,6 +201,100 @@ export function useDeleteStudent() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [StudentQueryKey.List] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Parent relationship mutations
+// ---------------------------------------------------------------------------
+
+export interface LinkParentDto {
+  parentProfileId: string;
+  relationship: string;
+  relationshipDescription?: string;
+}
+
+export interface UpdateParentLinkDto {
+  relationship: string;
+  relationshipDescription?: string;
+}
+
+export function useLinkParent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      studentId,
+      dto,
+    }: {
+      studentId: string;
+      dto: LinkParentDto;
+    }) => {
+      const { data } = await axios.post<Student>(
+        `/students/${studentId}/parents`,
+        dto,
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: [StudentQueryKey.List] });
+      void queryClient.invalidateQueries({
+        queryKey: [StudentQueryKey.Detail, data.id],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['parents'] });
+    },
+  });
+}
+
+export function useUpdateParentLink() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      studentId,
+      parentId,
+      dto,
+    }: {
+      studentId: string;
+      parentId: string;
+      dto: UpdateParentLinkDto;
+    }) => {
+      const { data } = await axios.patch<Student>(
+        `/students/${studentId}/parents/${parentId}`,
+        dto,
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: [StudentQueryKey.List] });
+      void queryClient.invalidateQueries({
+        queryKey: [StudentQueryKey.Detail, data.id],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['parents'] });
+    },
+  });
+}
+
+export function useUnlinkParent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      studentId,
+      parentId,
+    }: {
+      studentId: string;
+      parentId: string;
+    }) => {
+      const { data } = await axios.delete<{ message: string }>(
+        `/students/${studentId}/parents/${parentId}`,
+      );
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({ queryKey: [StudentQueryKey.List] });
+      void queryClient.invalidateQueries({
+        queryKey: [StudentQueryKey.Detail, variables.studentId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['parents'] });
     },
   });
 }

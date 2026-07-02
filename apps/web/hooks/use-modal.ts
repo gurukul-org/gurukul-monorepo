@@ -224,3 +224,30 @@ export function useShowAssignInstructorModal() {
     [showModal],
   );
 }
+
+export function useShowLinkParentModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (studentId: string) => showModal(ModalType.LinkParentModal, { studentId }),
+    [showModal],
+  );
+}
+
+export function useShowEditParentLinkModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (
+      studentId: string,
+      parentId: string,
+      currentRelationship: string,
+      currentDescription?: string | null,
+    ) =>
+      showModal(ModalType.EditParentLinkModal, {
+        studentId,
+        parentId,
+        currentRelationship,
+        currentDescription,
+      }),
+    [showModal],
+  );
+}

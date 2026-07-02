@@ -10,8 +10,10 @@ import DeleteModal from '@/components/modals/Confirmations/DeleteModal';
 import ExampleDeletion from '@/components/modals/Confirmations/ExampleDeletion';
 import RevokeAccessModal from '@/components/modals/Confirmations/RevokeAccess';
 import SuspendMemberModal from '@/components/modals/Confirmations/SuspendMember';
+import { EditParentLinkModal } from '@/components/modals/EditParentLinkModal';
 import { EnrolStudentModal } from '@/components/modals/EnrolStudentModal';
 import { InviteMemberModal } from '@/components/modals/InviteMemberModal';
+import { LinkParentModal } from '@/components/modals/LinkParentModal';
 import { MemberProfileModal } from '@/components/modals/MemberProfileModal';
 import { ParentModal } from '@/components/modals/ParentModal';
 import { ParentProfileModal } from '@/components/modals/ParentProfileModal';
@@ -51,6 +53,8 @@ const Modal: { [key in ModalType]?: React.ComponentType<any> } = {
   [ModalType.EnrolStudentModal]: EnrolStudentModal,
   [ModalType.BulkEnrolModal]: BulkEnrolModal,
   [ModalType.AssignInstructorModal]: AssignInstructorModal,
+  [ModalType.LinkParentModal]: LinkParentModal,
+  [ModalType.EditParentLinkModal]: EditParentLinkModal,
 };
 
 export default function ModalDialog() {

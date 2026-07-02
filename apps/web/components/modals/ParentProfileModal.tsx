@@ -207,6 +207,11 @@ export function ParentProfileModal({ parentId }: ParentProfileModalProps) {
                           <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
                             {s.studentName ?? 'Unnamed Student'}
                           </h4>
+                          {s.relationshipDescription && (
+                            <p className="text-[10px] text-muted-foreground italic">
+                              {s.relationshipDescription}
+                            </p>
+                          )}
                           <p className="text-[10px] text-muted-foreground">
                             Roll No:{' '}
                             <span className="font-mono">{s.rollNumber}</span> ·{' '}
