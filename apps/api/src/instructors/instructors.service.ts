@@ -124,10 +124,10 @@ export class InstructorsService {
       where: {
         classId,
         tenantMembershipId: dto.tenantMembershipId,
-        deletedAt: null,
       },
     });
-    if (existing) {
+
+    if (existing && !existing.deletedAt) {
       throw new ConflictException(
         'This instructor is already assigned to this class.',
       );
@@ -152,6 +152,18 @@ export class InstructorsService {
         await tx.classInstructor.updateMany({
           where: { classId, isPrimary: true, deletedAt: null },
           data: { isPrimary: false },
+        });
+      }
+
+      if (existing) {
+        // Restore soft-deleted record
+        return tx.classInstructor.update({
+          where: { id: existing.id },
+          data: {
+            deletedAt: null,
+            isPrimary,
+            assignedById: userId,
+          },
         });
       }
 

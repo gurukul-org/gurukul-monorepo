@@ -177,6 +177,46 @@ describe('InstructorsService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
+    it('restores a soft-deleted instructor assignment instead of creating a new one', async () => {
+      prisma.class.findFirst.mockResolvedValueOnce({ id: CLASS_ID });
+      prisma.tenantMembership.findFirst.mockResolvedValueOnce({
+        id: MEMBERSHIP_ID,
+        roles: [{ role: { name: 'Faculty', isAdmin: false, permissions: [] } }],
+      });
+      prisma.classInstructor.findFirst.mockResolvedValueOnce({
+        id: 'ci-existing',
+        deletedAt: new Date(),
+      });
+      prisma.classInstructor.findMany.mockResolvedValueOnce([]); // no active instructors
+
+      const mockUpdated = {
+        id: 'ci-existing',
+        deletedAt: null,
+        isPrimary: true,
+      };
+      prisma.classInstructor.update.mockResolvedValueOnce(mockUpdated);
+
+      const result = await service.assignInstructor(
+        TENANT_ID,
+        CLASS_ID,
+        USER_ID,
+        {
+          tenantMembershipId: MEMBERSHIP_ID,
+          isPrimary: false,
+        },
+      );
+
+      expect(result.deletedAt).toBeNull();
+      expect(prisma.classInstructor.update).toHaveBeenCalledWith({
+        where: { id: 'ci-existing' },
+        data: {
+          deletedAt: null,
+          isPrimary: true,
+          assignedById: USER_ID,
+        },
+      });
+    });
+
     it('rejects ineligible member', async () => {
       prisma.class.findFirst.mockResolvedValueOnce({ id: CLASS_ID });
       prisma.tenantMembership.findFirst.mockResolvedValueOnce({
