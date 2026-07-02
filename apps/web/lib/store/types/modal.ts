@@ -30,6 +30,8 @@ export enum ModalType {
   StudentProfileModal,
   ParentModal,
   ParentProfileModal,
+  EnrolStudentModal,
+  BulkEnrolModal,
 }
 
 // Union of every modal's payload shape. Each member should ideally
@@ -51,6 +53,7 @@ export type ModalPayload =
   | { studentId: string } // StudentProfileModal
   | { editingParent: ParentListItem | null } // ParentModal
   | { parentId: string } // ParentProfileModal
+  | { classId: string } // EnrolStudentModal / BulkEnrolModal
   | { membershipId: string; userFullName: string } // RevokeAccessModal
   | {
       title: string;

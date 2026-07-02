@@ -3,11 +3,13 @@
 import { Fragment } from 'react';
 
 import { AcademicTermModal } from '@/components/modals/AcademicTermModal';
+import { BulkEnrolModal } from '@/components/modals/BulkEnrolModal';
 import { ChangeRoleModal } from '@/components/modals/ChangeRoleModal';
 import DeleteModal from '@/components/modals/Confirmations/DeleteModal';
 import ExampleDeletion from '@/components/modals/Confirmations/ExampleDeletion';
 import RevokeAccessModal from '@/components/modals/Confirmations/RevokeAccess';
 import SuspendMemberModal from '@/components/modals/Confirmations/SuspendMember';
+import { EnrolStudentModal } from '@/components/modals/EnrolStudentModal';
 import { InviteMemberModal } from '@/components/modals/InviteMemberModal';
 import { MemberProfileModal } from '@/components/modals/MemberProfileModal';
 import { ParentModal } from '@/components/modals/ParentModal';
@@ -45,6 +47,8 @@ const Modal: { [key in ModalType]?: React.ComponentType<any> } = {
   [ModalType.StudentProfileModal]: StudentProfileModal,
   [ModalType.ParentModal]: ParentModal,
   [ModalType.ParentProfileModal]: ParentProfileModal,
+  [ModalType.EnrolStudentModal]: EnrolStudentModal,
+  [ModalType.BulkEnrolModal]: BulkEnrolModal,
 };
 
 export default function ModalDialog() {
