@@ -26,12 +26,19 @@ export interface ClassTerm {
 }
 
 export interface ClassInstructor {
+  id: string;
   membershipId: string;
   userId: string;
   firstName: string;
   lastName: string;
   email: string;
   isPrimary: boolean;
+  assignedAt?: string;
+  assignedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  } | null;
 }
 
 export interface ClassStudent {
