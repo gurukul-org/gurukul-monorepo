@@ -13,17 +13,16 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import { PrismaService } from 'nestjs-prisma';
-
 import { PERMS } from '@repo/permissions';
 
 import { GetCurrentTenant, RequirePermissions } from '../common/decorators';
+import { InstructorsService } from './instructors.service';
 
 @ApiTags('Instructors')
 @ApiBearerAuth()
 @Controller('instructors')
 export class InstructorsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly instructorsService: InstructorsService) {}
 
   @Get()
   @RequirePermissions(PERMS.instructor.view)
@@ -31,43 +30,14 @@ export class InstructorsController {
   @ApiOperation({
     summary: 'List eligible instructors',
     description:
-      'Returns all active members in the current tenant who can be assigned as instructors.',
+      'Returns all active members in the current tenant who possess the Faculty role or any role with teaching capability.',
   })
-  @ApiOkResponse({ description: 'Instructors retrieved successfully.' })
+  @ApiOkResponse({
+    description: 'Eligible instructors retrieved successfully.',
+  })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   async findAll(@GetCurrentTenant('id') tenantId: string) {
     if (!tenantId) throw new ForbiddenException('Tenant context required.');
-
-    // We fetch all active tenant memberships and include user details
-    const memberships = await this.prisma.tenantMembership.findMany({
-      where: {
-        tenantId,
-        status: 'ACTIVE',
-        deletedAt: null,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: {
-        user: {
-          firstName: 'asc',
-        },
-      },
-    });
-
-    return memberships.map((m) => ({
-      membershipId: m.id,
-      userId: m.user.id,
-      firstName: m.user.firstName,
-      lastName: m.user.lastName,
-      email: m.user.email,
-    }));
+    return this.instructorsService.findAllEligible(tenantId);
   }
 }

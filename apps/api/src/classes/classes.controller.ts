@@ -30,6 +30,8 @@ import {
   GetCurrentUserId,
   RequirePermissions,
 } from '../common/decorators';
+import { AssignInstructorDto } from '../instructors/dto';
+import { InstructorsService } from '../instructors/instructors.service';
 import { ClassesService } from './classes.service';
 import { CreateClassDto, UpdateClassDto } from './dto';
 
@@ -37,7 +39,10 @@ import { CreateClassDto, UpdateClassDto } from './dto';
 @ApiBearerAuth()
 @Controller('classes')
 export class ClassesController {
-  constructor(private readonly classesService: ClassesService) {}
+  constructor(
+    private readonly classesService: ClassesService,
+    private readonly instructorsService: InstructorsService,
+  ) {}
 
   @Get()
   @RequirePermissions(PERMS.class.view)
@@ -182,5 +187,83 @@ export class ClassesController {
   ) {
     if (!tenantId) throw new ForbiddenException('Tenant context required.');
     return this.classesService.remove(tenantId, userId, id);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Instructor Assignments
+  // ---------------------------------------------------------------------------
+
+  @Post(':classId/instructors')
+  @RequirePermissions(PERMS.instructor.assign)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Assign an instructor to a class',
+    description: 'Assigns an eligible member to the specified class section.',
+  })
+  @ApiCreatedResponse({ description: 'Instructor assigned successfully.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async assignInstructor(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
+    @Param('classId', ParseUUIDPipe) classId: string,
+    @Body() dto: AssignInstructorDto,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return this.instructorsService.assignInstructor(
+      tenantId,
+      classId,
+      userId,
+      dto,
+    );
+  }
+
+  @Patch(':classId/instructors/:id/primary')
+  @RequirePermissions(PERMS.instructor.edit)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Designate instructor as primary',
+    description:
+      'Promotes the specified instructor to primary, demoting any current primary.',
+  })
+  @ApiOkResponse({ description: 'Instructor promoted successfully.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async promoteInstructor(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
+    @Param('classId', ParseUUIDPipe) classId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return this.instructorsService.promoteToPrimary(
+      tenantId,
+      classId,
+      userId,
+      id,
+    );
+  }
+
+  @Delete(':classId/instructors/:id')
+  @RequirePermissions(PERMS.instructor.remove)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Remove an instructor from a class',
+    description:
+      'Soft-deletes the instructor assignment record. Enforces validations on removing primary.',
+  })
+  @ApiOkResponse({ description: 'Instructor removed successfully.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async removeInstructor(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
+    @Param('classId', ParseUUIDPipe) classId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return this.instructorsService.removeInstructor(
+      tenantId,
+      classId,
+      userId,
+      id,
+    );
   }
 }
