@@ -215,3 +215,12 @@ export function useShowBulkEnrolModal() {
     [showModal],
   );
 }
+
+export function useShowAssignInstructorModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (classId: string) =>
+      showModal(ModalType.AssignInstructorModal, { classId }),
+    [showModal],
+  );
+}
