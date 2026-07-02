@@ -332,10 +332,11 @@ model ParentProfile {
 // STUDENT <-> PARENT RELATION
 // =====================================================
 model StudentParent {
-  studentProfileId String   @map("student_profile_id") @db.Uuid
-  parentProfileId  String   @map("parent_profile_id") @db.Uuid
-  relationship     String   @db.VarChar(50)
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  studentProfileId        String    @map("student_profile_id") @db.Uuid
+  parentProfileId         String    @map("parent_profile_id") @db.Uuid
+  relationship            String    @db.VarChar(50)
+  relationshipDescription String?   @map("relationship_description") @db.VarChar(255)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
   student StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
   parent  ParentProfile  @relation(fields: [parentProfileId], references: [id], onDelete: Cascade)

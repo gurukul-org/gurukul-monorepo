@@ -25,6 +25,15 @@ type PrismaMock = {
   enrolment: {
     count: jest.Mock;
   };
+  parentProfile: {
+    findFirst: jest.Mock;
+  };
+  studentParent: {
+    findUnique: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+    delete: jest.Mock;
+  };
 };
 
 const USER_ID = 'user-123';
@@ -48,6 +57,15 @@ describe('StudentsService', () => {
       },
       enrolment: {
         count: jest.fn(),
+      },
+      parentProfile: {
+        findFirst: jest.fn(),
+      },
+      studentParent: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
       },
     };
 
@@ -266,6 +284,119 @@ describe('StudentsService', () => {
       await expect(service.remove(TENANT_ID, USER_ID, 's-123')).rejects.toThrow(
         BadRequestException,
       );
+    });
+  });
+
+  describe('linkParent', () => {
+    it('successfully links a parent to student', async () => {
+      prisma.studentProfile.findFirst.mockResolvedValueOnce({ id: 's-123' });
+      prisma.parentProfile.findFirst.mockResolvedValueOnce({ id: 'p-123' });
+      prisma.studentParent.findUnique.mockResolvedValueOnce(null);
+      prisma.studentParent.create.mockResolvedValueOnce({});
+
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValueOnce({ id: 's-123' } as any);
+      const logSpy = jest.spyOn(service['logger'], 'log');
+
+      const res = await service.linkParent(TENANT_ID, 's-123', USER_ID, {
+        parentProfileId: 'p-123',
+        relationship: 'MOTHER',
+      });
+
+      expect(res.id).toBe('s-123');
+      expect(prisma.studentParent.create).toHaveBeenCalledWith({
+        data: {
+          studentProfileId: 's-123',
+          parentProfileId: 'p-123',
+          relationship: 'MOTHER',
+          relationshipDescription: null,
+        },
+      });
+      expect(logSpy).toHaveBeenCalled();
+    });
+
+    it('rejects OTHER relationship without description', async () => {
+      prisma.studentProfile.findFirst.mockResolvedValueOnce({ id: 's-123' });
+      prisma.parentProfile.findFirst.mockResolvedValueOnce({ id: 'p-123' });
+
+      await expect(
+        service.linkParent(TENANT_ID, 's-123', USER_ID, {
+          parentProfileId: 'p-123',
+          relationship: 'OTHER',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('editParentLink', () => {
+    it('successfully updates relationship link info', async () => {
+      prisma.studentParent.findUnique.mockResolvedValueOnce({
+        studentProfileId: 's-123',
+        parentProfileId: 'p-123',
+        relationship: 'MOTHER',
+        student: { tenantId: TENANT_ID },
+      });
+      prisma.studentParent.update.mockResolvedValueOnce({});
+
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValueOnce({ id: 's-123' } as any);
+
+      const res = await service.editParentLink(
+        TENANT_ID,
+        's-123',
+        'p-123',
+        USER_ID,
+        {
+          relationship: 'OTHER',
+          relationshipDescription: 'Aunt',
+        },
+      );
+
+      expect(res.id).toBe('s-123');
+      expect(prisma.studentParent.update).toHaveBeenCalledWith({
+        where: {
+          studentProfileId_parentProfileId: {
+            studentProfileId: 's-123',
+            parentProfileId: 'p-123',
+          },
+        },
+        data: {
+          relationship: 'OTHER',
+          relationshipDescription: 'Aunt',
+        },
+      });
+    });
+  });
+
+  describe('unlinkParent', () => {
+    it('deletes relationship link and logs audit entry', async () => {
+      prisma.studentParent.findUnique.mockResolvedValueOnce({
+        studentProfileId: 's-123',
+        parentProfileId: 'p-123',
+        student: { tenantId: TENANT_ID },
+      });
+      prisma.studentParent.delete.mockResolvedValueOnce({});
+      const logSpy = jest.spyOn(service['logger'], 'log');
+
+      const res = await service.unlinkParent(
+        TENANT_ID,
+        's-123',
+        'p-123',
+        USER_ID,
+      );
+
+      expect(res.message).toContain('successfully');
+      expect(prisma.studentParent.delete).toHaveBeenCalledWith({
+        where: {
+          studentProfileId_parentProfileId: {
+            studentProfileId: 's-123',
+            parentProfileId: 'p-123',
+          },
+        },
+      });
+      expect(logSpy).toHaveBeenCalled();
     });
   });
 });

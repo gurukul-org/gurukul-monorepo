@@ -103,6 +103,9 @@ export const PERMS = {
     edit: p('student', 'edit-students'),
     delete: p('student', 'delete-students'),
     invite: p('student', 'invite-students'),
+    linkParent: p('student', 'link-parents'),
+    editParentLink: p('student', 'edit-parent-links'),
+    unlinkParent: p('student', 'unlink-parents'),
   },
   parent: {
     all: FEATURES.parent.all,
