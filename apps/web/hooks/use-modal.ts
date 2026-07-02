@@ -199,3 +199,19 @@ export function useShowParentProfileModal() {
     [showModal],
   );
 }
+
+export function useShowEnrolStudentModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (classId: string) => showModal(ModalType.EnrolStudentModal, { classId }),
+    [showModal],
+  );
+}
+
+export function useShowBulkEnrolModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (classId: string) => showModal(ModalType.BulkEnrolModal, { classId }),
+    [showModal],
+  );
+}

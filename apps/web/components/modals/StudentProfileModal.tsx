@@ -9,18 +9,30 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useHideModal } from '@/hooks/use-modal';
+import { useHideModal, useShowDeleteModal } from '@/hooks/use-modal';
+import { usePermission } from '@/hooks/use-permission';
+import {
+  useCreateEnrolment,
+  useUpdateEnrolmentStatus,
+  useWithdrawEnrolment,
+} from '@/services/api/requests/enrolments';
 import { useStudent } from '@/services/api/requests/students';
 import {
   Calendar,
+  CheckCircle2,
   Clock,
   GraduationCap,
   Loader2,
+  RefreshCw,
   ShieldAlert,
   User,
+  UserMinus,
   Users,
   X,
 } from 'lucide-react';
+import { toast } from 'sonner';
+
+import { PERMS } from '@repo/permissions';
 
 interface StudentProfileModalProps {
   studentId: string;
@@ -69,6 +81,68 @@ export function StudentProfileModal({ studentId }: StudentProfileModalProps) {
   const [tab, setTab] = useState<TabKey>('overview');
 
   const { data: student, isLoading, isError } = useStudent(studentId);
+
+  const { hasPermission } = usePermission();
+  const showDeleteModal = useShowDeleteModal();
+  const { mutateAsync: withdraw } = useWithdrawEnrolment();
+  const { mutateAsync: updateStatus } = useUpdateEnrolmentStatus();
+  const { mutateAsync: enrolStudent } = useCreateEnrolment();
+
+  const handleWithdrawEnrolment = (
+    enrolmentId: string,
+    studentName: string,
+  ) => {
+    showDeleteModal({
+      title: 'Withdraw Student',
+      subtitle: `Are you sure you want to withdraw ${studentName} from this class? You can optionally provide a reason.`,
+      confirmButtonText: 'Withdraw Student',
+      onConfirm: async () => {
+        const reason = window.prompt('Enter reason for withdrawal (optional):');
+        if (reason === null) return;
+        try {
+          await withdraw({
+            id: enrolmentId,
+            withdrawReason: reason || undefined,
+          });
+          toast.success('Student withdrawn successfully.');
+        } catch (err: any) {
+          toast.error(
+            err.response?.data?.message || 'Failed to withdraw student.',
+          );
+        }
+      },
+    });
+  };
+
+  const handleCompleteEnrolment = async (enrolmentId: string) => {
+    try {
+      await updateStatus({
+        id: enrolmentId,
+        dto: { status: 'COMPLETED' },
+      });
+      toast.success('Enrollment marked as completed.');
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.message || 'Failed to complete enrolment.',
+      );
+    }
+  };
+
+  const handleReEnrolStudent = async (
+    classId: string,
+    studentProfileId: string,
+  ) => {
+    try {
+      await enrolStudent({
+        studentProfileId,
+        classId,
+        enrolledAt: new Date().toISOString(),
+      });
+      toast.success('Student re-enrolled successfully.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to re-enrol student.');
+    }
+  };
 
   const statusStyle = (
     student
@@ -251,19 +325,70 @@ export function StudentProfileModal({ studentId }: StudentProfileModalProps) {
                             {e.class.academicTerm?.name || 'No Term'}
                           </p>
                         </div>
-                        <div className="text-right space-y-1">
-                          <span
-                            className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border uppercase ${
-                              e.status === 'ACTIVE'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800'
-                                : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-900'
-                            }`}
-                          >
-                            {e.status}
-                          </span>
-                          <p className="text-[9px] text-muted-foreground">
-                            Enrolled: {formatDate(e.enrolledAt)}
-                          </p>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right space-y-1">
+                            <span
+                              className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border uppercase ${
+                                e.status === 'ACTIVE'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800'
+                                  : e.status === 'WITHDRAWN'
+                                    ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:border-red-800'
+                                    : e.status === 'COMPLETED'
+                                      ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800'
+                                      : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-900'
+                              }`}
+                            >
+                              {e.status}
+                            </span>
+                            <p className="text-[9px] text-muted-foreground">
+                              Enrolled: {formatDate(e.enrolledAt)}
+                            </p>
+                          </div>
+
+                          {/* Quick Enrolment Actions */}
+                          {e.status === 'ACTIVE' && (
+                            <div className="flex gap-1.5 shrink-0">
+                              {hasPermission(PERMS.enrolment.edit) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCompleteEnrolment(e.id)}
+                                  title="Mark Complete"
+                                  className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-emerald-600 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors"
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              {hasPermission(PERMS.enrolment.delete) && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleWithdrawEnrolment(
+                                      e.id,
+                                      student.name ?? student.rollNumber,
+                                    )
+                                  }
+                                  title="Withdraw"
+                                  className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-red-600 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors"
+                                >
+                                  <UserMinus className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          {e.status === 'WITHDRAWN' &&
+                            hasPermission(PERMS.enrolment.create) && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleReEnrolStudent(e.class.id, student.id)
+                                }
+                                title="Re-enrol Student"
+                                className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-primary border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors flex items-center gap-1 text-[10px] font-bold shrink-0"
+                              >
+                                <RefreshCw className="h-3.5 w-3.5" /> Re-enrol
+                              </button>
+                            )}
                         </div>
                       </div>
                     ))

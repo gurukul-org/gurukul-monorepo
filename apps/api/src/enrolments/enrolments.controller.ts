@@ -30,7 +30,11 @@ import {
   GetCurrentUserId,
   RequirePermissions,
 } from '../common/decorators';
-import { CreateEnrolmentDto, UpdateEnrolmentDto } from './dto';
+import {
+  BulkCreateEnrolmentDto,
+  CreateEnrolmentDto,
+  UpdateEnrolmentDto,
+} from './dto';
 import { EnrolmentsService } from './enrolments.service';
 
 @ApiTags('Enrolments')
@@ -98,8 +102,8 @@ export class EnrolmentsController {
     summary: 'Enrol a student into a class',
     description:
       'Creates a new enrolment. ' +
-      'Guards: student must be ACTIVE, class must be ACTIVE and have available capacity, ' +
-      'student must not already be enrolled in the same class.',
+      'Guards: student must be ACTIVE, class must be ACTIVE in a non-archived term, ' +
+      'class must have available capacity, student must not already have an active enrolment.',
   })
   @ApiCreatedResponse({ description: 'Enrolment created successfully.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
@@ -113,27 +117,54 @@ export class EnrolmentsController {
   }
 
   // ---------------------------------------------------------------------------
-  // PATCH /enrolments/:id — update status (ACTIVE | WITHDRAWN | COMPLETED)
+  // POST /enrolments/bulk — bulk enrol students into a class
+  // ---------------------------------------------------------------------------
+  @Post('bulk')
+  @RequirePermissions(PERMS.enrolment.create)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Bulk enrol students into a class',
+    description:
+      'Enrols multiple students into a single class. Supports partial success — ' +
+      'returns which enrolments succeeded and which failed with reasons.',
+  })
+  @ApiOkResponse({
+    description: 'Bulk enrolment completed. Check succeeded/failed arrays.',
+  })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async bulkCreate(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
+    @Body() dto: BulkCreateEnrolmentDto,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return this.enrolmentsService.bulkCreate(tenantId, userId, dto);
+  }
+
+  // ---------------------------------------------------------------------------
+  // PATCH /enrolments/:id — update status (ACTIVE → WITHDRAWN | COMPLETED)
   // ---------------------------------------------------------------------------
   @Patch(':id')
   @RequirePermissions(PERMS.enrolment.edit)
   @ApiOperation({
     summary: 'Update enrolment status',
-    description: 'Change enrolment status to ACTIVE, WITHDRAWN, or COMPLETED.',
+    description:
+      'Change enrolment status. Only ACTIVE enrolments can transition to WITHDRAWN or COMPLETED.',
   })
   @ApiOkResponse({ description: 'Enrolment updated successfully.' })
   @ApiNotFoundResponse({ description: 'Enrolment not found.' })
   async update(
     @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEnrolmentDto,
   ) {
     if (!tenantId) throw new ForbiddenException('Tenant context required.');
-    return this.enrolmentsService.update(tenantId, id, dto);
+    return this.enrolmentsService.update(tenantId, userId, id, dto);
   }
 
   // ---------------------------------------------------------------------------
-  // DELETE /enrolments/:id — withdraw (soft remove)
+  // DELETE /enrolments/:id — withdraw (status change, record preserved)
   // ---------------------------------------------------------------------------
   @Delete(':id')
   @RequirePermissions(PERMS.enrolment.delete)
@@ -141,16 +172,23 @@ export class EnrolmentsController {
   @ApiOperation({
     summary: 'Withdraw a student from a class',
     description:
-      'Sets enrolment status to WITHDRAWN and soft-deletes the record. ' +
-      'Historical record is preserved for audit purposes.',
+      'Sets enrolment status to WITHDRAWN. Record is preserved for audit. ' +
+      'Optional withdrawReason can be provided in the request body.',
   })
   @ApiOkResponse({ description: 'Student withdrawn successfully.' })
   @ApiNotFoundResponse({ description: 'Enrolment not found.' })
   async withdraw(
     @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() body?: { withdrawReason?: string },
   ) {
     if (!tenantId) throw new ForbiddenException('Tenant context required.');
-    return this.enrolmentsService.withdraw(tenantId, id);
+    return this.enrolmentsService.withdraw(
+      tenantId,
+      userId,
+      id,
+      body?.withdrawReason,
+    );
   }
 }
