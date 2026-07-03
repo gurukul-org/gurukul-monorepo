@@ -3,16 +3,27 @@
 import { Fragment } from 'react';
 
 import { AcademicTermModal } from '@/components/modals/AcademicTermModal';
-import { ClassModal } from '@/components/modals/ClassModal';
+import { BulkEnrolModal } from '@/components/modals/BulkEnrolModal';
+import { ChangeRoleModal } from '@/components/modals/ChangeRoleModal';
 import DeleteModal from '@/components/modals/Confirmations/DeleteModal';
 import ExampleDeletion from '@/components/modals/Confirmations/ExampleDeletion';
 import RevokeAccessModal from '@/components/modals/Confirmations/RevokeAccess';
-import { CourseModal } from '@/components/modals/CourseModal';
+import SuspendMemberModal from '@/components/modals/Confirmations/SuspendMember';
+import { EnrolStudentModal } from '@/components/modals/EnrolStudentModal';
 import { InviteMemberModal } from '@/components/modals/InviteMemberModal';
+import { MemberProfileModal } from '@/components/modals/MemberProfileModal';
+import { ParentModal } from '@/components/modals/ParentModal';
+import { ParentProfileModal } from '@/components/modals/ParentProfileModal';
 import { ProgramModal } from '@/components/modals/ProgramModal';
 import { RoleModal } from '@/components/modals/RoleModal';
+import { StudentModal } from '@/components/modals/StudentModal';
+import { StudentProfileModal } from '@/components/modals/StudentProfileModal';
+import { StudentStatusModal } from '@/components/modals/StudentStatusModal';
 import { useModalPayload, useModalType } from '@/hooks/use-modal';
 import { ModalType } from '@/lib/store/types/modal';
+
+import { ClassModal } from '../modals/ClassModal';
+import { CourseModal } from '../modals/CourseModal';
 
 // Registry: one line per modal. React.ComponentType<any> is intentional —
 // each modal narrows its own payload type internally.
@@ -25,9 +36,19 @@ const Modal: { [key in ModalType]?: React.ComponentType<any> } = {
   [ModalType.RevokeAccessModal]: RevokeAccessModal,
   [ModalType.DeleteModal]: DeleteModal,
   [ModalType.AcademicTermModal]: AcademicTermModal,
+  [ModalType.MemberProfileModal]: MemberProfileModal,
+  [ModalType.ChangeRoleModal]: ChangeRoleModal,
+  [ModalType.SuspendMemberModal]: SuspendMemberModal,
   [ModalType.ProgramModal]: ProgramModal,
   [ModalType.ClassModal]: ClassModal,
   [ModalType.CourseModal]: CourseModal,
+  [ModalType.StudentModal]: StudentModal,
+  [ModalType.StudentStatusModal]: StudentStatusModal,
+  [ModalType.StudentProfileModal]: StudentProfileModal,
+  [ModalType.ParentModal]: ParentModal,
+  [ModalType.ParentProfileModal]: ParentProfileModal,
+  [ModalType.EnrolStudentModal]: EnrolStudentModal,
+  [ModalType.BulkEnrolModal]: BulkEnrolModal,
 };
 
 export default function ModalDialog() {

@@ -6,6 +6,12 @@ import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Table,
   TableBody,
   TableCell,
@@ -13,9 +19,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useShowClassModal } from '@/hooks/use-modal';
+import {
+  useShowBulkEnrolModal,
+  useShowClassModal,
+  useShowDeleteModal,
+  useShowEnrolStudentModal,
+} from '@/hooks/use-modal';
 import { usePermission } from '@/hooks/use-permission';
 import { ClassStudent, useClass } from '@/services/api/requests/classes';
+import {
+  useCreateEnrolment,
+  useUpdateEnrolmentStatus,
+  useWithdrawEnrolment,
+} from '@/services/api/requests/enrolments';
 import {
   ColumnDef,
   flexRender,
@@ -24,15 +40,148 @@ import {
 } from '@tanstack/react-table';
 import {
   ArrowLeft,
+  CheckCircle2,
   ChevronRight,
   Edit,
   GraduationCap,
   Info,
   Loader2,
+  MoreVertical,
+  RefreshCw,
+  UserMinus,
   Users,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { PERMS } from '@repo/permissions';
+
+function EnrolmentRowActions({
+  enrolmentId,
+  studentProfileId,
+  classId,
+  studentName,
+  status,
+}: {
+  enrolmentId: string;
+  studentProfileId: string;
+  classId: string;
+  studentName: string;
+  status: string;
+}) {
+  const { hasPermission } = usePermission();
+  const showDeleteModal = useShowDeleteModal();
+  const { mutateAsync: withdraw } = useWithdrawEnrolment();
+  const { mutateAsync: updateStatus } = useUpdateEnrolmentStatus();
+  const { mutateAsync: enrolStudent } = useCreateEnrolment();
+
+  const handleWithdraw = () => {
+    showDeleteModal({
+      title: 'Withdraw Student',
+      subtitle: `Are you sure you want to withdraw ${studentName} from this class? You can optionally provide a reason.`,
+      confirmButtonText: 'Withdraw Student',
+      onConfirm: async () => {
+        const reason = window.prompt('Enter reason for withdrawal (optional):');
+        if (reason === null) return;
+        try {
+          await withdraw({
+            id: enrolmentId,
+            withdrawReason: reason || undefined,
+          });
+          toast.success('Student withdrawn successfully.');
+        } catch (err: any) {
+          toast.error(
+            err.response?.data?.message || 'Failed to withdraw student.',
+          );
+        }
+      },
+    });
+  };
+
+  const handleComplete = async () => {
+    try {
+      await updateStatus({
+        id: enrolmentId,
+        dto: { status: 'COMPLETED' },
+      });
+      toast.success('Enrollment marked as completed.');
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.message || 'Failed to complete enrolment.',
+      );
+    }
+  };
+
+  const handleReEnrol = async () => {
+    try {
+      await enrolStudent({
+        studentProfileId,
+        classId,
+        enrolledAt: new Date().toISOString(),
+      });
+      toast.success('Student re-enrolled successfully.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to re-enrol student.');
+    }
+  };
+
+  const showActions =
+    (status === 'ACTIVE' &&
+      (hasPermission(PERMS.enrolment.delete) ||
+        hasPermission(PERMS.enrolment.edit))) ||
+    (status === 'WITHDRAWN' && hasPermission(PERMS.enrolment.create));
+
+  if (!showActions) return null;
+
+  return (
+    <div className="flex justify-end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-sm" className="h-8 w-8 p-0">
+            <MoreVertical className="h-4 w-4" />
+            <span className="sr-only">Open actions menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="w-48 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800"
+        >
+          {status === 'ACTIVE' && (
+            <>
+              {hasPermission(PERMS.enrolment.edit) && (
+                <DropdownMenuItem
+                  onClick={handleComplete}
+                  className="cursor-pointer gap-2"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  Mark Complete
+                </DropdownMenuItem>
+              )}
+              {hasPermission(PERMS.enrolment.delete) && (
+                <DropdownMenuItem
+                  onClick={handleWithdraw}
+                  className="cursor-pointer gap-2 text-red-650 focus:text-red-600 focus:bg-red-50"
+                >
+                  <UserMinus className="h-3.5 w-3.5" />
+                  Withdraw Student
+                </DropdownMenuItem>
+              )}
+            </>
+          )}
+
+          {status === 'WITHDRAWN' && hasPermission(PERMS.enrolment.create) && (
+            <DropdownMenuItem
+              onClick={handleReEnrol}
+              className="cursor-pointer gap-2"
+            >
+              <RefreshCw className="h-3.5 w-3.5 text-primary" />
+              Re-enrol Student
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
 
 interface TenantClassDetailContainerProps {
   classId: string;
@@ -43,6 +192,8 @@ export default function TenantClassDetailContainer({
 }: TenantClassDetailContainerProps) {
   const { hasPermission } = usePermission();
   const showClassModal = useShowClassModal();
+  const showEnrolStudentModal = useShowEnrolStudentModal();
+  const showBulkEnrolModal = useShowBulkEnrolModal();
 
   const { data: cls, isLoading, isError } = useClass(classId);
 
@@ -108,8 +259,20 @@ export default function TenantClassDetailContainer({
           );
         },
       },
+      {
+        id: 'actions',
+        cell: ({ row }) => (
+          <EnrolmentRowActions
+            enrolmentId={row.original.enrolmentId}
+            studentProfileId={row.original.studentProfileId}
+            classId={classId}
+            studentName={`${row.original.firstName} ${row.original.lastName}`}
+            status={row.original.status}
+          />
+        ),
+      },
     ],
-    [],
+    [classId],
   );
 
   const table = useReactTable({
@@ -405,10 +568,32 @@ export default function TenantClassDetailContainer({
         {/* Enrolled Students Table Card */}
         <div className="lg:col-span-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 shadow-xs space-y-4 flex flex-col justify-between">
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2 border-b pb-2">
-              <Users className="h-4.5 w-4.5 text-primary shrink-0" />
-              Enrolled Students ({cls.enrolledStudents?.length || 0})
-            </h3>
+            <div className="flex items-center justify-between border-b pb-2">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+                <Users className="h-4.5 w-4.5 text-primary shrink-0" />
+                Enrolled Students ({cls.enrolledStudents?.length || 0})
+              </h3>
+              {hasPermission(PERMS.enrolment.create) &&
+                cls.status === 'ACTIVE' && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => showBulkEnrolModal(classId)}
+                      className="h-8 text-xs font-semibold"
+                    >
+                      Bulk Enrol
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => showEnrolStudentModal(classId)}
+                      className="h-8 text-xs font-semibold"
+                    >
+                      Enrol Student
+                    </Button>
+                  </div>
+                )}
+            </div>
 
             {!cls.enrolledStudents || cls.enrolledStudents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-center">

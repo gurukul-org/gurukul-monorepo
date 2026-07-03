@@ -1,8 +1,13 @@
 import { type AcademicTerm } from '@/services/api/requests/academic-terms';
 import { type Class } from '@/services/api/requests/classes';
 import { type Course } from '@/services/api/requests/courses';
+import { type ParentListItem } from '@/services/api/requests/parents';
 import { type Program } from '@/services/api/requests/programs';
 import { type Role } from '@/services/api/requests/roles';
+import {
+  type Student,
+  type StudentListItem,
+} from '@/services/api/requests/students';
 
 // Add every modal you register, in declaration order.
 // `None` MUST be the first/zero value — it's the closed state.
@@ -14,21 +19,41 @@ export enum ModalType {
   RevokeAccessModal,
   DeleteModal,
   AcademicTermModal,
+  MemberProfileModal,
+  ChangeRoleModal,
+  SuspendMemberModal,
   ProgramModal,
   ClassModal,
   CourseModal,
+  StudentModal,
+  StudentStatusModal,
+  StudentProfileModal,
+  ParentModal,
+  ParentProfileModal,
+  EnrolStudentModal,
+  BulkEnrolModal,
 }
 
 // Union of every modal's payload shape. Each member should ideally
 // come from its modal's own `types.ts` so payloads stay co-located.
 export type ModalPayload =
   | Record<string, never> // for modals with no payload
+  | { presetRoleName?: string } // InviteMemberModal payload
   | { id: string } // ExampleDeletion
   | { editingRole: Role | null } // RoleModal
   | { editingTerm: AcademicTerm | null } // AcademicTermModal
+  | { membershipId: string; userFullName: string } // RevokeAccessModal / SuspendMemberModal
+  | { membershipId: string } // MemberProfileModal
+  | { membershipId: string; currentRoleIds: string[]; userFullName: string } // ChangeRoleModal
   | { editingProgram: Program | null } // ProgramModal
   | { editingClass: Class | null } // ClassModal
   | { editingCourse: Course | null } // CourseModal
+  | { editingStudent: StudentListItem | null } // StudentModal
+  | { student: Student } // StudentStatusModal
+  | { studentId: string } // StudentProfileModal
+  | { editingParent: ParentListItem | null } // ParentModal
+  | { parentId: string } // ParentProfileModal
+  | { classId: string } // EnrolStudentModal / BulkEnrolModal
   | { membershipId: string; userFullName: string } // RevokeAccessModal
   | {
       title: string;

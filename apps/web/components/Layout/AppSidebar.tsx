@@ -28,6 +28,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
+  GraduationCap,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -117,6 +118,42 @@ export function AppSidebar() {
                     </Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
+
+                {hasPermission(PERMS.student.view) && (
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={
+                        pathname === '/users/students' ||
+                        pathname.startsWith('/users/students/')
+                      }
+                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                    >
+                      <Link href="/users/students">
+                        <GraduationCap className="h-3.5 w-3.5" />
+                        <span>Students</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )}
+
+                {hasPermission(PERMS.parent.view) && (
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={
+                        pathname === '/users/parents' ||
+                        pathname.startsWith('/users/parents/')
+                      }
+                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                    >
+                      <Link href="/users/parents">
+                        <Users className="h-3.5 w-3.5" />
+                        <span>Parents</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                )}
               </SidebarMenuSub>
             )}
           </SidebarMenuItem>

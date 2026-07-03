@@ -9,11 +9,19 @@ export interface InviteUserDto {
   firstName: string;
   lastName: string;
   roleIds: string[];
+  rollNumber?: string;
+  admissionDate?: string;
+  emergencyPhone?: string;
+  preLinkedParentIds?: string[];
+  preLinkedStudentIds?: string[];
 }
 
 export interface AcceptInvitationDto {
   token: string;
   password?: string;
+  rollNumber?: string;
+  admissionDate?: string;
+  emergencyPhone?: string;
 }
 
 export interface ValidateInvitationResponseDto {
@@ -21,6 +29,11 @@ export interface ValidateInvitationResponseDto {
   email: string;
   roles: string[];
   requiresPasswordSetup: boolean;
+  rollNumber?: string;
+  admissionDate?: string;
+  emergencyPhone?: string;
+  preLinkedParentCount?: number;
+  preLinkedStudentCount?: number;
 }
 
 export const useInviteUser = () => {

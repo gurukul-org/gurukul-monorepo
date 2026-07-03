@@ -41,12 +41,19 @@ const deletePerm: PermissionEntry = {
   label: 'Delete student profiles',
 };
 
+const invite: PermissionEntry = {
+  id: id('invite-students'),
+  feature: 'student',
+  kind: 'create',
+  label: 'Invite new students',
+};
+
 const all: PermissionEntry = {
   id: id('all-student'),
   feature: 'student',
   kind: 'all',
   label: 'All',
-  grants: [view.id, viewOwn.id, create.id, edit.id, deletePerm.id],
+  grants: [view.id, viewOwn.id, create.id, edit.id, deletePerm.id, invite.id],
 };
 
 export const studentFeature: FeatureDefinition = {
@@ -62,5 +69,6 @@ export const studentFeature: FeatureDefinition = {
     [create.id]: create,
     [edit.id]: edit,
     [deletePerm.id]: deletePerm,
+    [invite.id]: invite,
   },
 };
