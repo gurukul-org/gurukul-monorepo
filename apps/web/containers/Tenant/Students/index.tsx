@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 
+import { AccountStatusBadge } from '@/components/AccountStatusBadge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  useShowBulkImportModal,
   useShowDeleteModal,
   useShowInviteMemberModal,
   useShowStudentModal,
@@ -50,6 +52,7 @@ import {
   Search,
   ShieldAlert,
   Trash2,
+  Upload,
   UserCog,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -191,6 +194,7 @@ export default function TenantStudentsContainer() {
 
   const showStudentModal = useShowStudentModal();
   const showInviteMemberModal = useShowInviteMemberModal();
+  const showBulkImportModal = useShowBulkImportModal();
 
   const { data, isLoading, isError, refetch } = useStudents({
     search: search.trim() || undefined,
@@ -258,12 +262,15 @@ export default function TenantStudentsContainer() {
                 {initials}
               </div>
               <div className="flex flex-col overflow-hidden">
-                <span className="font-medium text-zinc-900 dark:text-zinc-50 hover:text-primary hover:underline truncate max-w-[180px]">
-                  {s.name ?? (
-                    <span className="text-muted-foreground italic">
-                      No portal account
-                    </span>
-                  )}
+                <span className="flex items-center gap-1.5">
+                  <span className="font-medium text-zinc-900 dark:text-zinc-50 hover:text-primary hover:underline truncate max-w-[180px]">
+                    {s.name ?? (
+                      <span className="text-muted-foreground italic">
+                        No portal account
+                      </span>
+                    )}
+                  </span>
+                  <AccountStatusBadge status={s.accountStatus} />
                 </span>
                 {s.email && (
                   <span className="text-[10px] text-muted-foreground truncate">
@@ -368,6 +375,14 @@ export default function TenantStudentsContainer() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            onClick={() => showBulkImportModal('student')}
+            className="gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Import CSV
+          </Button>
           <Button
             variant="outline"
             onClick={() => showInviteMemberModal('Student')}

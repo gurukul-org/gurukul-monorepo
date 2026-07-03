@@ -47,7 +47,8 @@ export interface StudentListItem {
   email: string | null;
   rollNumber: string;
   admissionDate: string;
-  status: string; // ACTIVE | SUSPENDED | GRADUATED | INACTIVE
+  status: string; // ACTIVE | SUSPENDED | GRADUATED | INACTIVE (academic)
+  accountStatus: string | null; // PENDING | INVITED | ACTIVE | ... (portal access)
   enrolmentCount: number;
   parentCount: number;
   createdAt: string;

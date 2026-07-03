@@ -10,6 +10,11 @@ import {
   MaxLength,
 } from 'class-validator';
 
+import {
+  ROLL_NUMBER_MAX_LENGTH,
+  ROLL_NUMBER_REGEX,
+} from '../students.constants';
+
 export class CreateStudentDto {
   @ApiPropertyOptional({
     description:
@@ -29,8 +34,8 @@ export class CreateStudentDto {
   })
   @IsString()
   @IsNotEmpty()
-  @MaxLength(50)
-  @Matches(/^[a-zA-Z0-9\-]+$/, {
+  @MaxLength(ROLL_NUMBER_MAX_LENGTH)
+  @Matches(ROLL_NUMBER_REGEX, {
     message: 'Roll number may only contain letters, digits, and hyphens.',
   })
   rollNumber: string;

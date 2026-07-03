@@ -183,6 +183,15 @@ export function useShowStudentProfileModal() {
   );
 }
 
+export function useShowBulkImportModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (entity: 'student' | 'parent') =>
+      showModal(ModalType.BulkImportModal, { entity }),
+    [showModal],
+  );
+}
+
 export function useShowParentModal() {
   const showModal = useShowModal();
   return useCallback(

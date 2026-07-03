@@ -302,6 +302,8 @@ export class ParentsService {
       name: user ? `${user.firstName} ${user.lastName}` : null,
       email: user?.email ?? null,
       emergencyPhone: p.emergencyPhone,
+      // Account lifecycle: PENDING (pre-created) -> INVITED -> ACTIVE.
+      accountStatus: p.membership?.status ?? null,
       studentCount: p._count.students,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,

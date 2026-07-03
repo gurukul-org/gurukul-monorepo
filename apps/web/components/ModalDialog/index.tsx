@@ -3,6 +3,7 @@
 import { Fragment } from 'react';
 
 import { AcademicTermModal } from '@/components/modals/AcademicTermModal';
+import { BulkImportModal } from '@/components/modals/BulkImportModal';
 import { ChangeRoleModal } from '@/components/modals/ChangeRoleModal';
 import DeleteModal from '@/components/modals/Confirmations/DeleteModal';
 import ExampleDeletion from '@/components/modals/Confirmations/ExampleDeletion';
@@ -43,6 +44,7 @@ const Modal: { [key in ModalType]?: React.ComponentType<any> } = {
   [ModalType.StudentModal]: StudentModal,
   [ModalType.StudentStatusModal]: StudentStatusModal,
   [ModalType.StudentProfileModal]: StudentProfileModal,
+  [ModalType.BulkImportModal]: BulkImportModal,
   [ModalType.ParentModal]: ParentModal,
   [ModalType.ParentProfileModal]: ParentProfileModal,
 };

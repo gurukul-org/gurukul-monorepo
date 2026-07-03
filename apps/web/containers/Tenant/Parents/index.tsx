@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 
+import { AccountStatusBadge } from '@/components/AccountStatusBadge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  useShowBulkImportModal,
   useShowDeleteModal,
   useShowInviteMemberModal,
   useShowParentModal,
@@ -43,6 +45,7 @@ import {
   Plus,
   Search,
   ShieldAlert,
+  Upload,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -60,6 +63,7 @@ export default function ParentsContainer() {
   const showParentProfile = useShowParentProfileModal();
   const showDeleteModal = useShowDeleteModal();
   const showInviteMemberModal = useShowInviteMemberModal();
+  const showBulkImportModal = useShowBulkImportModal();
   const { mutateAsync: deleteParent } = useDeleteParent();
 
   const handleConfirmDelete = async (parent: ParentListItem) => {
@@ -98,12 +102,15 @@ export default function ParentsContainer() {
                 {initials}
               </div>
               <div className="flex flex-col overflow-hidden">
-                <span className="font-medium text-zinc-900 dark:text-zinc-50 hover:text-primary hover:underline truncate max-w-[180px]">
-                  {p.name ?? (
-                    <span className="text-muted-foreground italic">
-                      No portal account
-                    </span>
-                  )}
+                <span className="flex items-center gap-1.5">
+                  <span className="font-medium text-zinc-900 dark:text-zinc-50 hover:text-primary hover:underline truncate max-w-[180px]">
+                    {p.name ?? (
+                      <span className="text-muted-foreground italic">
+                        No portal account
+                      </span>
+                    )}
+                  </span>
+                  <AccountStatusBadge status={p.accountStatus} />
                 </span>
                 {p.email && (
                   <span className="text-[10px] text-muted-foreground truncate">
@@ -205,6 +212,13 @@ export default function ParentsContainer() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            onClick={() => showBulkImportModal('parent')}
+            className="h-10 gap-1.5 font-semibold"
+          >
+            <Upload className="h-4 w-4" /> Import CSV
+          </Button>
           <Button
             variant="outline"
             onClick={() => showInviteMemberModal('Parent')}

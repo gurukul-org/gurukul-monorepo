@@ -10,6 +10,13 @@ export const STUDENT_STATUS = {
   INACTIVE: 'INACTIVE',
 } as const;
 
+/**
+ * Roll-number rules shared by single-create validation (DTO) and the CSV
+ * bulk-import path so the two can never drift apart.
+ */
+export const ROLL_NUMBER_REGEX = /^[a-zA-Z0-9\-]+$/;
+export const ROLL_NUMBER_MAX_LENGTH = 50;
+
 export type StudentStatus =
   (typeof STUDENT_STATUS)[keyof typeof STUDENT_STATUS];
 

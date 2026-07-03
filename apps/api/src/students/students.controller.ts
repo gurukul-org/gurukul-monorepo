@@ -7,14 +7,18 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
@@ -28,9 +32,16 @@ import { PERMS } from '@repo/permissions';
 
 import {
   GetCurrentTenant,
+  GetCurrentUser,
   GetCurrentUserId,
   RequirePermissions,
 } from '../common/decorators';
+import { MEMBER_IMPORT_MAX_BYTES } from '../member-import/member-import.constants';
+import { MemberImportService } from '../member-import/member-import.service';
+import {
+  type UploadedCsvFile,
+  readCsvUpload,
+} from '../member-import/member-import.util';
 import {
   ChangeStudentStatusDto,
   CreateStudentDto,
@@ -43,7 +54,10 @@ import { StudentsService } from './students.service';
 @ApiBearerAuth()
 @Controller('students')
 export class StudentsController {
-  constructor(private readonly studentsService: StudentsService) {}
+  constructor(
+    private readonly studentsService: StudentsService,
+    private readonly memberImportService: MemberImportService,
+  ) {}
 
   // ---------------------------------------------------------------------------
   // GET /students
@@ -141,6 +155,85 @@ export class StudentsController {
   ) {
     if (!tenantId) throw new ForbiddenException('Tenant context required.');
     return this.studentsService.create(tenantId, userId, dto);
+  }
+
+  // ---------------------------------------------------------------------------
+  // POST /students/bulk — queue a CSV import of student accounts
+  // ---------------------------------------------------------------------------
+  @Post('bulk')
+  @RequirePermissions(PERMS.user.invite)
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MEMBER_IMPORT_MAX_BYTES } }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description:
+            'CSV with columns: email, firstName, lastName, and optional rollNumber, admissionDate.',
+        },
+      },
+    },
+  })
+  @ApiOperation({
+    summary: 'Queue a bulk student import from a CSV file',
+    description:
+      'Accepts a CSV (email, firstName, lastName + optional rollNumber, admissionDate), ' +
+      'enqueues a background job, and returns a jobId immediately. Poll ' +
+      'GET /students/bulk/:jobId for progress and the final result. ' +
+      'Each row pre-creates a student account (User + PENDING membership + ' +
+      'Student role + profile); no invitation emails are sent. Invite later ' +
+      'to move them PENDING -> INVITED -> ACTIVE.',
+  })
+  @ApiCreatedResponse({
+    description: 'Import queued. Returns { jobId } to poll for status.',
+  })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async bulkCreate(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
+    @GetCurrentUser() user: { scopes?: string[]; isAdmin?: boolean },
+    @UploadedFile() file?: UploadedCsvFile,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    const csvContent = readCsvUpload(file);
+
+    return this.memberImportService.enqueue({
+      role: 'student',
+      tenantId,
+      userId,
+      csvContent,
+      scopes: user.scopes ?? [],
+      isAdmin: user.isAdmin ?? false,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // GET /students/bulk/:jobId — poll import progress / result
+  // ---------------------------------------------------------------------------
+  @Get('bulk/:jobId')
+  @RequirePermissions(PERMS.user.invite)
+  @ApiOperation({
+    summary: 'Get the status of a bulk student import job',
+    description:
+      'Returns the job state, progress, and — once completed — the import ' +
+      'result { totalRows, created, skipped[] }, or the failure reason.',
+  })
+  @ApiOkResponse({ description: 'Job status retrieved.' })
+  @ApiNotFoundResponse({ description: 'Job not found or expired.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async getImportStatus(
+    @GetCurrentTenant('id') tenantId: string,
+    @Param('jobId') jobId: string,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return this.memberImportService.getStatus(tenantId, jobId);
   }
 
   // ---------------------------------------------------------------------------

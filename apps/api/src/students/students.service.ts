@@ -474,6 +474,8 @@ export class StudentsService {
       rollNumber: s.rollNumber,
       admissionDate: s.admissionDate,
       status: s.status,
+      // Account lifecycle: PENDING (pre-created) -> INVITED -> ACTIVE.
+      accountStatus: s.membership?.status ?? null,
       enrolmentCount: s._count.enrolments,
       parentCount: s._count.parents,
       createdAt: s.createdAt,
