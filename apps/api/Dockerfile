@@ -52,6 +52,10 @@ COPY --from=builder-full --chown=nestjs:nodejs /app/apps/api/prisma.config.ts ./
 # Copy entrypoint script
 COPY --chown=nestjs:nodejs apps/api/docker-entrypoint.sh ./apps/api/docker-entrypoint.sh
 
+USER root
+RUN chmod +x /app/apps/api/docker-entrypoint.sh
+USER nestjs
+
 WORKDIR /app/apps/api
 ENV PORT=8000
 EXPOSE 8000
