@@ -9,18 +9,38 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useHideModal } from '@/hooks/use-modal';
-import { useStudent } from '@/services/api/requests/students';
+import {
+  useHideModal,
+  useShowDeleteModal,
+  useShowEditParentLinkModal,
+  useShowLinkParentModal,
+} from '@/hooks/use-modal';
+import { usePermission } from '@/hooks/use-permission';
+import {
+  useCreateEnrolment,
+  useUpdateEnrolmentStatus,
+  useWithdrawEnrolment,
+} from '@/services/api/requests/enrolments';
+import { useStudent, useUnlinkParent } from '@/services/api/requests/students';
 import {
   Calendar,
+  CheckCircle2,
   Clock,
+  Edit3,
   GraduationCap,
   Loader2,
+  RefreshCw,
   ShieldAlert,
+  Trash2,
   User,
+  UserMinus,
+  UserPlus,
   Users,
   X,
 } from 'lucide-react';
+import { toast } from 'sonner';
+
+import { PERMS } from '@repo/permissions';
 
 interface StudentProfileModalProps {
   studentId: string;
@@ -69,6 +89,87 @@ export function StudentProfileModal({ studentId }: StudentProfileModalProps) {
   const [tab, setTab] = useState<TabKey>('overview');
 
   const { data: student, isLoading, isError } = useStudent(studentId);
+
+  const { hasPermission } = usePermission();
+  const showDeleteModal = useShowDeleteModal();
+  const showLinkParentModal = useShowLinkParentModal();
+  const showEditParentLinkModal = useShowEditParentLinkModal();
+  const { mutateAsync: withdraw } = useWithdrawEnrolment();
+  const { mutateAsync: updateStatus } = useUpdateEnrolmentStatus();
+  const { mutateAsync: enrolStudent } = useCreateEnrolment();
+  const { mutateAsync: unlinkParent } = useUnlinkParent();
+
+  const handleUnlinkParent = (parentId: string, parentName: string) => {
+    showDeleteModal({
+      title: 'Unlink Parent / Guardian',
+      subtitle: `Are you sure you want to unlink ${parentName} from this student? This operation will write an audit log.`,
+      confirmButtonText: 'Unlink Parent',
+      onConfirm: async () => {
+        try {
+          await unlinkParent({ studentId, parentId });
+          toast.success('Parent unlinked successfully!');
+        } catch (err) {
+          toast.error('Failed to unlink parent.');
+        }
+      },
+    });
+  };
+
+  const handleWithdrawEnrolment = (
+    enrolmentId: string,
+    studentName: string,
+  ) => {
+    showDeleteModal({
+      title: 'Withdraw Student',
+      subtitle: `Are you sure you want to withdraw ${studentName} from this class? You can optionally provide a reason.`,
+      confirmButtonText: 'Withdraw Student',
+      onConfirm: async () => {
+        const reason = window.prompt('Enter reason for withdrawal (optional):');
+        if (reason === null) return;
+        try {
+          await withdraw({
+            id: enrolmentId,
+            withdrawReason: reason || undefined,
+          });
+          toast.success('Student withdrawn successfully.');
+        } catch (err: any) {
+          toast.error(
+            err.response?.data?.message || 'Failed to withdraw student.',
+          );
+        }
+      },
+    });
+  };
+
+  const handleCompleteEnrolment = async (enrolmentId: string) => {
+    try {
+      await updateStatus({
+        id: enrolmentId,
+        dto: { status: 'COMPLETED' },
+      });
+      toast.success('Enrollment marked as completed.');
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.message || 'Failed to complete enrolment.',
+      );
+    }
+  };
+
+  const handleReEnrolStudent = async (
+    classId: string,
+    studentProfileId: string,
+  ) => {
+    try {
+      await enrolStudent({
+        studentProfileId,
+        classId,
+        enrolledAt: new Date().toISOString(),
+      });
+      toast.success('Student re-enrolled successfully.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to re-enrol student.');
+    }
+  };
 
   const statusStyle = (
     student
@@ -251,19 +352,70 @@ export function StudentProfileModal({ studentId }: StudentProfileModalProps) {
                             {e.class.academicTerm?.name || 'No Term'}
                           </p>
                         </div>
-                        <div className="text-right space-y-1">
-                          <span
-                            className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border uppercase ${
-                              e.status === 'ACTIVE'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800'
-                                : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-900'
-                            }`}
-                          >
-                            {e.status}
-                          </span>
-                          <p className="text-[9px] text-muted-foreground">
-                            Enrolled: {formatDate(e.enrolledAt)}
-                          </p>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right space-y-1">
+                            <span
+                              className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold border uppercase ${
+                                e.status === 'ACTIVE'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800'
+                                  : e.status === 'WITHDRAWN'
+                                    ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:border-red-800'
+                                    : e.status === 'COMPLETED'
+                                      ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800'
+                                      : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-900'
+                              }`}
+                            >
+                              {e.status}
+                            </span>
+                            <p className="text-[9px] text-muted-foreground">
+                              Enrolled: {formatDate(e.enrolledAt)}
+                            </p>
+                          </div>
+
+                          {/* Quick Enrolment Actions */}
+                          {e.status === 'ACTIVE' && (
+                            <div className="flex gap-1.5 shrink-0">
+                              {hasPermission(PERMS.enrolment.edit) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCompleteEnrolment(e.id)}
+                                  title="Mark Complete"
+                                  className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-emerald-600 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors"
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              {hasPermission(PERMS.enrolment.delete) && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleWithdrawEnrolment(
+                                      e.id,
+                                      student.name ?? student.rollNumber,
+                                    )
+                                  }
+                                  title="Withdraw"
+                                  className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-red-600 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors"
+                                >
+                                  <UserMinus className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          {e.status === 'WITHDRAWN' &&
+                            hasPermission(PERMS.enrolment.create) && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleReEnrolStudent(e.class.id, student.id)
+                                }
+                                title="Re-enrol Student"
+                                className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-primary border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors flex items-center gap-1 text-[10px] font-bold shrink-0"
+                              >
+                                <RefreshCw className="h-3.5 w-3.5" /> Re-enrol
+                              </button>
+                            )}
                         </div>
                       </div>
                     ))
@@ -272,7 +424,40 @@ export function StudentProfileModal({ studentId }: StudentProfileModalProps) {
               )}
 
               {tab === 'parents' && (
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Header with link button */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                      Parents & Guardians
+                    </h3>
+                    {hasPermission(PERMS.student.linkParent) && (
+                      <button
+                        type="button"
+                        onClick={() => showLinkParentModal(student.id)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-white bg-primary hover:bg-primary/90 rounded-md transition-colors"
+                      >
+                        <UserPlus className="h-3 w-3" /> Link Parent
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Warning banner for zero parents */}
+                  {student.parents.length === 0 && (
+                    <div className="flex gap-2.5 p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900 rounded-lg text-xs items-start">
+                      <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-[11px]">
+                          No Linked Parents/Guardians
+                        </p>
+                        <p className="mt-0.5 text-[10px] opacity-90">
+                          This student profile does not have any linked parents
+                          or guardians. Please link at least one parent or
+                          guardian for communication and portal access.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {student.parents.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg">
                       <Users className="h-8 w-8 text-muted-foreground/40 mb-1" />
@@ -281,39 +466,88 @@ export function StudentProfileModal({ studentId }: StudentProfileModalProps) {
                       </p>
                     </div>
                   ) : (
-                    student.parents.map((p) => (
-                      <div
-                        key={p.parentProfileId}
-                        className="p-3.5 border border-zinc-100 dark:border-zinc-800 rounded-lg bg-zinc-50/20 space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                            {p.parentName ?? 'Unnamed Parent'}
-                          </h4>
-                          <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold bg-zinc-100 text-zinc-700 border border-zinc-200 uppercase">
-                            {p.relationship}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground">
-                          {p.parentEmail && (
-                            <div>
-                              Email:{' '}
-                              <span className="text-zinc-700 dark:text-zinc-300 font-medium">
-                                {p.parentEmail}
-                              </span>
+                    <div className="space-y-3">
+                      {student.parents.map((p) => (
+                        <div
+                          key={p.parentProfileId}
+                          className="p-3.5 border border-zinc-100 dark:border-zinc-800 rounded-lg bg-zinc-50/20 space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                                {p.parentName ?? 'Unnamed Parent'}
+                              </h4>
+                              {p.relationshipDescription && (
+                                <p className="text-[10px] text-muted-foreground italic">
+                                  {p.relationshipDescription}
+                                </p>
+                              )}
                             </div>
-                          )}
-                          {p.emergencyPhone && (
-                            <div>
-                              Emergency Phone:{' '}
-                              <span className="text-zinc-700 dark:text-zinc-300 font-medium">
-                                {p.emergencyPhone}
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-semibold bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 uppercase">
+                                {p.relationship}
                               </span>
+
+                              {/* Edit / Unlink parent link actions */}
+                              <div className="flex gap-1 shrink-0 ml-1">
+                                {hasPermission(
+                                  PERMS.student.editParentLink,
+                                ) && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      showEditParentLinkModal(
+                                        student.id,
+                                        p.parentProfileId,
+                                        p.relationship,
+                                        p.relationshipDescription,
+                                      )
+                                    }
+                                    title="Edit Link"
+                                    className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors"
+                                  >
+                                    <Edit3 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                                {hasPermission(PERMS.student.unlinkParent) && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleUnlinkParent(
+                                        p.parentProfileId,
+                                        p.parentName ?? 'this parent',
+                                      )
+                                    }
+                                    title="Unlink Parent"
+                                    className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-red-600 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 transition-colors"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground pt-1 border-t border-zinc-50 dark:border-zinc-900">
+                            {p.parentEmail && (
+                              <div>
+                                Email:{' '}
+                                <span className="text-zinc-700 dark:text-zinc-300 font-medium">
+                                  {p.parentEmail}
+                                </span>
+                              </div>
+                            )}
+                            {p.emergencyPhone && (
+                              <div>
+                                Emergency Phone:{' '}
+                                <span className="text-zinc-700 dark:text-zinc-300 font-medium">
+                                  {p.emergencyPhone}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      ))}
+                    </div>
                   )}
                 </div>
               )}

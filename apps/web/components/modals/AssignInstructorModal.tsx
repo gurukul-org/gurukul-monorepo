@@ -1,0 +1,192 @@
+'use client';
+
+import { useEffect, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
+
+import { Modal } from '@/components/modals/Modal';
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field';
+import { useShowApiError } from '@/hooks/api/use-show-api-error';
+import { useHideModal } from '@/hooks/use-modal';
+import { useClass } from '@/services/api/requests/classes';
+import {
+  useAssignInstructor,
+  useEligibleInstructors,
+} from '@/services/api/requests/instructors';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
+import { z } from 'zod';
+
+const assignSchema = z.object({
+  tenantMembershipId: z.string().uuid('Please select an instructor.'),
+  isPrimary: z.boolean(),
+});
+
+type AssignValues = z.infer<typeof assignSchema>;
+
+interface AssignInstructorModalProps {
+  classId: string;
+}
+
+export function AssignInstructorModal({ classId }: AssignInstructorModalProps) {
+  const hideModal = useHideModal();
+  const showError = useShowApiError();
+
+  const { data: eligible, isLoading: isLoadingEligible } =
+    useEligibleInstructors();
+  const { data: cls, isLoading: isLoadingClass } = useClass(classId);
+  const { mutateAsync: assignInstructor, isPending: isAssigning } =
+    useAssignInstructor();
+
+  // Determine if the class has no instructors assigned yet
+  const hasNoInstructors = useMemo(() => {
+    return !cls?.instructors || cls.instructors.length === 0;
+  }, [cls]);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<AssignValues>({
+    resolver: zodResolver(assignSchema),
+    defaultValues: {
+      tenantMembershipId: '',
+      isPrimary: false,
+    },
+  });
+
+  // Automatically check & force isPrimary to true if no instructors are assigned yet
+  useEffect(() => {
+    if (hasNoInstructors) {
+      setValue('isPrimary', true);
+    }
+  }, [hasNoInstructors, setValue]);
+
+  const onSubmit = async (values: AssignValues) => {
+    try {
+      await assignInstructor({
+        classId,
+        dto: {
+          tenantMembershipId: values.tenantMembershipId,
+          isPrimary: values.isPrimary,
+        },
+      });
+      toast.success('Instructor assigned successfully!');
+      hideModal();
+    } catch (err) {
+      showError(err);
+    }
+  };
+
+  const isSaving = isAssigning || isLoadingClass || isLoadingEligible;
+
+  // Filter out instructors who are already assigned to this class
+  const unassignedEligible = useMemo(() => {
+    if (!eligible || !cls?.instructors) return eligible || [];
+    const assignedIds = new Set(cls.instructors.map((i) => i.membershipId));
+    return eligible.filter(
+      (instructor) => !assignedIds.has(instructor.membershipId),
+    );
+  }, [eligible, cls]);
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={hideModal}
+      title="Assign Instructor"
+      description="Select an eligible faculty member to assign to this class section."
+      size="md"
+      primaryAction={{
+        label: isAssigning ? 'Assigning...' : 'Assign Instructor',
+        onClick: handleSubmit(onSubmit),
+        loading: isAssigning,
+        disabled: isSaving || unassignedEligible.length === 0,
+      }}
+      secondaryAction={{
+        label: 'Cancel',
+        onClick: hideModal,
+        disabled: isAssigning,
+      }}
+    >
+      <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+        <FieldGroup className="gap-5">
+          {/* Instructor Selection */}
+          <Field data-invalid={!!errors.tenantMembershipId}>
+            <FieldLabel
+              htmlFor="tenantMembershipId"
+              className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80"
+            >
+              Select Instructor <span className="text-red-500">*</span>
+            </FieldLabel>
+            {isLoadingEligible ? (
+              <div className="h-10 animate-pulse bg-zinc-150 rounded-lg dark:bg-zinc-800" />
+            ) : unassignedEligible.length === 0 ? (
+              <div className="text-xs p-3 border rounded-lg bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-amber-600 dark:text-amber-400 italic">
+                All eligible instructors have already been assigned to this
+                class.
+              </div>
+            ) : (
+              <select
+                id="tenantMembershipId"
+                {...register('tenantMembershipId')}
+                disabled={isSaving}
+                className="w-full h-10 px-3 text-sm rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-shadow"
+              >
+                <option value="">-- Choose an Instructor --</option>
+                {unassignedEligible.map((instructor) => (
+                  <option
+                    key={instructor.membershipId}
+                    value={instructor.membershipId}
+                  >
+                    {instructor.firstName} {instructor.lastName} (
+                    {instructor.email})
+                  </option>
+                ))}
+              </select>
+            )}
+            {errors.tenantMembershipId && (
+              <FieldError>{errors.tenantMembershipId.message}</FieldError>
+            )}
+          </Field>
+
+          {/* Primary Designation Checkbox */}
+          {unassignedEligible.length > 0 && (
+            <Field className="flex items-start gap-3 pt-2">
+              <input
+                type="checkbox"
+                id="isPrimary"
+                {...register('isPrimary')}
+                disabled={isSaving || hasNoInstructors}
+                className="h-4 w-4 rounded border-zinc-300 text-primary focus:ring-primary/35 mt-0.5"
+              />
+              <div className="flex flex-col gap-0.5">
+                <FieldLabel
+                  htmlFor="isPrimary"
+                  className="text-xs font-semibold text-zinc-900 dark:text-zinc-50 cursor-pointer"
+                >
+                  Designate as Primary Instructor
+                </FieldLabel>
+                {hasNoInstructors ? (
+                  <span className="text-[10px] text-muted-foreground italic">
+                    First instructor must be designated as the primary
+                    instructor (Class Incharge).
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-zinc-400">
+                    Promoting this instructor will demote the current Class
+                    Incharge to a secondary instructor.
+                  </span>
+                )}
+              </div>
+            </Field>
+          )}
+        </FieldGroup>
+      </form>
+    </Modal>
+  );
+}

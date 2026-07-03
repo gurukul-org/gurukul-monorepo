@@ -29,6 +29,7 @@ export interface ParentDetail {
   students: Array<{
     studentProfileId: string;
     relationship: string;
+    relationshipDescription?: string | null;
     studentName: string | null;
     studentEmail: string | null;
     rollNumber: string | null;

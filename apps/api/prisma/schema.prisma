@@ -332,10 +332,11 @@ model ParentProfile {
 // STUDENT <-> PARENT RELATION
 // =====================================================
 model StudentParent {
-  studentProfileId String   @map("student_profile_id") @db.Uuid
-  parentProfileId  String   @map("parent_profile_id") @db.Uuid
-  relationship     String   @db.VarChar(50)
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  studentProfileId        String    @map("student_profile_id") @db.Uuid
+  parentProfileId         String    @map("parent_profile_id") @db.Uuid
+  relationship            String    @db.VarChar(50)
+  relationshipDescription String?   @map("relationship_description") @db.VarChar(255)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
   student StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
   parent  ParentProfile  @relation(fields: [parentProfileId], references: [id], onDelete: Cascade)
@@ -354,6 +355,7 @@ model Enrolment {
   classId          String    @map("class_id") @db.Uuid
   status           String    @db.VarChar(50) // ACTIVE, WITHDRAWN, COMPLETED
   enrolledAt       DateTime  @map("enrolled_at") @db.Timestamp(6)
+  withdrawReason   String?   @map("withdraw_reason") @db.VarChar(255)
   createdBy        String?   @map("created_by") @db.Uuid
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
@@ -364,7 +366,7 @@ model Enrolment {
   class   Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
   creator User?          @relation("EnrolmentCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
 
-  @@unique([studentProfileId, classId])
+  @@index([studentProfileId, classId, status])
   @@map("enrolments")
 }
 

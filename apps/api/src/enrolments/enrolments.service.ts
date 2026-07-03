@@ -2,15 +2,22 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 
 import { PrismaService } from 'nestjs-prisma';
 
-import { CreateEnrolmentDto, UpdateEnrolmentDto } from './dto';
+import {
+  BulkCreateEnrolmentDto,
+  CreateEnrolmentDto,
+  UpdateEnrolmentDto,
+} from './dto';
 
 @Injectable()
 export class EnrolmentsService {
+  private readonly logger = new Logger(EnrolmentsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   // ---------------------------------------------------------------------------
@@ -23,7 +30,6 @@ export class EnrolmentsService {
     const enrolments = await this.prisma.enrolment.findMany({
       where: {
         tenantId,
-        deletedAt: null,
         studentProfileId: filters.studentProfileId || undefined,
         classId: filters.classId || undefined,
         status: filters.status || undefined,
@@ -70,7 +76,7 @@ export class EnrolmentsService {
   // ---------------------------------------------------------------------------
   async findOne(tenantId: string, id: string) {
     const enrolment = await this.prisma.enrolment.findFirst({
-      where: { id, tenantId, deletedAt: null },
+      where: { id, tenantId },
       include: {
         student: {
           select: {
@@ -129,9 +135,10 @@ export class EnrolmentsService {
     const cls = await this.prisma.class.findFirst({
       where: { id: dto.classId, tenantId, deletedAt: null },
       include: {
+        academicTerm: { select: { id: true, deletedAt: true, isActive: true } },
         _count: {
           select: {
-            enrolments: { where: { status: 'ACTIVE', deletedAt: null } },
+            enrolments: { where: { status: 'ACTIVE' } },
           },
         },
       },
@@ -145,28 +152,35 @@ export class EnrolmentsService {
       );
     }
 
-    // 3. Capacity check
+    // 3. Academic term must not be archived
+    if (cls.academicTerm.deletedAt !== null) {
+      throw new BadRequestException(
+        'Cannot enrol into a class whose academic term has been archived.',
+      );
+    }
+
+    // 4. Capacity check
     if (cls._count.enrolments >= cls.maxCapacity) {
       throw new BadRequestException(
         `This class is at full capacity (${cls.maxCapacity} students). Cannot enrol more students.`,
       );
     }
 
-    // 4. Duplicate check — student already enrolled in this class
+    // 5. Duplicate check — student must not already have an ACTIVE enrolment in this class
     const existing = await this.prisma.enrolment.findFirst({
       where: {
         studentProfileId: dto.studentProfileId,
         classId: dto.classId,
-        deletedAt: null,
+        status: 'ACTIVE',
       },
     });
     if (existing) {
       throw new ConflictException(
-        'This student is already enrolled in this class.',
+        'This student already has an active enrolment in this class.',
       );
     }
 
-    // 5. Create
+    // 6. Create
     const enrolment = await this.prisma.enrolment.create({
       data: {
         tenantId,
@@ -178,34 +192,141 @@ export class EnrolmentsService {
       },
     });
 
+    this.logger.log(
+      JSON.stringify({
+        action: 'CREATE_ENROLMENT',
+        enrolmentId: enrolment.id,
+        studentProfileId: dto.studentProfileId,
+        classId: dto.classId,
+        tenantId,
+        actorUserId: userId,
+        timestamp: new Date().toISOString(),
+      }),
+    );
+
     return this.findOne(tenantId, enrolment.id);
   }
 
   // ---------------------------------------------------------------------------
-  // UPDATE — change enrolment status (ACTIVE → WITHDRAWN | COMPLETED)
+  // BULK ENROL — enrol multiple students into one class with partial success
   // ---------------------------------------------------------------------------
-  async update(tenantId: string, id: string, dto: UpdateEnrolmentDto) {
+  async bulkCreate(
+    tenantId: string,
+    userId: string,
+    dto: BulkCreateEnrolmentDto,
+  ) {
+    const results: {
+      succeeded: { studentProfileId: string; enrolmentId: string }[];
+      failed: { studentProfileId: string; reason: string }[];
+    } = {
+      succeeded: [],
+      failed: [],
+    };
+
+    for (const studentProfileId of dto.studentProfileIds) {
+      try {
+        const enrolment = await this.create(tenantId, userId, {
+          studentProfileId,
+          classId: dto.classId,
+          enrolledAt: dto.enrolledAt,
+        });
+        results.succeeded.push({
+          studentProfileId,
+          enrolmentId: enrolment.id,
+        });
+      } catch (error: any) {
+        results.failed.push({
+          studentProfileId,
+          reason: error.message || 'Unknown error',
+        });
+      }
+    }
+
+    this.logger.log(
+      JSON.stringify({
+        action: 'BULK_CREATE_ENROLMENT',
+        classId: dto.classId,
+        tenantId,
+        actorUserId: userId,
+        succeeded: results.succeeded.length,
+        failed: results.failed.length,
+        timestamp: new Date().toISOString(),
+      }),
+    );
+
+    return results;
+  }
+
+  // ---------------------------------------------------------------------------
+  // UPDATE — change enrolment status with state-machine guards
+  // ---------------------------------------------------------------------------
+  async update(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: UpdateEnrolmentDto,
+  ) {
     const enrolment = await this.prisma.enrolment.findFirst({
-      where: { id, tenantId, deletedAt: null },
+      where: { id, tenantId },
     });
     if (!enrolment) throw new NotFoundException('Enrolment not found.');
 
     if (!dto.status) return this.findOne(tenantId, id);
 
+    // State-machine guard: only ACTIVE enrolments can transition
+    if (enrolment.status !== 'ACTIVE') {
+      throw new BadRequestException(
+        `Cannot change status from "${enrolment.status}". Only ACTIVE enrolments can be updated.`,
+      );
+    }
+
+    const allowedTransitions = ['WITHDRAWN', 'COMPLETED'];
+    if (!allowedTransitions.includes(dto.status)) {
+      throw new BadRequestException(
+        `Invalid status transition. ACTIVE enrolments can only be changed to WITHDRAWN or COMPLETED.`,
+      );
+    }
+
+    const updateData: any = { status: dto.status };
+    if (dto.status === 'WITHDRAWN' && dto.withdrawReason) {
+      updateData.withdrawReason = dto.withdrawReason;
+    }
+
     await this.prisma.enrolment.update({
       where: { id },
-      data: { status: dto.status },
+      data: updateData,
     });
+
+    this.logger.log(
+      JSON.stringify({
+        action:
+          dto.status === 'WITHDRAWN'
+            ? 'WITHDRAW_ENROLMENT'
+            : 'COMPLETE_ENROLMENT',
+        enrolmentId: id,
+        tenantId,
+        actorUserId: userId,
+        previousStatus: enrolment.status,
+        newStatus: dto.status,
+        withdrawReason: dto.withdrawReason || null,
+        timestamp: new Date().toISOString(),
+      }),
+    );
 
     return this.findOne(tenantId, id);
   }
 
   // ---------------------------------------------------------------------------
-  // WITHDRAW (soft-delete equivalent via status) — dedicated endpoint
+  // WITHDRAW — dedicated convenience endpoint
   // ---------------------------------------------------------------------------
-  async withdraw(tenantId: string, id: string) {
+  async withdraw(
+    tenantId: string,
+    userId: string,
+    id: string,
+    withdrawReason?: string,
+  ) {
     const enrolment = await this.prisma.enrolment.findFirst({
-      where: { id, tenantId, deletedAt: null },
+      where: { id, tenantId },
     });
     if (!enrolment) throw new NotFoundException('Enrolment not found.');
 
@@ -213,10 +334,28 @@ export class EnrolmentsService {
       throw new BadRequestException('This enrolment is already withdrawn.');
     }
 
+    if (enrolment.status === 'COMPLETED') {
+      throw new BadRequestException('Cannot withdraw a completed enrolment.');
+    }
+
     await this.prisma.enrolment.update({
       where: { id },
-      data: { status: 'WITHDRAWN', deletedAt: new Date() },
+      data: {
+        status: 'WITHDRAWN',
+        withdrawReason: withdrawReason || null,
+      },
     });
+
+    this.logger.log(
+      JSON.stringify({
+        action: 'WITHDRAW_ENROLMENT',
+        enrolmentId: id,
+        tenantId,
+        actorUserId: userId,
+        withdrawReason: withdrawReason || null,
+        timestamp: new Date().toISOString(),
+      }),
+    );
 
     return { message: 'Student withdrawn from class successfully.' };
   }
@@ -230,6 +369,7 @@ export class EnrolmentsService {
       id: e.id,
       status: e.status,
       enrolledAt: e.enrolledAt,
+      withdrawReason: e.withdrawReason ?? null,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
       student: {

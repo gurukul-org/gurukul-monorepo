@@ -9,11 +9,14 @@ export const metadata: Metadata = {
 };
 
 interface CourseDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default function CourseDetailPage({ params }: CourseDetailPageProps) {
-  return <TenantCourseDetailContainer courseId={params.id} />;
+export default async function CourseDetailPage({
+  params,
+}: CourseDetailPageProps) {
+  const { id } = await params;
+  return <TenantCourseDetailContainer courseId={id} />;
 }

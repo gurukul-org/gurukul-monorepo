@@ -32,8 +32,10 @@ import { UsersModule } from './users/users.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [
+        path.resolve(__dirname, '..', '..', '.env'),
         path.resolve(__dirname, '..', '.env'),
         path.resolve(__dirname, '..', '..', '..', '.env'),
+        path.resolve(__dirname, '..', '..', '..', '..', '.env'),
       ],
     }),
     CacheModule.register({

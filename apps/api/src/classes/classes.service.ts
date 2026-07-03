@@ -161,6 +161,13 @@ export class ClassesService {
         instructors: {
           where: { deletedAt: null },
           include: {
+            assignedBy: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
             membership: {
               include: {
                 user: {
@@ -233,12 +240,21 @@ export class ClassesService {
     ).length;
 
     const instructorsList = cls.instructors.map((i) => ({
+      id: i.id,
       membershipId: i.membership.id,
       userId: i.membership.user.id,
       firstName: i.membership.user.firstName,
       lastName: i.membership.user.lastName,
       email: i.membership.user.email,
       isPrimary: i.isPrimary,
+      assignedAt: i.createdAt,
+      assignedBy: i.assignedBy
+        ? {
+            id: i.assignedBy.id,
+            firstName: i.assignedBy.firstName,
+            lastName: i.assignedBy.lastName,
+          }
+        : null,
     }));
 
     return {

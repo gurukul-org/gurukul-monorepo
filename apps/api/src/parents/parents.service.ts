@@ -339,6 +339,7 @@ export class ParentsService {
       students: (p.students ?? []).map((sp: any) => ({
         studentProfileId: sp.studentProfileId,
         relationship: sp.relationship,
+        relationshipDescription: sp.relationshipDescription,
         studentName: sp.student?.membership?.user
           ? `${sp.student.membership.user.firstName} ${sp.student.membership.user.lastName}`
           : null,
