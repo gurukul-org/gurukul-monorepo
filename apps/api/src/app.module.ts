@@ -8,12 +8,21 @@ import { PrismaModule } from 'nestjs-prisma';
 import * as path from 'path';
 import { Pool } from 'pg';
 
+import { AcademicTermsModule } from './academic-terms/academic-terms.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ClassesModule } from './classes/classes.module';
 import { AtGuard } from './common/guards/at.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
+import { CoursesModule } from './courses/courses.module';
+import { EnrolmentsModule } from './enrolments/enrolments.module';
+import { InstructorsModule } from './instructors/instructors.module';
+import { MembersModule } from './members/members.module';
+import { ParentsModule } from './parents/parents.module';
+import { ProgramsModule } from './programs/programs.module';
 import { RolesModule } from './roles/roles.module';
+import { StudentsModule } from './students/students.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { UsersModule } from './users/users.module';
 
@@ -22,8 +31,10 @@ import { UsersModule } from './users/users.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [
+        path.resolve(__dirname, '..', '..', '.env'),
         path.resolve(__dirname, '..', '.env'),
         path.resolve(__dirname, '..', '..', '..', '.env'),
+        path.resolve(__dirname, '..', '..', '..', '..', '.env'),
       ],
     }),
     CacheModule.register({
@@ -52,6 +63,15 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     TenantsModule,
     RolesModule,
+    MembersModule,
+    AcademicTermsModule,
+    StudentsModule,
+    ProgramsModule,
+    ClassesModule,
+    InstructorsModule,
+    CoursesModule,
+    EnrolmentsModule,
+    ParentsModule,
   ],
   controllers: [AppController],
   providers: [

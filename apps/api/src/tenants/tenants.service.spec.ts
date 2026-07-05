@@ -10,8 +10,13 @@ import { TenantsService } from './tenants.service';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 type PrismaMock = {
-  tenant: { findFirst: jest.Mock; create: jest.Mock };
-  tenantMembership: { create: jest.Mock };
+  tenant: {
+    findFirst: jest.Mock;
+    create: jest.Mock;
+    findUniqueOrThrow: jest.Mock;
+    update: jest.Mock;
+  };
+  tenantMembership: { create: jest.Mock; count: jest.Mock };
   user: { findUnique: jest.Mock; create: jest.Mock };
   role: { create: jest.Mock };
   rolePermission: { createMany: jest.Mock };
@@ -36,8 +41,13 @@ describe('TenantsService — createTenant', () => {
 
   beforeEach(async () => {
     prisma = {
-      tenant: { findFirst: jest.fn(), create: jest.fn() },
-      tenantMembership: { create: jest.fn() },
+      tenant: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+        update: jest.fn(),
+      },
+      tenantMembership: { create: jest.fn(), count: jest.fn() },
       user: { findUnique: jest.fn(), create: jest.fn() },
       role: { create: jest.fn().mockResolvedValue({ id: 'role-id' }) },
       rolePermission: { createMany: jest.fn() },
@@ -130,5 +140,55 @@ describe('TenantsService — createTenant', () => {
       expect.any(Array),
       expect.any(Boolean),
     );
+  });
+
+  describe('updateTenant', () => {
+    it('renames the workspace, invalidates cache, and logs audit entry', async () => {
+      const tenantId = 't1';
+      const subdomain = 'acme';
+      const actorUserId = 'u1';
+      const dto = { name: 'Acme Academy' };
+
+      prisma.tenant.findUniqueOrThrow
+        .mockResolvedValueOnce({
+          id: tenantId,
+          name: 'Old Acme School',
+          subdomain,
+          createdAt: new Date(),
+        })
+        .mockResolvedValueOnce({
+          id: tenantId,
+          name: 'Acme Academy',
+          subdomain,
+          createdAt: new Date(),
+        });
+      prisma.tenantMembership.count.mockResolvedValueOnce(5);
+
+      const logSpy = jest.spyOn(service['logger'], 'log');
+      const cacheDelSpy = jest.spyOn(service, 'invalidateTenantCache');
+
+      const result = await service.updateTenant(
+        tenantId,
+        subdomain,
+        actorUserId,
+        dto,
+      );
+
+      expect(result.name).toBe('Acme Academy');
+      expect(result.memberCount).toBe(5);
+
+      expect(prisma.tenant.update).toHaveBeenCalledWith({
+        where: { id: tenantId },
+        data: { name: 'Acme Academy' },
+      });
+      expect(cacheDelSpy).toHaveBeenCalledWith(subdomain);
+
+      expect(logSpy).toHaveBeenCalled();
+      const logMsg = logSpy.mock.calls[0][0];
+      expect(logMsg).toContain('RENAME_WORKSPACE');
+      expect(logMsg).toContain('Old Acme School');
+      expect(logMsg).toContain('Acme Academy');
+      expect(logMsg).toContain(actorUserId);
+    });
   });
 });

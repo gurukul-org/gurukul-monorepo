@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsDateString, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class AcceptInvitationDto {
   @ApiProperty({
@@ -21,4 +21,28 @@ export class AcceptInvitationDto {
   @IsString()
   @MinLength(8)
   password?: string;
+
+  @ApiPropertyOptional({
+    description: 'Student roll number required on student accept.',
+    example: 'STU-2026-001',
+  })
+  @IsString()
+  @IsOptional()
+  rollNumber?: string;
+
+  @ApiPropertyOptional({
+    description: 'Student admission date required on student accept.',
+    example: '2026-07-01',
+  })
+  @IsDateString()
+  @IsOptional()
+  admissionDate?: string;
+
+  @ApiPropertyOptional({
+    description: 'Parent emergency contact phone required on parent accept.',
+    example: '+91 99999 99999',
+  })
+  @IsString()
+  @IsOptional()
+  emergencyPhone?: string;
 }

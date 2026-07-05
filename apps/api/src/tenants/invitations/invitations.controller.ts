@@ -24,6 +24,7 @@ import { PERMS } from '@repo/permissions';
 
 import {
   GetCurrentTenant,
+  GetCurrentUser,
   GetCurrentUserId,
   Public,
   RequirePermissions,
@@ -73,8 +74,15 @@ export class InvitationsController {
     @Body() dto: InviteUserDto,
     @GetCurrentTenant('id') tenantId: string,
     @GetCurrentUserId() userId: string,
+    @GetCurrentUser() user: any,
   ): Promise<MessageResponseDto> {
-    return this.invitationsService.inviteUser(dto, tenantId, userId);
+    return this.invitationsService.inviteUser(
+      dto,
+      tenantId,
+      userId,
+      user.scopes,
+      user.isAdmin,
+    );
   }
 
   /**

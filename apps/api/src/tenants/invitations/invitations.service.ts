@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -32,6 +33,8 @@ export class InvitationsService {
     dto: InviteUserDto,
     tenantId: string,
     inviterId: string,
+    inviterScopes: string[] = [],
+    isAdmin = false,
   ): Promise<{ message: string }> {
     // 1. Validate roles belong to tenant or are system roles
     const roles = await this.prisma.role.findMany({
@@ -45,6 +48,24 @@ export class InvitationsService {
       throw new BadRequestException(
         'One or more selected roles are invalid for this tenant.',
       );
+    }
+
+    // Role-specific permission gates
+    const roleNames = roles.map((r) => r.name.toLowerCase());
+    const isStudent = roleNames.includes('student');
+    const isParent = roleNames.includes('parent');
+
+    if (!isAdmin) {
+      if (isStudent && !inviterScopes.includes('invite-students')) {
+        throw new ForbiddenException(
+          'You do not have permission to invite students.',
+        );
+      }
+      if (isParent && !inviterScopes.includes('invite-parents')) {
+        throw new ForbiddenException(
+          'You do not have permission to invite parents.',
+        );
+      }
     }
 
     const tenant = await this.prisma.tenant.findUnique({
@@ -65,14 +86,21 @@ export class InvitationsService {
       },
     });
 
+    let invitedMembershipId: string | null = null;
+    let removedMembershipId: string | null = null;
+
     if (existingUser && existingUser.memberships.length > 0) {
       const membership = existingUser.memberships[0];
       if (membership.status === 'INVITED') {
-        throw new ConflictException(
-          'User is already invited to this tenant. You can resend the invitation.',
-        );
+        invitedMembershipId = membership.id;
+      } else if (
+        membership.status === 'REMOVED' ||
+        membership.deletedAt !== null
+      ) {
+        removedMembershipId = membership.id;
+      } else {
+        throw new ConflictException('User is already a member of this tenant.');
       }
-      throw new ConflictException('User is already a member of this tenant.');
     }
 
     const token = randomBytes(32).toString('hex');
@@ -97,28 +125,182 @@ export class InvitationsService {
         userId = newUser.id;
       }
 
-      // Create membership
-      const membership = await prisma.tenantMembership.create({
-        data: {
-          userId,
-          tenantId,
-          status: 'INVITED',
-          invitedById: inviterId,
-          invitationTokenHash,
-          invitationExpiresAt,
-        },
-      });
+      let membershipId: string;
+
+      if (invitedMembershipId) {
+        // Reuse invited membership - update token and expire
+        await prisma.tenantMembership.update({
+          where: { id: invitedMembershipId },
+          data: {
+            invitedById: inviterId,
+            invitationTokenHash,
+            invitationExpiresAt,
+          },
+        });
+        membershipId = invitedMembershipId;
+
+        // Clean and re-assign roles
+        await prisma.membershipRole.deleteMany({
+          where: { tenantMembershipId: membershipId },
+        });
+      } else if (removedMembershipId) {
+        await prisma.tenantMembership.update({
+          where: { id: removedMembershipId },
+          data: {
+            status: 'INVITED',
+            invitedById: inviterId,
+            invitationTokenHash,
+            invitationExpiresAt,
+            deletedAt: null,
+            joinedAt: null,
+          },
+        });
+        membershipId = removedMembershipId;
+
+        // Clean any residual roles
+        await prisma.membershipRole.deleteMany({
+          where: { tenantMembershipId: membershipId },
+        });
+      } else {
+        const membership = await prisma.tenantMembership.create({
+          data: {
+            userId,
+            tenantId,
+            status: 'INVITED',
+            invitedById: inviterId,
+            invitationTokenHash,
+            invitationExpiresAt,
+          },
+        });
+        membershipId = membership.id;
+      }
 
       // Assign roles
       if (dto.roleIds.length > 0) {
         const membershipRolesData = dto.roleIds.map((roleId) => ({
-          tenantMembershipId: membership.id,
+          tenantMembershipId: membershipId,
           roleId,
           assignedById: inviterId,
         }));
         await prisma.membershipRole.createMany({
           data: membershipRolesData,
         });
+      }
+
+      // Profile Pre-creation & Reuse
+      if (isStudent) {
+        // Check if student profile already linked
+        const existingStudent = await prisma.studentProfile.findFirst({
+          where: { tenantId, tenantMembershipId: membershipId },
+        });
+
+        let studentId = existingStudent?.id;
+
+        if (existingStudent) {
+          // Update profile fields
+          await prisma.studentProfile.update({
+            where: { id: existingStudent.id },
+            data: {
+              ...(dto.rollNumber && { rollNumber: dto.rollNumber }),
+              ...(dto.admissionDate && {
+                admissionDate: new Date(dto.admissionDate),
+              }),
+              updatedBy: inviterId,
+              deletedAt: null,
+            },
+          });
+        } else {
+          // Create StudentProfile with temp placeholders if roll number is not provided
+          const roll = dto.rollNumber || 'TEMP-' + membershipId.slice(0, 8);
+          const admission = dto.admissionDate
+            ? new Date(dto.admissionDate)
+            : new Date();
+
+          // Ensure roll number unique check
+          const duplicate = await prisma.studentProfile.findFirst({
+            where: { tenantId, rollNumber: roll, deletedAt: null },
+          });
+          if (duplicate) {
+            throw new ConflictException(
+              `Student roll number "${roll}" is already in use.`,
+            );
+          }
+
+          const student = await prisma.studentProfile.create({
+            data: {
+              tenantId,
+              tenantMembershipId: membershipId,
+              rollNumber: roll,
+              admissionDate: admission,
+              status: 'ACTIVE',
+              createdBy: inviterId,
+              updatedBy: inviterId,
+            },
+          });
+          studentId = student.id;
+        }
+
+        // Link Parents if preLinkedParentIds are provided
+        if (dto.preLinkedParentIds && dto.preLinkedParentIds.length > 0) {
+          // Remove existing links to prevent duplicates
+          await prisma.studentParent.deleteMany({
+            where: { studentProfileId: studentId },
+          });
+
+          const links = dto.preLinkedParentIds.map((parentId) => ({
+            studentProfileId: studentId!,
+            parentProfileId: parentId,
+            relationship: 'GUARDIAN', // default
+          }));
+          await prisma.studentParent.createMany({ data: links });
+        }
+      }
+
+      if (isParent) {
+        const existingParent = await prisma.parentProfile.findFirst({
+          where: { tenantId, tenantMembershipId: membershipId },
+        });
+
+        let parentId = existingParent?.id;
+
+        if (existingParent) {
+          await prisma.parentProfile.update({
+            where: { id: existingParent.id },
+            data: {
+              ...(dto.emergencyPhone && {
+                emergencyPhone: dto.emergencyPhone,
+              }),
+              updatedBy: inviterId,
+              deletedAt: null,
+            },
+          });
+        } else {
+          const phone = dto.emergencyPhone || 'TEMP-PHONE';
+          const parent = await prisma.parentProfile.create({
+            data: {
+              tenantId,
+              tenantMembershipId: membershipId,
+              emergencyPhone: phone,
+              createdBy: inviterId,
+              updatedBy: inviterId,
+            },
+          });
+          parentId = parent.id;
+        }
+
+        // Link Students if preLinkedStudentIds are provided
+        if (dto.preLinkedStudentIds && dto.preLinkedStudentIds.length > 0) {
+          await prisma.studentParent.deleteMany({
+            where: { parentProfileId: parentId },
+          });
+
+          const links = dto.preLinkedStudentIds.map((studentId) => ({
+            studentProfileId: studentId,
+            parentProfileId: parentId!,
+            relationship: 'GUARDIAN', // default
+          }));
+          await prisma.studentParent.createMany({ data: links });
+        }
       }
     });
 
@@ -184,22 +366,63 @@ export class InvitationsService {
     }
 
     // Determine if the user is a placeholder (newly created) or an existing user.
-    // If the user has a temporary hash, we can infer they never logged in, but better is to check
-    // if they have other active memberships or if we can rely on a flag.
-    // Since we created them, they haven't set a password. We can assume if they only have this 1 membership and it's invited,
-    // they need to set a password. A safer check is whether they've logged in before, but we can just require password if they haven't.
-    // Let's assume a user with no other active memberships and no lastActiveAt needs password setup.
     const activeMemberships = await this.prisma.tenantMembership.count({
       where: { userId: membership.userId, status: 'ACTIVE' },
     });
 
     const requiresPasswordSetup = activeMemberships === 0;
 
+    // Find pre-filled student or parent profile details
+    let rollNumber: string | undefined;
+    let admissionDate: string | undefined;
+    let emergencyPhone: string | undefined;
+    let preLinkedParentCount: number | undefined;
+    let preLinkedStudentCount: number | undefined;
+
+    const roleNames = membership.roles.map((mr) => mr.role.name.toLowerCase());
+    if (roleNames.includes('student')) {
+      const student = await this.prisma.studentProfile.findFirst({
+        where: {
+          tenantId: membership.tenantId,
+          tenantMembershipId: membership.id,
+        },
+        include: { _count: { select: { parents: true } } },
+      });
+      if (student && !student.rollNumber.startsWith('TEMP-')) {
+        rollNumber = student.rollNumber;
+        admissionDate = student.admissionDate.toISOString().split('T')[0];
+      }
+      if (student) {
+        preLinkedParentCount = student._count.parents;
+      }
+    }
+
+    if (roleNames.includes('parent')) {
+      const parent = await this.prisma.parentProfile.findFirst({
+        where: {
+          tenantId: membership.tenantId,
+          tenantMembershipId: membership.id,
+        },
+        include: { _count: { select: { students: true } } },
+      });
+      if (parent && parent.emergencyPhone !== 'TEMP-PHONE') {
+        emergencyPhone = parent.emergencyPhone;
+      }
+      if (parent) {
+        preLinkedStudentCount = parent._count.students;
+      }
+    }
+
     return {
       tenantName: membership.tenant.name,
       email: membership.user.email,
       roles: membership.roles.map((mr) => mr.role.name),
       requiresPasswordSetup,
+      rollNumber,
+      admissionDate,
+      emergencyPhone,
+      preLinkedParentCount,
+      preLinkedStudentCount,
     };
   }
 
@@ -260,6 +483,134 @@ export class InvitationsService {
           where: { id: membership.userId },
           data: { passwordHash },
         });
+      }
+
+      // Finalize profiles
+      const membershipRoles = await prisma.membershipRole.findMany({
+        where: { tenantMembershipId: membership.id },
+        include: { role: true },
+      });
+      const roleNames = membershipRoles.map((mr) => mr.role.name.toLowerCase());
+
+      if (roleNames.includes('student')) {
+        const student = await prisma.studentProfile.findFirst({
+          where: {
+            tenantId: membership.tenantId,
+            tenantMembershipId: membership.id,
+          },
+        });
+
+        const roll =
+          dto.rollNumber ||
+          (student && !student.rollNumber.startsWith('TEMP-')
+            ? student.rollNumber
+            : undefined);
+        const admission = dto.admissionDate
+          ? new Date(dto.admissionDate)
+          : student
+            ? student.admissionDate
+            : undefined;
+
+        if (!roll || !admission) {
+          throw new BadRequestException(
+            'Student roll number and admission date are required to complete setup.',
+          );
+        }
+
+        if (student) {
+          // Check roll number uniqueness if changed
+          if (roll !== student.rollNumber) {
+            const duplicate = await prisma.studentProfile.findFirst({
+              where: {
+                tenantId: membership.tenantId,
+                rollNumber: roll,
+                deletedAt: null,
+                id: { not: student.id },
+              },
+            });
+            if (duplicate) {
+              throw new ConflictException(
+                `Student roll number "${roll}" is already in use.`,
+              );
+            }
+          }
+
+          await prisma.studentProfile.update({
+            where: { id: student.id },
+            data: {
+              rollNumber: roll,
+              admissionDate: admission,
+              updatedBy: membership.userId,
+            },
+          });
+        } else {
+          // Ensure roll number unique check
+          const duplicate = await prisma.studentProfile.findFirst({
+            where: {
+              tenantId: membership.tenantId,
+              rollNumber: roll,
+              deletedAt: null,
+            },
+          });
+          if (duplicate) {
+            throw new ConflictException(
+              `Student roll number "${roll}" is already in use.`,
+            );
+          }
+
+          await prisma.studentProfile.create({
+            data: {
+              tenantId: membership.tenantId,
+              tenantMembershipId: membership.id,
+              rollNumber: roll,
+              admissionDate: admission,
+              status: 'ACTIVE',
+              createdBy: membership.userId,
+              updatedBy: membership.userId,
+            },
+          });
+        }
+      }
+
+      if (roleNames.includes('parent')) {
+        const parent = await prisma.parentProfile.findFirst({
+          where: {
+            tenantId: membership.tenantId,
+            tenantMembershipId: membership.id,
+          },
+        });
+
+        const phone =
+          dto.emergencyPhone ||
+          (parent && parent.emergencyPhone !== 'TEMP-PHONE'
+            ? parent.emergencyPhone
+            : undefined);
+
+        if (!phone) {
+          throw new BadRequestException(
+            'Parent emergency phone number is required to complete setup.',
+          );
+        }
+
+        if (parent) {
+          await prisma.parentProfile.update({
+            where: { id: parent.id },
+            data: {
+              emergencyPhone: phone,
+              updatedBy: membership.userId,
+            },
+          });
+        } else {
+          await prisma.parentProfile.create({
+            data: {
+              tenantId: membership.tenantId,
+              tenantMembershipId: membership.id,
+              emergencyPhone: phone,
+              createdBy: membership.userId,
+              updatedBy: membership.userId,
+            },
+          });
+        }
       }
     });
 

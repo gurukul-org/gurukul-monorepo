@@ -102,6 +102,10 @@ export const PERMS = {
     create: p('student', 'create-students'),
     edit: p('student', 'edit-students'),
     delete: p('student', 'delete-students'),
+    invite: p('student', 'invite-students'),
+    linkParent: p('student', 'link-parents'),
+    editParentLink: p('student', 'edit-parent-links'),
+    unlinkParent: p('student', 'unlink-parents'),
   },
   parent: {
     all: FEATURES.parent.all,
@@ -110,6 +114,7 @@ export const PERMS = {
     create: p('parent', 'create-parents'),
     edit: p('parent', 'edit-parents'),
     delete: p('parent', 'delete-parents'),
+    invite: p('parent', 'invite-parents'),
   },
   enrolment: {
     all: FEATURES.enrolment.all,
@@ -154,6 +159,7 @@ export const PERMS = {
     invite: p('user', 'invite-users'),
     edit: p('user', 'edit-users'),
     delete: p('user', 'delete-users'),
+    suspend: p('user', 'suspend-users'),
   },
   role: {
     all: FEATURES.role.all,
