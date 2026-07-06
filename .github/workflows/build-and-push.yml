@@ -64,9 +64,13 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.app }}-${{ steps.meta.outputs.env_tag }}
           cache-to: type=gha,scope=${{ matrix.app }}-${{ steps.meta.outputs.env_tag }},mode=max
 
-  # ─── SSH into VPS, sync compose files, pull, migrate, up ───────────
+  # ─── Deploy runs ON the VPS via a self-hosted runner ───────────────
+  # Hostinger's network edge drops traffic from Azure IPs (GitHub-hosted
+  # runners), so ssh/scp from ubuntu-latest is unreachable. A self-hosted
+  # runner installed on the VPS itself dials OUTBOUND to GitHub and then
+  # runs docker commands locally — no inbound SSH needed.
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     needs: build
     timeout-minutes: 15
     steps:
@@ -85,72 +89,26 @@ jobs:
             echo "label=staging"                       >> "$GITHUB_OUTPUT"
           fi
 
-      # Diagnostic — dumps runner IP, DNS resolution, and TCP reach so we can
-      # tell from CI logs whether the VPS is even reachable before scp/ssh
-      # try to connect. `continue-on-error` so a failure here doesn't hide
-      # the real scp/ssh error. Host/port print as *** (masked secrets).
-      - name: Diagnose VPS reachability
-        continue-on-error: true
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+      - name: Sync compose files into env dir
+        run: cp -f docker-compose.yml docker-compose.prod.yml "${{ steps.env.outputs.dir }}/"
+
+      - name: Deploy
+        working-directory: ${{ steps.env.outputs.dir }}
         run: |
-          set +e
-          echo "== Runner public IP =="
-          curl -s --max-time 5 https://api.ipify.org; echo
-          echo
-          echo "== DNS resolution of VPS_HOST =="
-          getent hosts "$VPS_HOST"
-          echo
-          echo "== TCP connectivity: nc -zvw 10 =="
-          nc -zvw 10 "$VPS_HOST" "$VPS_SSH_PORT"; echo "nc_exit=$?"
-          echo
-          echo "== TCP dial via /dev/tcp (5s) =="
-          timeout 5 bash -c "exec 3<>/dev/tcp/$VPS_HOST/$VPS_SSH_PORT && head -c 200 <&3"; echo "banner_exit=$?"
-          echo
-          echo "== Ping (informational; often blocked by cloud firewalls) =="
-          ping -c 2 -W 3 "$VPS_HOST"; echo "ping_exit=$?"
-          echo
-          echo "== traceroute last 5 hops (5s per hop) =="
-          traceroute -w 5 -m 15 "$VPS_HOST" 2>&1 | tail -8 || true
-          exit 0
+          set -euo pipefail
 
-      # Keep compose files on VPS in lockstep with the repo — otherwise a
-      # schema change to docker-compose.prod.yml never reaches the box.
-      - name: Sync compose files to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          source: 'docker-compose.yml,docker-compose.prod.yml'
-          target: ${{ steps.env.outputs.dir }}
-          overwrite: true
+          echo "== Pulling app images for ${{ steps.env.outputs.label }} =="
+          docker compose pull
+          docker compose --profile migrate pull
 
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          script: |
-            set -euo pipefail
-            cd ${{ steps.env.outputs.dir }}
+          echo "== Running Prisma migrations (one-shot) =="
+          docker compose --profile migrate run --rm migrate
 
-            echo "== Pulling app images for ${{ steps.env.outputs.label }} =="
-            docker compose pull
-            docker compose --profile migrate pull
+          echo "== Recreating api + web =="
+          docker compose up -d --remove-orphans
 
-            echo "== Running Prisma migrations (one-shot) =="
-            docker compose --profile migrate run --rm migrate
+          echo "== Label-scoped image prune (this project only) =="
+          docker image prune -f --filter "label=com.docker.compose.project=$(basename ${{ steps.env.outputs.dir }})"
 
-            echo "== Recreating api + web =="
-            docker compose up -d --remove-orphans
-
-            echo "== Label-scoped image prune (this project only) =="
-            docker image prune -f --filter "label=com.docker.compose.project=$(basename ${{ steps.env.outputs.dir }})"
-
-            echo "== Status =="
-            docker compose ps
+          echo "== Status =="
+          docker compose ps
