@@ -85,6 +85,36 @@ jobs:
             echo "label=staging"                       >> "$GITHUB_OUTPUT"
           fi
 
+      # Diagnostic — dumps runner IP, DNS resolution, and TCP reach so we can
+      # tell from CI logs whether the VPS is even reachable before scp/ssh
+      # try to connect. `continue-on-error` so a failure here doesn't hide
+      # the real scp/ssh error. Host/port print as *** (masked secrets).
+      - name: Diagnose VPS reachability
+        continue-on-error: true
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+        run: |
+          set +e
+          echo "== Runner public IP =="
+          curl -s --max-time 5 https://api.ipify.org; echo
+          echo
+          echo "== DNS resolution of VPS_HOST =="
+          getent hosts "$VPS_HOST"
+          echo
+          echo "== TCP connectivity: nc -zvw 10 =="
+          nc -zvw 10 "$VPS_HOST" "$VPS_SSH_PORT"; echo "nc_exit=$?"
+          echo
+          echo "== TCP dial via /dev/tcp (5s) =="
+          timeout 5 bash -c "exec 3<>/dev/tcp/$VPS_HOST/$VPS_SSH_PORT && head -c 200 <&3"; echo "banner_exit=$?"
+          echo
+          echo "== Ping (informational; often blocked by cloud firewalls) =="
+          ping -c 2 -W 3 "$VPS_HOST"; echo "ping_exit=$?"
+          echo
+          echo "== traceroute last 5 hops (5s per hop) =="
+          traceroute -w 5 -m 15 "$VPS_HOST" 2>&1 | tail -8 || true
+          exit 0
+
       # Keep compose files on VPS in lockstep with the repo — otherwise a
       # schema change to docker-compose.prod.yml never reaches the box.
       - name: Sync compose files to VPS
