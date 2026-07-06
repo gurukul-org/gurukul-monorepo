@@ -63,6 +63,10 @@ jobs:
             bharat1508/gurukul-${{ matrix.app }}:sha-${{ steps.meta.outputs.short_sha }}
           cache-from: type=gha,scope=${{ matrix.app }}-${{ steps.meta.outputs.env_tag }}
           cache-to: type=gha,scope=${{ matrix.app }}-${{ steps.meta.outputs.env_tag }},mode=max
+          # Only web reads NEXT_PUBLIC_API_BASE_PATH; harmless if passed to api build.
+          # Same value for staging + prod — both live behind Caddy at /api.
+          build-args: |
+            NEXT_PUBLIC_API_BASE_PATH=/api
 
   # ─── Deploy runs ON the VPS via a self-hosted runner ───────────────
   # Hostinger's network edge drops traffic from Azure IPs (GitHub-hosted

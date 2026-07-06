@@ -23,6 +23,12 @@ RUN yarn install --immutable
 # Build the project
 COPY --from=builder /app/out/full/ .
 COPY turbo.json turbo.json
+
+# NEXT_PUBLIC_* values are inlined by Next.js at build time. Accept as build arg
+# so CI can select /api (Caddy-fronted deploys) vs unset (dev with port-based api).
+ARG NEXT_PUBLIC_API_BASE_PATH=""
+ENV NEXT_PUBLIC_API_BASE_PATH=$NEXT_PUBLIC_API_BASE_PATH
+
 RUN yarn turbo run build --filter=web...
 
 FROM base AS runner
