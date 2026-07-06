@@ -1,0 +1,52 @@
+services:
+  # One-shot Prisma migration runner. Not started by `docker compose up` — the
+  # deploy workflow invokes it explicitly via `docker compose --profile migrate
+  # run --rm migrate` between `pull` and `up -d`. Calls prisma directly (not
+  # via yarn) to avoid yarn cache/home-dir permission issues on the non-root
+  # nestjs user in the api image.
+  migrate:
+    image: ${API_IMAGE:-bharat1508/gurukul-api:staging}
+    container_name: gurukul_migrate
+    profiles: ['migrate']
+    restart: 'no'
+    pull_policy: always
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    command:
+      [
+        'node_modules/.bin/prisma',
+        'migrate',
+        'deploy',
+        '--schema=./prisma/schema.prisma',
+      ]
+    networks:
+      - hosted_db
+
+  # api joins the shared postgres network. Override the image's default CMD
+  # (docker-entrypoint.sh runs migrations + starts) with just the start step —
+  # migrations run in the `migrate` profile above.
+  #
+  # Ports bind to 127.0.0.1 only. Caddy on the VPS reverse-proxies each vhost
+  # to the matching localhost port.
+  api:
+    command: ['node', 'dist/main.js']
+    pull_policy: always
+    ports: !override
+      - '127.0.0.1:${API_HOST_PORT:-8000}:8000'
+    networks:
+      - default
+      - hosted_db
+
+  web:
+    pull_policy: always
+    ports: !override
+      - '127.0.0.1:${WEB_HOST_PORT:-3000}:3000'
+    networks:
+      - default
+
+networks:
+  # Verify on VPS with `docker network ls` — Compose v2 names this
+  # `<project>_default`, but adjust here if Hostinger uses a different name.
+  hosted_db:
+    external: true
+    name: postgresql-k42d_default

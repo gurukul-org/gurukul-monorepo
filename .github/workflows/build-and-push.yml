@@ -1,0 +1,124 @@
+name: Build and push images
+
+# Triggered on push to staging (main) or prod (production).
+# Builds api + web in parallel, pushes to Docker Hub, then SSH-deploys to VPS.
+# Deploy is chained inside the same workflow (not a separate workflow_run)
+# so the "default branch quirk" of workflow_run doesn't silently skip deploys
+# when the default branch flips from main → production.
+
+on:
+  push:
+    branches: [main, production]
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false # don't leave a floating tag pointing at a half-built image
+
+jobs:
+  # ─── Build api + web in parallel, push to Docker Hub ───────────────
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: true # if one leg fails, cancel the other so :staging|:prod doesn't split-brain
+      matrix:
+        app: [api, web]
+    permissions:
+      contents: read
+    outputs:
+      env_tag: ${{ steps.meta.outputs.env_tag }}
+      short_sha: ${{ steps.meta.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute tags
+        id: meta
+        env:
+          GH_REF: ${{ github.ref }}
+        run: |
+          short_sha=$(git rev-parse --short=7 HEAD)
+          if [ "$GH_REF" = "refs/heads/production" ]; then
+            env_tag=prod
+          else
+            env_tag=staging
+          fi
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+          echo "env_tag=$env_tag"     >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          push: true
+          tags: |
+            bharat1508/gurukul-${{ matrix.app }}:${{ steps.meta.outputs.env_tag }}
+            bharat1508/gurukul-${{ matrix.app }}:sha-${{ steps.meta.outputs.short_sha }}
+          cache-from: type=gha,scope=${{ matrix.app }}-${{ steps.meta.outputs.env_tag }}
+          cache-to: type=gha,scope=${{ matrix.app }}-${{ steps.meta.outputs.env_tag }},mode=max
+          # Only web reads NEXT_PUBLIC_API_BASE_PATH; harmless if passed to api build.
+          # Same value for staging + prod — both live behind Caddy at /api.
+          build-args: |
+            NEXT_PUBLIC_API_BASE_PATH=/api
+
+  # ─── Deploy runs ON the VPS via a self-hosted runner ───────────────
+  # Hostinger's network edge drops traffic from Azure IPs (GitHub-hosted
+  # runners), so ssh/scp from ubuntu-latest is unreachable. A self-hosted
+  # runner installed on the VPS itself dials OUTBOUND to GitHub and then
+  # runs docker commands locally — no inbound SSH needed.
+  deploy:
+    runs-on: [self-hosted, linux, x64]
+    needs: build
+    timeout-minutes: 15
+    # Tie the deploy to a GitHub Environment so it shows up under the repo's
+    # Environments tab and on the merge commit / PR. `production` env can also
+    # carry required-reviewer protection rules for a manual gate before prod.
+    environment:
+      name: ${{ github.ref == 'refs/heads/production' && 'production' || 'preview' }}
+      url: ${{ github.ref == 'refs/heads/production' && 'https://gurukul.duckdns.org' || 'https://gurukul-staging.duckdns.org' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve target env
+        id: env
+        env:
+          GH_REF: ${{ github.ref }}
+        run: |
+          if [ "$GH_REF" = "refs/heads/production" ]; then
+            echo "dir=/root/projects/gurukul/prod"    >> "$GITHUB_OUTPUT"
+            echo "label=prod"                          >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=/root/projects/gurukul/staging" >> "$GITHUB_OUTPUT"
+            echo "label=staging"                       >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sync compose files into env dir
+        run: cp -f docker-compose.yml docker-compose.prod.yml "${{ steps.env.outputs.dir }}/"
+
+      - name: Deploy
+        working-directory: ${{ steps.env.outputs.dir }}
+        run: |
+          set -euo pipefail
+
+          echo "== Pulling app images for ${{ steps.env.outputs.label }} =="
+          docker compose pull
+          docker compose --profile migrate pull
+
+          echo "== Running Prisma migrations (one-shot) =="
+          docker compose --profile migrate run --rm migrate
+
+          echo "== Recreating api + web =="
+          docker compose up -d --remove-orphans
+
+          echo "== Label-scoped image prune (this project only) =="
+          docker image prune -f --filter "label=com.docker.compose.project=$(basename ${{ steps.env.outputs.dir }})"
+
+          echo "== Status =="
+          docker compose ps
