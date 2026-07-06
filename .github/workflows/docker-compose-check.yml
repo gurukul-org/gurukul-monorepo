@@ -2,7 +2,8 @@ name: docker-compose-check
 
 on:
   pull_request:
-    branches: [main]
+    # Feature PRs target main; the promotion PR targets production.
+    branches: [main, production]
 
 jobs:
   docker-compose-check:

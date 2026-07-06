@@ -77,6 +77,12 @@ jobs:
     runs-on: [self-hosted, linux, x64]
     needs: build
     timeout-minutes: 15
+    # Tie the deploy to a GitHub Environment so it shows up under the repo's
+    # Environments tab and on the merge commit / PR. `production` env can also
+    # carry required-reviewer protection rules for a manual gate before prod.
+    environment:
+      name: ${{ github.ref == 'refs/heads/production' && 'production' || 'preview' }}
+      url: ${{ github.ref == 'refs/heads/production' && 'https://gurukul.duckdns.org' || 'https://gurukul-staging.duckdns.org' }}
     steps:
       - uses: actions/checkout@v4
 
