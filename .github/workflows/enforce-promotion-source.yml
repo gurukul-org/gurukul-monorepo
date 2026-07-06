@@ -11,6 +11,11 @@ on:
 jobs:
   check-source-branch:
     name: PR head must be `main`
+    # Belt-and-suspenders alongside `on.pull_request.branches: [production]`:
+    # when a workflow file is first introduced in a PR, the base-branch filter
+    # doesn't always suppress the run. `if:` guarantees the job is skipped
+    # (not failed) whenever the PR targets anything other than production.
+    if: github.base_ref == 'production'
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
