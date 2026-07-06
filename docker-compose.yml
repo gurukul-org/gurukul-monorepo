@@ -1,11 +1,11 @@
 services:
   # NestJS Backend API Service
   api:
-    image: ${API_IMAGE:-ghcr.io/gurukul-org/gurukul-monorepo/api:latest}
+    image: ${API_IMAGE:-bharat1508/gurukul-api:staging}
     container_name: gurukul_api
     restart: always
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - AT_SECRET=${AT_SECRET}
@@ -15,11 +15,11 @@ services:
 
   # Next.js Frontend Web Service
   web:
-    image: ${WEB_IMAGE:-ghcr.io/gurukul-org/gurukul-monorepo/web:latest}
+    image: ${WEB_IMAGE:-bharat1508/gurukul-web:staging}
     container_name: gurukul_web
     restart: always
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - PORT=3000
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
