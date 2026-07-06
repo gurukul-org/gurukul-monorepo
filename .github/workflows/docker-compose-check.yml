@@ -11,7 +11,10 @@ jobs:
     timeout-minutes: 15
 
     env:
-      COMPOSE_FILE: docker-compose.yml
+      # Use both base + dev overlay so postgres + adminer come up alongside
+      # the locally-built api + web (base file's default image points to
+      # Docker Hub and would try to pull without the dev overlay).
+      COMPOSE_FILE: docker-compose.yml:docker-compose.dev.yml
 
     steps:
       - name: Checkout
@@ -85,3 +88,33 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down -v --remove-orphans
+
+  # Lint the prod overlay so a syntax error in docker-compose.prod.yml is
+  # caught on PR, not on the VPS. Uses dummy env values just to satisfy
+  # variable substitution — we only care that `config` renders cleanly.
+  prod-overlay-lint:
+    name: prod overlay lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate dummy env
+        run: |
+          {
+            echo "API_IMAGE=bharat1508/gurukul-api:staging"
+            echo "WEB_IMAGE=bharat1508/gurukul-web:staging"
+            echo "API_HOST_PORT=8001"
+            echo "WEB_HOST_PORT=3001"
+            echo "DATABASE_URL=postgresql://x:y@postgresql:5432/z?schema=public"
+            echo "AT_SECRET=dummy"
+            echo "RT_SECRET=dummy"
+            echo "APP_DOMAIN=example.com"
+            echo "COOKIE_DOMAIN=.example.com"
+          } > .env
+
+      - name: Validate base + prod overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
+
+      - name: Validate prod overlay with migrate profile
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile migrate config -q
