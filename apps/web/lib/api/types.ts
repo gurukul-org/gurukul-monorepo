@@ -28,10 +28,18 @@ export interface RegisterDto {
   phone?: string;
 }
 
+export interface TenantTheme {
+  preset: string;
+  radius: number;
+  font: string;
+  size: string;
+}
+
 export interface OnboardingDto {
   subdomain: string;
   name: string;
   type: TenantType;
+  theme?: TenantTheme;
 }
 
 export interface OnboardingResponse {

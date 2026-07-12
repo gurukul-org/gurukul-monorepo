@@ -1,7 +1,9 @@
 'use client';
 
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
-import type { TenantType } from '@/lib/api/types';
+import type { TenantTheme, TenantType } from '@/lib/api/types';
+import { applyThemeToDocument } from '@/lib/theme/generate-theme-css';
+import { DEFAULT_THEME, normalizeTheme } from '@/lib/theme/theme-config';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import axios from 'axios';
@@ -66,6 +68,42 @@ export function useUpdateTenant() {
       void queryClient.invalidateQueries({
         queryKey: [TenantQueryKey.Current],
       });
+    },
+    onError: (err) => showError(err),
+  });
+}
+
+/**
+ * Reads the tenant theme. Returns a fully-resolved config, falling back to the
+ * default preset when the tenant has no theme stored yet.
+ */
+export function useThemeSettings() {
+  return useQuery({
+    queryKey: [TenantQueryKey.Theme],
+    queryFn: async () => {
+      const { data } = await axios.get<{ theme: TenantTheme | null }>(
+        '/tenants/current/theme',
+      );
+      return data.theme ? normalizeTheme(data.theme) : DEFAULT_THEME;
+    },
+  });
+}
+
+export function useUpdateTheme() {
+  const queryClient = useQueryClient();
+  const showError = useShowApiError();
+  return useMutation({
+    mutationFn: async (payload: TenantTheme) => {
+      const { data } = await axios.patch<{ theme: TenantTheme }>(
+        '/tenants/current/theme',
+        payload,
+      );
+      return data.theme;
+    },
+    onSuccess: (theme) => {
+      // Apply immediately so the owner sees the change without a reload.
+      applyThemeToDocument(theme);
+      queryClient.setQueryData([TenantQueryKey.Theme], normalizeTheme(theme));
     },
     onError: (err) => showError(err),
   });
