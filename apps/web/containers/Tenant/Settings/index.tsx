@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
-import { KeyRound, Settings, Shield, User, Users } from 'lucide-react';
+import { KeyRound, Palette, Settings, Shield, User, Users } from 'lucide-react';
 
 interface NavSection {
   label: string;
@@ -32,6 +32,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: 'team', label: 'Team', icon: Users },
       { id: 'roles', label: 'Roles & Permissions', icon: Shield },
+      { id: 'appearance', label: 'Appearance', icon: Palette },
       { id: 'general', label: 'General', icon: Settings },
     ],
   },
