@@ -28,6 +28,7 @@ export enum ModalType {
   StudentModal,
   StudentStatusModal,
   StudentProfileModal,
+  BulkImportModal,
   ParentModal,
   ParentProfileModal,
   EnrolStudentModal,
@@ -53,6 +54,8 @@ export type ModalPayload =
   | { editingCourse: Course | null } // CourseModal
   | { editingStudent: StudentListItem | null } // StudentModal
   | { student: Student } // StudentStatusModal
+  | { studentId: string } // StudentProfileModal
+  | { entity: 'student' | 'parent' } // BulkImportModal
   | { studentId: string } // StudentProfileModal / LinkParentModal
   | {
       studentId: string;

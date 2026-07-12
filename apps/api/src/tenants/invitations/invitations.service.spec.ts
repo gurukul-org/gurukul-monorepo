@@ -318,6 +318,87 @@ describe('InvitationsService - student/parent portal invites', () => {
     );
   });
 
+  it('pre-creates a PENDING account with no token or email when preCreate is set', async () => {
+    prisma.role.findMany.mockResolvedValueOnce([
+      { id: 'r-student', name: 'Student' },
+    ]);
+    prisma.tenant.findUnique.mockResolvedValueOnce({
+      id: 't-1',
+      name: 'Tenant A',
+    });
+    prisma.user.findUnique.mockResolvedValueOnce({
+      id: 'inv-1',
+      firstName: 'Inviter',
+    }); // inviter
+    prisma.user.findUnique.mockResolvedValueOnce(null); // imported user
+    prisma.user.create.mockResolvedValueOnce({ id: 'u-student' });
+    prisma.tenantMembership.create.mockResolvedValueOnce({ id: 'm-student' });
+    prisma.studentProfile.findFirst.mockResolvedValueOnce(null);
+    prisma.studentProfile.create.mockResolvedValueOnce({ id: 'sp-1' });
+
+    const dto = {
+      email: 'student@example.com',
+      firstName: 'St',
+      lastName: 'Ud',
+      roleIds: ['r-student'],
+      rollNumber: 'ST-001',
+    };
+
+    await service.inviteUser(dto, 't-1', 'inv-1', ['invite-students'], false, {
+      preCreate: true,
+    });
+
+    expect(prisma.tenantMembership.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'PENDING',
+          invitationTokenHash: null,
+          invitationExpiresAt: null,
+        }),
+      }),
+    );
+    expect(emailService.sendInvitationEmail).not.toHaveBeenCalled();
+  });
+
+  it('invites a PENDING member by reusing the membership and moving it to INVITED', async () => {
+    prisma.role.findMany.mockResolvedValueOnce([
+      { id: 'r-student', name: 'Student' },
+    ]);
+    prisma.tenant.findUnique.mockResolvedValueOnce({
+      id: 't-1',
+      name: 'Tenant A',
+    });
+    prisma.user.findUnique.mockResolvedValueOnce({
+      id: 'inv-1',
+      firstName: 'Inviter',
+    }); // inviter
+    prisma.user.findUnique.mockResolvedValueOnce({
+      id: 'u-student',
+      memberships: [{ id: 'm-student', status: 'PENDING', tenantId: 't-1' }],
+    });
+    prisma.studentProfile.findFirst.mockResolvedValueOnce({
+      id: 'sp-1',
+      rollNumber: 'ST-001',
+    });
+
+    const dto = {
+      email: 'student@example.com',
+      firstName: 'St',
+      lastName: 'Ud',
+      roleIds: ['r-student'],
+    };
+
+    await service.inviteUser(dto, 't-1', 'inv-1', ['invite-students'], false);
+
+    expect(prisma.tenantMembership.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'm-student' },
+        data: expect.objectContaining({ status: 'INVITED' }),
+      }),
+    );
+    expect(emailService.sendInvitationEmail).toHaveBeenCalled();
+  });
+
   it('reuses existing student profile on re-invitation', async () => {
     prisma.role.findMany.mockResolvedValueOnce([
       { id: 'r-student', name: 'Student' },

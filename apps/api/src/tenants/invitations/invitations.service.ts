@@ -35,7 +35,16 @@ export class InvitationsService {
     inviterId: string,
     inviterScopes: string[] = [],
     isAdmin = false,
+    options: { sendEmail?: boolean; preCreate?: boolean } = {},
   ): Promise<{ message: string }> {
+    // preCreate = pre-create the account in the PENDING state (details filled,
+    // but not yet invited): no token, no email. The lifecycle is then
+    // PENDING -> INVITED (a later invite) -> ACTIVE (accept), mirroring users.
+    const { preCreate = false } = options;
+    const sendEmail = preCreate ? false : (options.sendEmail ?? true);
+
+    // Membership status this call lands on, and whether it carries an invite.
+    const membershipStatus = preCreate ? 'PENDING' : 'INVITED';
     // 1. Validate roles belong to tenant or are system roles
     const roles = await this.prisma.role.findMany({
       where: {
@@ -91,21 +100,31 @@ export class InvitationsService {
 
     if (existingUser && existingUser.memberships.length > 0) {
       const membership = existingUser.memberships[0];
-      if (membership.status === 'INVITED') {
-        invitedMembershipId = membership.id;
-      } else if (
-        membership.status === 'REMOVED' ||
-        membership.deletedAt !== null
-      ) {
+      const isRemoved =
+        membership.status === 'REMOVED' || membership.deletedAt !== null;
+      if (isRemoved) {
+        // A previously-removed member can be re-added (as PENDING or INVITED).
         removedMembershipId = membership.id;
+      } else if (
+        !preCreate &&
+        (membership.status === 'INVITED' || membership.status === 'PENDING')
+      ) {
+        // Inviting a pre-created (PENDING) or already-invited member reuses
+        // their membership and transitions it to INVITED.
+        invitedMembershipId = membership.id;
       } else {
+        // Active/suspended, or pre-creating over someone already in the tenant.
         throw new ConflictException('User is already a member of this tenant.');
       }
     }
 
+    // Invite token/email are only meaningful when actually inviting.
     const token = randomBytes(32).toString('hex');
-    const invitationTokenHash = this.hashToken(token);
-    const invitationExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const invitationTokenHash = preCreate ? null : this.hashToken(token);
+    const invitationExpiresAt = preCreate
+      ? null
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const invitedById = preCreate ? null : inviterId;
 
     await this.prisma.$transaction(async (prisma) => {
       let userId = existingUser?.id;
@@ -128,10 +147,12 @@ export class InvitationsService {
       let membershipId: string;
 
       if (invitedMembershipId) {
-        // Reuse invited membership - update token and expire
+        // Reuse an INVITED/PENDING membership — this is a real invite, so it
+        // moves to INVITED and gets a fresh token/expiry.
         await prisma.tenantMembership.update({
           where: { id: invitedMembershipId },
           data: {
+            status: 'INVITED',
             invitedById: inviterId,
             invitationTokenHash,
             invitationExpiresAt,
@@ -147,8 +168,8 @@ export class InvitationsService {
         await prisma.tenantMembership.update({
           where: { id: removedMembershipId },
           data: {
-            status: 'INVITED',
-            invitedById: inviterId,
+            status: membershipStatus,
+            invitedById,
             invitationTokenHash,
             invitationExpiresAt,
             deletedAt: null,
@@ -166,8 +187,8 @@ export class InvitationsService {
           data: {
             userId,
             tenantId,
-            status: 'INVITED',
-            invitedById: inviterId,
+            status: membershipStatus,
+            invitedById,
             invitationTokenHash,
             invitationExpiresAt,
           },
@@ -304,19 +325,23 @@ export class InvitationsService {
       }
     });
 
-    const inviteLink = this.buildInvitationUrl(token);
-    try {
-      await this.emailService.sendInvitationEmail(
-        dto.email,
-        tenant.name,
-        `${inviter?.firstName} ${inviter?.lastName}`.trim() ||
-          'An administrator',
-        roles.map((r) => r.name),
-        inviteLink,
-      );
-    } catch (error) {
-      console.error('--- Error sending invitation email ---');
-      console.error(error);
+    // Bulk imports pass sendEmail: false to pre-create accounts silently;
+    // they are invited later via the normal (re-)invitation flow.
+    if (sendEmail) {
+      const inviteLink = this.buildInvitationUrl(token);
+      try {
+        await this.emailService.sendInvitationEmail(
+          dto.email,
+          tenant.name,
+          `${inviter?.firstName} ${inviter?.lastName}`.trim() ||
+            'An administrator',
+          roles.map((r) => r.name),
+          inviteLink,
+        );
+      } catch (error) {
+        console.error('--- Error sending invitation email ---');
+        console.error(error);
+      }
     }
 
     this.logger.log(

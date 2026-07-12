@@ -1,3 +1,4 @@
+import { BullModule } from '@nestjs/bullmq';
 import { CacheModule } from '@nestjs/cache-manager';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -39,6 +40,22 @@ import { UsersModule } from './users/users.module';
     }),
     CacheModule.register({
       isGlobal: true,
+    }),
+    BullModule.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get<string>('REDIS_HOST') ?? 'localhost',
+          port: parseInt(configService.get<string>('REDIS_PORT') ?? '6379', 10),
+        },
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+          // Keep finished jobs around briefly so the frontend can read results.
+          removeOnComplete: { age: 3600, count: 100 },
+          removeOnFail: { age: 24 * 3600 },
+        },
+      }),
+      inject: [ConfigService],
     }),
     PrismaModule.forRootAsync({
       isGlobal: true,

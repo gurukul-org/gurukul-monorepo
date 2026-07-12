@@ -6,6 +6,7 @@ export interface ParentListItem {
   name: string | null;
   email: string | null;
   emergencyPhone: string;
+  accountStatus: string | null; // PENDING | INVITED | ACTIVE | ... (portal access)
   studentCount: number;
   createdAt: string;
   updatedAt: string;
