@@ -23,6 +23,7 @@ export type FeatureKey =
   | 'user'
   | 'role'
   | 'tenant'
+  | 'appearance'
   | 'report';
 
 // The bucket the role editor UI renders each feature into.

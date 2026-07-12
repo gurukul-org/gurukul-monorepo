@@ -1,5 +1,6 @@
 import { FeatureDefinition, FeatureKey, PermissionId } from '../types';
 import { academicTermFeature } from './academicTerm';
+import { appearanceFeature } from './appearance';
 import { attendanceFeature } from './attendance';
 import { classFeature } from './class';
 import { courseFeature } from './course';
@@ -35,6 +36,7 @@ export const FEATURES: Readonly<Record<FeatureKey, FeatureDefinition>> = {
   user: userFeature,
   role: roleFeature,
   tenant: tenantFeature,
+  appearance: appearanceFeature,
   report: reportFeature,
 };
 
@@ -172,6 +174,11 @@ export const PERMS = {
     all: FEATURES.tenant.all,
     view: p('tenant', 'view-tenant-settings'),
     edit: p('tenant', 'edit-tenant-settings'),
+  },
+  appearance: {
+    all: FEATURES.appearance.all,
+    view: p('appearance', 'view-appearance'),
+    edit: p('appearance', 'edit-appearance'),
   },
   report: {
     all: FEATURES.report.all,
