@@ -129,7 +129,7 @@ export class TenantsController {
   }
 
   @Get('current/theme')
-  @RequirePermissions(PERMS.tenant.view)
+  @RequirePermissions(PERMS.appearance.view)
   @ApiOperation({ summary: 'Get the current workspace theme' })
   @ApiOkResponse({
     type: TenantThemeResponseDto,
@@ -144,11 +144,11 @@ export class TenantsController {
   }
 
   @Patch('current/theme')
-  @RequirePermissions(PERMS.tenant.edit)
+  @RequirePermissions(PERMS.appearance.edit)
   @ApiOperation({
     summary: 'Update the workspace theme',
     description:
-      'Sets the tenant-scoped theme (preset, radius, font). Owner-only, enforced by the required tenant edit permission.',
+      'Sets the tenant-scoped theme (preset, radius, font, size). Requires the edit-appearance permission (Account Owner only by default).',
   })
   @ApiOkResponse({
     type: TenantThemeResponseDto,
