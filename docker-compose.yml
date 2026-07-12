@@ -15,9 +15,11 @@ services:
       # Redis connection used by BullMQ for background jobs (e.g. student CSV import)
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+    # Postgres is NOT a compose service in staging/prod (managed external DB via
+    # the hosted_db network in docker-compose.prod.yml). The local `postgres`
+    # dependency is added by docker-compose.dev.yml only; declaring it here would
+    # make the prod project invalid ("undefined service postgres").
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
