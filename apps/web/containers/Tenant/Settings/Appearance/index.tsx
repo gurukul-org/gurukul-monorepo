@@ -30,7 +30,7 @@ function sameTheme(a: ThemeConfig, b: ThemeConfig): boolean {
 
 export default function AppearanceContainer() {
   const { hasPermission } = usePermission();
-  const canEdit = hasPermission(PERMS.tenant.edit);
+  const canEdit = hasPermission(PERMS.appearance.edit);
 
   const { data, isLoading, isError, refetch } = useThemeSettings();
   const { mutateAsync, isPending } = useUpdateTheme();
@@ -59,14 +59,14 @@ export default function AppearanceContainer() {
       </div>
 
       <PermissionGate
-        permission={PERMS.tenant.view}
+        permission={PERMS.appearance.view}
         fallback={
           <div className="flex flex-col items-center justify-center py-12 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/10 text-center">
             <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
               Access denied
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              You do not have permission to view workspace settings.
+              You do not have permission to view appearance settings.
             </p>
           </div>
         }
