@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 
-import { Tenant } from '@prisma/client';
+import { Prisma, Tenant } from '@prisma/client';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from 'nestjs-prisma';
 
@@ -19,12 +19,21 @@ import {
   CreateTenantDto,
   TenantSettingsResponseDto,
   UpdateTenantDto,
+  UpdateTenantThemeDto,
 } from './dto';
 import {
   RESERVED_SUBDOMAINS,
   SUBDOMAIN_REGEX,
   TENANT_CACHE_TTL,
 } from './tenants.constants';
+
+/** Shape of the theme stored under Tenant.settings.theme. */
+export interface StoredTheme {
+  preset: string;
+  radius: number;
+  font: string;
+  size: string;
+}
 
 @Injectable()
 export class TenantsService {
@@ -103,7 +112,11 @@ export class TenantsService {
             subdomain: dto.subdomain,
             name: dto.name,
             type: dto.type,
-            settings: {},
+            settings: dto.theme
+              ? ({
+                  theme: this.toStoredTheme(dto.theme),
+                } as unknown as Prisma.InputJsonObject)
+              : {},
           },
         });
         const membership = await tx.tenantMembership.create({
@@ -220,6 +233,90 @@ export class TenantsService {
     );
 
     return this.getTenantSettings(tenantId);
+  }
+
+  /** Returns the stored theme for a tenant, or null when none is set. */
+  async getTenantTheme(tenantId: string): Promise<StoredTheme | null> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    return this.extractTheme(tenant?.settings ?? null);
+  }
+
+  /** Merges the theme into Tenant.settings JSONB (owner-only, enforced upstream). */
+  async updateTenantTheme(
+    tenantId: string,
+    subdomain: string,
+    actorUserId: string,
+    dto: UpdateTenantThemeDto,
+  ): Promise<StoredTheme> {
+    const tenant = await this.prisma.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+
+    const settings: Prisma.JsonObject =
+      tenant.settings &&
+      typeof tenant.settings === 'object' &&
+      !Array.isArray(tenant.settings)
+        ? { ...(tenant.settings as Prisma.JsonObject) }
+        : {};
+
+    const theme = this.toStoredTheme(dto);
+    settings.theme = theme as unknown as Prisma.JsonValue;
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { settings: settings as Prisma.InputJsonObject },
+    });
+    await this.invalidateTenantCache(subdomain);
+
+    this.logger.log(
+      `Workspace theme updated: ${JSON.stringify({
+        action: 'UPDATE_WORKSPACE_THEME',
+        tenantId,
+        actorUserId,
+        theme,
+        timestamp: new Date().toISOString(),
+      })}`,
+    );
+
+    return theme;
+  }
+
+  private toStoredTheme(dto: UpdateTenantThemeDto): StoredTheme {
+    return {
+      preset: dto.preset,
+      radius: dto.radius,
+      font: dto.font,
+      size: dto.size,
+    };
+  }
+
+  private extractTheme(settings: Prisma.JsonValue | null): StoredTheme | null {
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+      return null;
+    }
+    const theme = (settings as Prisma.JsonObject).theme;
+    if (!theme || typeof theme !== 'object' || Array.isArray(theme)) {
+      return null;
+    }
+    const { preset, radius, font, size } = theme as Prisma.JsonObject;
+    if (
+      typeof preset !== 'string' ||
+      typeof radius !== 'number' ||
+      typeof font !== 'string'
+    ) {
+      return null;
+    }
+    // `size` was added later; default it for themes stored before that.
+    return {
+      preset,
+      radius,
+      font,
+      size: typeof size === 'string' ? size : 'md',
+    };
   }
 
   private cacheKey(subdomain: string): string {

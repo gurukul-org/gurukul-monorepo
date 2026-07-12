@@ -151,6 +151,8 @@ export const DEPENDENCIES: readonly PermissionDependency[] = [
   { id: PERMS.role.delete.id, implies: [PERMS.role.view.id] },
   // Tenant edit implies view.
   { id: PERMS.tenant.edit.id, implies: [PERMS.tenant.view.id] },
+  // Appearance edit implies view.
+  { id: PERMS.appearance.edit.id, implies: [PERMS.appearance.view.id] },
 ];
 
 // Apply dependency cascade for a single permission being added.

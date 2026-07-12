@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { ThemePreview } from '@/components/theme/theme-preview';
+import { ThemeSelector } from '@/components/theme/theme-selector';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -22,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { TENANT_TYPES, type TenantType } from '@/lib/api/types';
 import { APP_DOMAIN, getTenantUrl } from '@/lib/env';
 import { useIsAuthenticated, useIsBootstrapping } from '@/lib/store/auth';
+import { DEFAULT_THEME, type ThemeConfig } from '@/lib/theme/theme-config';
 import {
   useMemberships,
   useRequestOnboarding,
@@ -55,6 +58,16 @@ export default function ApexOnboarding() {
   const membershipsQuery = useMemberships(isAuthenticated && !isBootstrapping);
   const onboarding = useRequestOnboarding();
 
+  // Theme is optional during onboarding: a default is pre-selected and the owner
+  // can tweak it or leave it. Kept in a ref so the form's onSubmit reads the
+  // latest value rather than a stale closure.
+  const [theme, setTheme] = useState<ThemeConfig>(DEFAULT_THEME);
+  const themeRef = useRef(theme);
+  const handleThemeChange = (next: ThemeConfig) => {
+    setTheme(next);
+    themeRef.current = next;
+  };
+
   // Redirect if not authenticated
   useEffect(() => {
     if (isBootstrapping || didRedirect.current) return;
@@ -84,7 +97,7 @@ export default function ApexOnboarding() {
     },
     validators: { onSubmit: schema },
     onSubmit: ({ value }) => {
-      onboarding.mutate(value);
+      onboarding.mutate({ ...value, theme: themeRef.current });
     },
   });
 
@@ -101,7 +114,7 @@ export default function ApexOnboarding() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">
-      <Card className="w-full max-w-lg">
+      <Card className="w-full max-w-3xl">
         <CardHeader>
           <CardTitle>Set up your workspace</CardTitle>
           <CardDescription>
@@ -209,6 +222,20 @@ export default function ApexOnboarding() {
                   );
                 }}
               </form.Field>
+
+              <div className="space-y-3 border-t border-border pt-4">
+                <div>
+                  <FieldLabel>Theme</FieldLabel>
+                  <p className="text-xs text-muted-foreground">
+                    Pick how your workspace looks. You can change this later in
+                    settings.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <ThemeSelector value={theme} onChange={handleThemeChange} />
+                  <ThemePreview value={theme} />
+                </div>
+              </div>
 
               <form.Subscribe
                 selector={(state) => [state.canSubmit, state.isSubmitting]}
