@@ -71,6 +71,9 @@
   --chart-4: oklch(0.511 0.096 186.391);
   --chart-5: oklch(0.437 0.078 188.216);
   --radius: 0.45rem;
+  /* Default typeface when no tenant theme is injected. Tenant themes override
+     --font-sans via the injected #tenant-theme <style>. */
+  --font-sans: var(--font-oxanium);
   --sidebar: oklch(0.235 0.04 195);
   --sidebar-foreground: oklch(0.95 0.01 195);
   --sidebar-primary: oklch(0.85 0.1 190);
