@@ -1,8 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-import { IsIn, IsOptional, IsString, Length, Matches } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+  ValidateNested,
+} from 'class-validator';
 
 import { SUBDOMAIN_REGEX } from '../tenants.constants';
+import { UpdateTenantThemeDto } from './update-tenant-theme.dto';
 
 const TENANT_TYPES = ['SCHOOL', 'INSTITUTE', 'COACHING'] as const;
 export type TenantType = (typeof TENANT_TYPES)[number];
@@ -80,4 +89,14 @@ export class CreateTenantDto {
   @IsOptional()
   @IsString()
   zipCode?: string;
+
+  @ApiProperty({
+    type: UpdateTenantThemeDto,
+    description: 'Optional theme selected during onboarding.',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateTenantThemeDto)
+  theme?: UpdateTenantThemeDto;
 }

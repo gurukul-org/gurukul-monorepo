@@ -32,6 +32,7 @@ import { PERMS } from '@repo/permissions';
 import {
   GetCurrentTenant,
   GetCurrentUserId,
+  Public,
   RequirePermissions,
   SkipTenantCheck,
 } from '../common/decorators';
@@ -47,7 +48,9 @@ import {
   CreateTenantDto,
   CurrentTenantResponseDto,
   TenantSettingsResponseDto,
+  TenantThemeResponseDto,
   UpdateTenantDto,
+  UpdateTenantThemeDto,
 } from './dto';
 import { TenantsService } from './tenants.service';
 
@@ -123,6 +126,67 @@ export class TenantsController {
       actorUserId,
       dto,
     );
+  }
+
+  @Get('current/theme')
+  @RequirePermissions(PERMS.tenant.view)
+  @ApiOperation({ summary: 'Get the current workspace theme' })
+  @ApiOkResponse({
+    type: TenantThemeResponseDto,
+    description: 'Workspace theme retrieved successfully.',
+  })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async getTheme(
+    @GetCurrentTenant('id') tenantId: string,
+  ): Promise<TenantThemeResponseDto> {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return { theme: await this.tenantsService.getTenantTheme(tenantId) };
+  }
+
+  @Patch('current/theme')
+  @RequirePermissions(PERMS.tenant.edit)
+  @ApiOperation({
+    summary: 'Update the workspace theme',
+    description:
+      'Sets the tenant-scoped theme (preset, radius, font). Owner-only, enforced by the required tenant edit permission.',
+  })
+  @ApiOkResponse({
+    type: TenantThemeResponseDto,
+    description: 'Workspace theme updated successfully.',
+  })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async updateTheme(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentTenant('subdomain') subdomain: string,
+    @GetCurrentUserId() actorUserId: string,
+    @Body() dto: UpdateTenantThemeDto,
+  ): Promise<TenantThemeResponseDto> {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return {
+      theme: await this.tenantsService.updateTenantTheme(
+        tenantId,
+        subdomain,
+        actorUserId,
+        dto,
+      ),
+    };
+  }
+
+  @Public()
+  @SkipTenantCheck()
+  @Get('theme')
+  @ApiOperation({
+    summary: 'Public: resolve the theme for the request subdomain',
+    description:
+      'Unauthenticated read of the tenant theme for the resolved subdomain, used for no-flash server-side injection. Returns { theme: null } on the apex domain or when no theme is set.',
+  })
+  @ApiOkResponse({
+    type: TenantThemeResponseDto,
+    description: 'Theme for the resolved subdomain (null when unset).',
+  })
+  async getPublicTheme(@Req() req: Request): Promise<TenantThemeResponseDto> {
+    if (!req.tenant) return { theme: null };
+    return { theme: await this.tenantsService.getTenantTheme(req.tenant.id) };
   }
 
   @SkipTenantCheck()
