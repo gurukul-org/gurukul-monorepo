@@ -1,0 +1,30 @@
+name: enforce-promotion-source
+
+# Guards the main → production promotion path: PRs targeting `production`
+# must originate from `main`. GitHub Rulesets can't express "PR head must be
+# branch X", so we enforce it as a required status check instead.
+
+on:
+  pull_request:
+    branches: [production]
+
+jobs:
+  check-source-branch:
+    name: PR head must be `main`
+    # Belt-and-suspenders alongside `on.pull_request.branches: [production]`:
+    # when a workflow file is first introduced in a PR, the base-branch filter
+    # doesn't always suppress the run. `if:` guarantees the job is skipped
+    # (not failed) whenever the PR targets anything other than production.
+    if: github.base_ref == 'production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Verify head branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "$HEAD_REF" != "main" ]; then
+            echo "::error::PRs into production may only come from 'main'. This PR is from '$HEAD_REF'."
+            exit 1
+          fi
+          echo "OK: promotion PR from main."
