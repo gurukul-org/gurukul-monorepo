@@ -59,7 +59,9 @@ export default function SettingsLayoutContainer({
     return NAV_SECTIONS.map((section) => {
       const items = section.items.filter((item) => {
         if (item.id === 'team') {
-          return hasPermission(PERMS.user.view) || hasPermission(PERMS.user.invite);
+          return (
+            hasPermission(PERMS.user.view) || hasPermission(PERMS.user.invite)
+          );
         }
         if (item.id === 'roles') {
           return hasPermission(PERMS.role.view);

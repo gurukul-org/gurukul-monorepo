@@ -29,7 +29,6 @@ import {
   useShowStudentStatusModal,
 } from '@/hooks/use-modal';
 import { useRequirePermission } from '@/hooks/use-require-permission';
-import { PERMS } from '@repo/permissions';
 import {
   StudentListItem,
   useDeleteStudent,
@@ -58,6 +57,8 @@ import {
   UserCog,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+import { PERMS } from '@repo/permissions';
 
 // ---------------------------------------------------------------------------
 // Status badge helper

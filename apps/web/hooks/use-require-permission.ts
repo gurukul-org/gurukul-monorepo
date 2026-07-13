@@ -1,12 +1,18 @@
 'use client';
 
 import { useEffect } from 'react';
+
 import { useRouter } from 'next/navigation';
+
 import { usePermission } from '@/hooks/use-permission';
+
 import type { PermissionEntry, PermissionId } from '@repo/permissions';
 
 export interface RequirePermissionOptions {
-  permission?: PermissionEntry | PermissionId | (PermissionEntry | PermissionId)[];
+  permission?:
+    | PermissionEntry
+    | PermissionId
+    | (PermissionEntry | PermissionId)[];
   anyOf?: (PermissionEntry | PermissionId)[];
   redirectTo?: string;
 }
@@ -22,7 +28,8 @@ export function useRequirePermission({
   anyOf,
   redirectTo = '/dashboard',
 }: RequirePermissionOptions) {
-  const { hasPermission, hasAllPermissions, hasAnyPermission } = usePermission();
+  const { hasPermission, hasAllPermissions, hasAnyPermission } =
+    usePermission();
   const router = useRouter();
 
   let allowed = true;

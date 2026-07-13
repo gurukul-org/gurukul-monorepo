@@ -54,8 +54,10 @@ export function AppSidebar() {
 
   const showTerms = hasPermission(PERMS.academicTerm.view);
   const showPrograms = hasPermission(PERMS.program.view);
-  const showCourses = hasPermission(PERMS.course.view) || hasPermission(PERMS.course.viewOwn);
-  const showClasses = hasPermission(PERMS.class.view) || hasPermission(PERMS.class.viewOwn);
+  const showCourses =
+    hasPermission(PERMS.course.view) || hasPermission(PERMS.course.viewOwn);
+  const showClasses =
+    hasPermission(PERMS.class.view) || hasPermission(PERMS.class.viewOwn);
   const showAcademics = showTerms || showPrograms || showCourses || showClasses;
 
   const [isErpOpen, setIsErpOpen] = useState(pathname.startsWith('/users'));

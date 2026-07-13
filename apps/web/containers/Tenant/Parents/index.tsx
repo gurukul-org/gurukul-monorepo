@@ -28,7 +28,6 @@ import {
   useShowParentProfileModal,
 } from '@/hooks/use-modal';
 import { useRequirePermission } from '@/hooks/use-require-permission';
-import { PERMS } from '@repo/permissions';
 import {
   ParentListItem,
   useDeleteParent,
@@ -51,6 +50,8 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+import { PERMS } from '@repo/permissions';
 
 export default function ParentsContainer() {
   const allowed = useRequirePermission({

@@ -178,10 +178,7 @@ export default function GeneralContainer() {
                 day: 'numeric',
               })}
             />
-            <SettingsRow
-              label="Members"
-              value={data.memberCount.toString()}
-            />
+            <SettingsRow label="Members" value={data.memberCount.toString()} />
           </div>
         </div>
       ) : null}
