@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -21,6 +21,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { TENANT_TYPES, type TenantType } from '@/lib/api/types';
 import { APP_DOMAIN, getTenantUrl } from '@/lib/env';
 import { useIsAuthenticated, useIsBootstrapping } from '@/lib/store/auth';
@@ -50,6 +51,13 @@ const schema = z.object({
 });
 
 export default function ApexOnboarding() {
+  const tenantTypeOptions = useMemo(() => {
+    return TENANT_TYPES.map((type) => ({
+      value: type,
+      label: type.charAt(0) + type.slice(1).toLowerCase(),
+    }));
+  }, []);
+
   const router = useRouter();
   const isBootstrapping = useIsBootstrapping();
   const isAuthenticated = useIsAuthenticated();
@@ -200,21 +208,18 @@ export default function ApexOnboarding() {
                   return (
                     <Field data-invalid={isInvalid}>
                       <FieldLabel htmlFor={field.name}>Type</FieldLabel>
-                      <select
+                      <SearchableSelect
                         id={field.name}
                         name={field.name}
                         value={field.state.value}
                         onBlur={field.handleBlur}
-                        onChange={(event) =>
-                          field.handleChange(event.target.value as TenantType)
+                        onChange={(val: string) =>
+                          field.handleChange(val as TenantType)
                         }
                         aria-invalid={isInvalid}
-                        className="h-7 w-full rounded-md border border-input bg-input/20 px-2 text-xs/relaxed outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-                      >
-                        <option value="SCHOOL">School</option>
-                        <option value="INSTITUTE">Institute</option>
-                        <option value="COACHING">Coaching</option>
-                      </select>
+                        options={tenantTypeOptions}
+                        placeholder="Select type..."
+                      />
                       {isInvalid && (
                         <FieldError errors={field.state.meta.errors} />
                       )}
