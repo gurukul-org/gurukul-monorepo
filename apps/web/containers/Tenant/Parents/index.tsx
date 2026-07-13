@@ -27,6 +27,8 @@ import {
   useShowParentModal,
   useShowParentProfileModal,
 } from '@/hooks/use-modal';
+import { useRequirePermission } from '@/hooks/use-require-permission';
+import { PERMS } from '@repo/permissions';
 import {
   ParentListItem,
   useDeleteParent,
@@ -51,6 +53,11 @@ import {
 import { toast } from 'sonner';
 
 export default function ParentsContainer() {
+  const allowed = useRequirePermission({
+    permission: PERMS.parent.view,
+    redirectTo: '/dashboard',
+  });
+
   const [search, setSearch] = useState('');
   const [filterNoStudents, setFilterNoStudents] = useState(false);
 
@@ -197,6 +204,8 @@ export default function ParentsContainer() {
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  if (!allowed) return null;
 
   return (
     <div className="space-y-6">

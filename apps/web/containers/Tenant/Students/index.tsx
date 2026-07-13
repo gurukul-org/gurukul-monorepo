@@ -28,6 +28,8 @@ import {
   useShowStudentProfileModal,
   useShowStudentStatusModal,
 } from '@/hooks/use-modal';
+import { useRequirePermission } from '@/hooks/use-require-permission';
+import { PERMS } from '@repo/permissions';
 import {
   StudentListItem,
   useDeleteStudent,
@@ -184,6 +186,11 @@ function StudentRowActions({ student }: { student: StudentListItem }) {
 // ---------------------------------------------------------------------------
 
 export default function TenantStudentsContainer() {
+  const allowed = useRequirePermission({
+    permission: PERMS.student.view,
+    redirectTo: '/dashboard',
+  });
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [limit, setLimit] = useState(10);
@@ -358,6 +365,8 @@ export default function TenantStudentsContainer() {
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  if (!allowed) return null;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
