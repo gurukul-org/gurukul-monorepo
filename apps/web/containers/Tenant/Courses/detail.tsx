@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { useShowCourseModal } from '@/hooks/use-modal';
 import { usePermission } from '@/hooks/use-permission';
+import { useRequirePermission } from '@/hooks/use-require-permission';
 import { useCourse } from '@/services/api/requests/courses';
 import {
   ColumnDef,
@@ -51,6 +52,11 @@ interface ProgramSection {
 export default function TenantCourseDetailContainer({
   courseId,
 }: TenantCourseDetailContainerProps) {
+  const allowed = useRequirePermission({
+    anyOf: [PERMS.course.view, PERMS.course.viewOwn],
+    redirectTo: '/dashboard',
+  });
+
   const { hasPermission } = usePermission();
   const showCourseModal = useShowCourseModal();
 
@@ -112,6 +118,8 @@ export default function TenantCourseDetailContainer({
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  if (!allowed) return null;
 
   if (isLoading) {
     return (

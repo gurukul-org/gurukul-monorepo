@@ -27,6 +27,7 @@ import {
   useShowEnrolStudentModal,
 } from '@/hooks/use-modal';
 import { usePermission } from '@/hooks/use-permission';
+import { useRequirePermission } from '@/hooks/use-require-permission';
 import { ClassStudent, useClass } from '@/services/api/requests/classes';
 import {
   useCreateEnrolment,
@@ -298,6 +299,11 @@ interface TenantClassDetailContainerProps {
 export default function TenantClassDetailContainer({
   classId,
 }: TenantClassDetailContainerProps) {
+  const allowed = useRequirePermission({
+    anyOf: [PERMS.class.view, PERMS.class.viewOwn],
+    redirectTo: '/dashboard',
+  });
+
   const { hasPermission } = usePermission();
   const showClassModal = useShowClassModal();
   const showEnrolStudentModal = useShowEnrolStudentModal();
@@ -389,6 +395,8 @@ export default function TenantClassDetailContainer({
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  if (!allowed) return null;
 
   if (isLoading) {
     return (

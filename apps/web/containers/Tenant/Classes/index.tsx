@@ -22,6 +22,7 @@ import {
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useShowClassModal, useShowDeleteModal } from '@/hooks/use-modal';
 import { usePermission } from '@/hooks/use-permission';
+import { useRequirePermission } from '@/hooks/use-require-permission';
 import { useAcademicTerms } from '@/services/api/requests/academic-terms';
 import {
   Class,
@@ -53,6 +54,11 @@ import { toast } from 'sonner';
 import { PERMS } from '@repo/permissions';
 
 export default function TenantClassesContainer() {
+  const allowed = useRequirePermission({
+    anyOf: [PERMS.class.view, PERMS.class.viewOwn],
+    redirectTo: '/dashboard',
+  });
+
   const [selectedTerm, setSelectedTerm] = useState<string>('');
   const [selectedProgram, setSelectedProgram] = useState<string>('');
   const [selectedCourse, setSelectedCourse] = useState<string>('');
@@ -369,6 +375,8 @@ export default function TenantClassesContainer() {
 
   const hasActiveFilters =
     selectedTerm || selectedProgram || selectedCourse || selectedInstructor;
+
+  if (!allowed) return null;
 
   return (
     <div className="space-y-6">

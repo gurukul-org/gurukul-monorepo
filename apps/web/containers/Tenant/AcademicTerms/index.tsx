@@ -24,6 +24,7 @@ import {
   useShowDeleteModal,
 } from '@/hooks/use-modal';
 import { usePermission } from '@/hooks/use-permission';
+import { useRequirePermission } from '@/hooks/use-require-permission';
 import {
   AcademicTerm,
   useAcademicTerms,
@@ -54,6 +55,11 @@ import { toast } from 'sonner';
 import { PERMS } from '@repo/permissions';
 
 export default function TenantAcademicTermsContainer() {
+  const allowed = useRequirePermission({
+    permission: PERMS.academicTerm.view,
+    redirectTo: '/dashboard',
+  });
+
   const [activeTab, setActiveTab] = useState<string>('active');
 
   const { hasPermission } = usePermission();
@@ -362,6 +368,8 @@ export default function TenantAcademicTermsContainer() {
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  if (!allowed) return null;
 
   return (
     <div className="space-y-6">

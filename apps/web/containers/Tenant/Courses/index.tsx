@@ -23,6 +23,7 @@ import {
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useShowCourseModal, useShowDeleteModal } from '@/hooks/use-modal';
 import { usePermission } from '@/hooks/use-permission';
+import { useRequirePermission } from '@/hooks/use-require-permission';
 import {
   Course,
   useCourses,
@@ -48,6 +49,11 @@ import { toast } from 'sonner';
 import { PERMS } from '@repo/permissions';
 
 export default function TenantCoursesContainer() {
+  const allowed = useRequirePermission({
+    anyOf: [PERMS.course.view, PERMS.course.viewOwn],
+    redirectTo: '/dashboard',
+  });
+
   const [selectedProgram, setSelectedProgram] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -250,6 +256,8 @@ export default function TenantCoursesContainer() {
   };
 
   const hasActiveFilters = selectedProgram || searchQuery;
+
+  if (!allowed) return null;
 
   return (
     <div className="space-y-6">
