@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Table,
   TableBody,
@@ -199,6 +200,20 @@ export default function TenantStudentsContainer() {
   const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>(
     [],
   );
+
+  const statusOptions = useMemo(() => {
+    return STUDENT_STATUSES.map((s) => ({
+      value: s,
+      label: s.charAt(0) + s.slice(1).toLowerCase(),
+    }));
+  }, []);
+
+  const limitOptions = useMemo(() => {
+    return [5, 10, 20, 50].map((size) => ({
+      value: String(size),
+      label: String(size),
+    }));
+  }, []);
 
   const showStudentModal = useShowStudentModal();
   const showInviteMemberModal = useShowInviteMemberModal();
@@ -421,33 +436,24 @@ export default function TenantStudentsContainer() {
             />
           </div>
 
-          <select
+          <SearchableSelect
             value={statusFilter}
-            onChange={(e) => handleStatusFilter(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring"
-          >
-            <option value="">All Statuses</option>
-            {STUDENT_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s.charAt(0) + s.slice(1).toLowerCase()}
-              </option>
-            ))}
-          </select>
+            onChange={handleStatusFilter}
+            options={statusOptions}
+            placeholder="All Statuses"
+            className="h-9 min-w-36 py-1 text-xs"
+          />
         </div>
 
         <div className="flex items-center gap-2 text-xs">
           <span className="text-muted-foreground">Rows per page:</span>
-          <select
-            value={limit}
-            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-            className="h-9 w-20 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring"
-          >
-            {[5, 10, 20, 50].map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            value={String(limit)}
+            onChange={(val: string) => handlePageSizeChange(Number(val))}
+            options={limitOptions}
+            placeholder="Select limit"
+            className="h-9 w-20 py-1 text-xs"
+          />
         </div>
       </div>
 

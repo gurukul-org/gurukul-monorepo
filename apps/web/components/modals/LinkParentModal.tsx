@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Modal } from '@/components/modals/Modal';
@@ -11,6 +11,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useHideModal } from '@/hooks/use-modal';
 import { useParents } from '@/services/api/requests/parents';
@@ -95,6 +96,24 @@ export function LinkParentModal({ studentId }: LinkParentModalProps) {
     return parents.filter((p) => !linkedIds.has(p.id));
   }, [parentsData, student]);
 
+  const parentOptions = useMemo(() => {
+    return unlinkedParents.map((p) => ({
+      value: p.id,
+      label: p.name || 'Unnamed Parent',
+      description: p.emergencyPhone,
+    }));
+  }, [unlinkedParents]);
+
+  const relationshipOptions = useMemo(
+    () => [
+      { value: 'FATHER', label: 'Father' },
+      { value: 'MOTHER', label: 'Mother' },
+      { value: 'GUARDIAN', label: 'Guardian' },
+      { value: 'OTHER', label: 'Other' },
+    ],
+    [],
+  );
+
   const isSaving = isLinking || isLoadingStudent || isLoadingParents;
 
   return (
@@ -133,19 +152,13 @@ export function LinkParentModal({ studentId }: LinkParentModalProps) {
                 All existing parent records are already linked to this student.
               </div>
             ) : (
-              <select
+              <SearchableSelect
                 id="parentProfileId"
-                {...register('parentProfileId')}
+                options={parentOptions}
+                placeholder="-- Choose a Parent --"
                 disabled={isSaving}
-                className="w-full h-10 px-3 text-sm rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-shadow"
-              >
-                <option value="">-- Choose a Parent --</option>
-                {unlinkedParents.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name || 'Unnamed Parent'} ({p.emergencyPhone})
-                  </option>
-                ))}
-              </select>
+                {...register('parentProfileId')}
+              />
             )}
             {errors.parentProfileId && (
               <FieldError>{errors.parentProfileId.message}</FieldError>
@@ -162,17 +175,12 @@ export function LinkParentModal({ studentId }: LinkParentModalProps) {
                 >
                   Relationship Type <span className="text-red-500">*</span>
                 </FieldLabel>
-                <select
+                <SearchableSelect
                   id="relationship"
-                  {...register('relationship')}
+                  options={relationshipOptions}
                   disabled={isSaving}
-                  className="w-full h-10 px-3 text-sm rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-shadow"
-                >
-                  <option value="FATHER">Father</option>
-                  <option value="MOTHER">Mother</option>
-                  <option value="GUARDIAN">Guardian</option>
-                  <option value="OTHER">Other</option>
-                </select>
+                  {...register('relationship')}
+                />
                 {errors.relationship && (
                   <FieldError>{errors.relationship.message}</FieldError>
                 )}

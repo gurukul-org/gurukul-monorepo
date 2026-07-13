@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Modal } from '@/components/modals/Modal';
@@ -10,6 +11,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useHideModal } from '@/hooks/use-modal';
 import { useUpdateParentLink } from '@/services/api/requests/students';
@@ -69,6 +71,16 @@ export function EditParentLinkModal({
     },
   });
 
+  const relationshipOptions = useMemo(
+    () => [
+      { value: 'FATHER', label: 'Father' },
+      { value: 'MOTHER', label: 'Mother' },
+      { value: 'GUARDIAN', label: 'Guardian' },
+      { value: 'OTHER', label: 'Other' },
+    ],
+    [],
+  );
+
   const relationshipValue = watch('relationship');
 
   const onSubmit = async (values: EditValues) => {
@@ -116,17 +128,12 @@ export function EditParentLinkModal({
             >
               Relationship Type <span className="text-red-500">*</span>
             </FieldLabel>
-            <select
+            <SearchableSelect
               id="relationship"
-              {...register('relationship')}
+              options={relationshipOptions}
               disabled={isUpdating}
-              className="w-full h-10 px-3 text-sm rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-shadow"
-            >
-              <option value="FATHER">Father</option>
-              <option value="MOTHER">Mother</option>
-              <option value="GUARDIAN">Guardian</option>
-              <option value="OTHER">Other</option>
-            </select>
+              {...register('relationship')}
+            />
             {errors.relationship && (
               <FieldError>{errors.relationship.message}</FieldError>
             )}

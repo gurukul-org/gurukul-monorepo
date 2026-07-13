@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Modal } from '@/components/modals/Modal';
@@ -11,6 +12,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useHideModal } from '@/hooks/use-modal';
 import { useAcademicTerms } from '@/services/api/requests/academic-terms';
@@ -40,6 +42,30 @@ export function ClassModal({ editingClass }: ClassModalProps) {
     status: 'active',
   });
   const { data: terms, isLoading: loadingTerms } = useAcademicTerms();
+
+  const programOptions = useMemo(() => {
+    return (programs ?? []).map((p) => ({
+      value: p.id,
+      label: `${p.name} (${p.code})`,
+    }));
+  }, [programs]);
+
+  const termOptions = useMemo(() => {
+    return (terms ?? [])
+      .filter((t) => !t.deletedAt)
+      .map((t) => ({
+        value: t.id,
+        label: `${t.name}${t.isActive ? ' (Active)' : ''}`,
+      }));
+  }, [terms]);
+
+  const statusOptions = useMemo(
+    () => [
+      { value: 'ACTIVE', label: 'Active' },
+      { value: 'ARCHIVED', label: 'Archived' },
+    ],
+    [],
+  );
 
   const classFormSchema = z
     .object({
@@ -134,18 +160,12 @@ export function ClassModal({ editingClass }: ClassModalProps) {
             {/* Program Selection */}
             <Field>
               <FieldLabel>Academic Program *</FieldLabel>
-              <select
+              <SearchableSelect
                 disabled={!!editingClass}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs focus:ring-2 focus:ring-ring disabled:opacity-50"
+                options={programOptions}
+                placeholder="Select Program (e.g. 9th Grade)"
                 {...register('programId')}
-              >
-                <option value="">Select Program (e.g. 9th Grade)</option>
-                {programs?.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.code})
-                  </option>
-                ))}
-              </select>
+              />
               {errors.programId && (
                 <FieldError>{errors.programId.message}</FieldError>
               )}
@@ -154,20 +174,12 @@ export function ClassModal({ editingClass }: ClassModalProps) {
             {/* Term Selection */}
             <Field>
               <FieldLabel>Academic Term *</FieldLabel>
-              <select
+              <SearchableSelect
                 disabled={!!editingClass}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs focus:ring-2 focus:ring-ring disabled:opacity-50"
+                options={termOptions}
+                placeholder="Select Term"
                 {...register('academicTermId')}
-              >
-                <option value="">Select Term</option>
-                {terms
-                  ?.filter((t) => !t.deletedAt)
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} {t.isActive ? '(Active)' : ''}
-                    </option>
-                  ))}
-              </select>
+              />
               {errors.academicTermId && (
                 <FieldError>{errors.academicTermId.message}</FieldError>
               )}
@@ -206,13 +218,11 @@ export function ClassModal({ editingClass }: ClassModalProps) {
             {editingClass && (
               <Field>
                 <FieldLabel>Status</FieldLabel>
-                <select
-                  className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs focus:ring-2 focus:ring-ring disabled:opacity-50"
+                <SearchableSelect
+                  options={statusOptions}
+                  placeholder="Select Status"
                   {...register('status')}
-                >
-                  <option value="ACTIVE">Active</option>
-                  <option value="ARCHIVED">Archived</option>
-                </select>
+                />
                 {errors.status && (
                   <FieldError>{errors.status.message}</FieldError>
                 )}

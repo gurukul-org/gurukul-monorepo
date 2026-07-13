@@ -11,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Table,
   TableBody,
@@ -88,6 +89,25 @@ export default function TenantClassesContainer() {
     programId: selectedProgram || undefined,
   });
   const { data: instructors } = useInstructors();
+
+  const termOptions = useMemo(() => {
+    return (terms ?? []).map((t) => ({ value: t.id, label: t.name }));
+  }, [terms]);
+
+  const programOptions = useMemo(() => {
+    return (programs ?? []).map((p) => ({ value: p.id, label: p.name }));
+  }, [programs]);
+
+  const courseOptions = useMemo(() => {
+    return (courses ?? []).map((c) => ({ value: c.id, label: c.name }));
+  }, [courses]);
+
+  const instructorOptions = useMemo(() => {
+    return (instructors ?? []).map((i) => ({
+      value: i.membershipId,
+      label: `${i.firstName} ${i.lastName}`,
+    }));
+  }, [instructors]);
 
   const { mutateAsync: archiveClass } = useArchiveClass();
   const { mutateAsync: deleteClass } = useDeleteClass();
@@ -407,18 +427,12 @@ export default function TenantClassesContainer() {
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
               Academic Term
             </label>
-            <select
+            <SearchableSelect
               value={selectedTerm}
-              onChange={(e) => setSelectedTerm(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring disabled:opacity-50"
-            >
-              <option value="">All Terms</option>
-              {terms?.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedTerm}
+              options={termOptions}
+              placeholder="All Terms"
+            />
           </div>
 
           {/* Program Filter */}
@@ -426,21 +440,15 @@ export default function TenantClassesContainer() {
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
               Program
             </label>
-            <select
+            <SearchableSelect
               value={selectedProgram}
-              onChange={(e) => {
-                setSelectedProgram(e.target.value);
+              onChange={(val: string) => {
+                setSelectedProgram(val);
                 setSelectedCourse(''); // reset course selection on program change
               }}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring disabled:opacity-50"
-            >
-              <option value="">All Programs</option>
-              {programs?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              options={programOptions}
+              placeholder="All Programs"
+            />
           </div>
 
           {/* Course Filter */}
@@ -448,18 +456,12 @@ export default function TenantClassesContainer() {
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
               Subject/Course
             </label>
-            <select
+            <SearchableSelect
               value={selectedCourse}
-              onChange={(e) => setSelectedCourse(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring disabled:opacity-50"
-            >
-              <option value="">All Courses</option>
-              {courses?.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedCourse}
+              options={courseOptions}
+              placeholder="All Courses"
+            />
           </div>
 
           {/* Instructor Filter */}
@@ -467,18 +469,12 @@ export default function TenantClassesContainer() {
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
               Class Incharge
             </label>
-            <select
+            <SearchableSelect
               value={selectedInstructor}
-              onChange={(e) => setSelectedInstructor(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring disabled:opacity-50"
-            >
-              <option value="">All Incharges</option>
-              {instructors?.map((i) => (
-                <option key={i.membershipId} value={i.membershipId}>
-                  {i.firstName} {i.lastName}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedInstructor}
+              options={instructorOptions}
+              placeholder="All Incharges"
+            />
           </div>
         </div>
 

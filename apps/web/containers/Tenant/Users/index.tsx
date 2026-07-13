@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Table,
   TableBody,
@@ -105,6 +106,17 @@ export default function TenantUsersContainer() {
   const [statusFilter, setStatusFilter] =
     useState<(typeof STATUS_FILTERS)[number]['value']>('ACTIVE');
   const [globalFilter, setGlobalFilter] = useState('');
+
+  const statusOptions = useMemo(() => {
+    return STATUS_FILTERS.map((s) => ({ value: s.value, label: s.label }));
+  }, []);
+
+  const limitOptions = useMemo(() => {
+    return [10, 25, 50, 100].map((size) => ({
+      value: String(size),
+      label: String(size),
+    }));
+  }, []);
 
   const authUser = useAuthUser();
   const showMemberProfile = useShowMemberProfileModal();
@@ -433,35 +445,27 @@ export default function TenantUsersContainer() {
         <div className="flex items-center gap-3 text-xs">
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Status:</span>
-            <select
+            <SearchableSelect
               value={statusFilter}
-              onChange={(e) =>
+              onChange={(val: string) =>
                 handleStatusChange(
-                  e.target.value as (typeof STATUS_FILTERS)[number]['value'],
+                  val as (typeof STATUS_FILTERS)[number]['value'],
                 )
               }
-              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring"
-            >
-              {STATUS_FILTERS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+              options={statusOptions}
+              placeholder="Select Status"
+              className="h-9 min-w-32 py-1 text-xs"
+            />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Rows:</span>
-            <select
-              value={limit}
-              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-              className="h-9 w-20 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring"
-            >
-              {[10, 25, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={String(limit)}
+              onChange={(val: string) => handlePageSizeChange(Number(val))}
+              options={limitOptions}
+              placeholder="Select limit"
+              className="h-9 w-20 py-1 text-xs"
+            />
           </div>
         </div>
       </div>

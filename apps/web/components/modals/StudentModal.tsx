@@ -11,6 +11,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useHideModal, useShowInviteMemberModal } from '@/hooks/use-modal';
 import {
@@ -83,6 +84,14 @@ export function StudentModal({ editingStudent }: StudentModalProps) {
       u.roles.some((r) => r.name.toLowerCase() === 'student'),
     );
   }, [usersData]);
+
+  const studentMemberOptions = useMemo(() => {
+    return studentMembers.map((u) => ({
+      value: u.membershipId,
+      label: `${u.firstName} ${u.lastName}`,
+      description: u.email,
+    }));
+  }, [studentMembers]);
 
   const {
     register,
@@ -259,21 +268,13 @@ export function StudentModal({ editingStudent }: StudentModalProps) {
               </button>
             </div>
 
-            <select
+            <SearchableSelect
               id="tenantMembershipId"
-              {...register('tenantMembershipId')}
+              options={studentMemberOptions}
+              placeholder="-- Select an existing member with Student role (optional) --"
               disabled={isSaving || isLoadingUsers}
-              className="mt-1 block w-full h-10 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
-            >
-              <option value="">
-                -- Select an existing member with Student role (optional) --
-              </option>
-              {studentMembers.map((u) => (
-                <option key={u.membershipId} value={u.membershipId}>
-                  {u.firstName} {u.lastName} ({u.email})
-                </option>
-              ))}
-            </select>
+              {...register('tenantMembershipId')}
+            />
             <p className="text-[10px] text-muted-foreground/70 mt-1.5">
               Links this profile to their portal login account.
             </p>

@@ -1,8 +1,10 @@
 'use client';
 
 import * as React from 'react';
+import { useMemo } from 'react';
 
 import { Label } from '@/components/ui/label';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   FONTS,
   PRESETS,
@@ -30,6 +32,9 @@ export function ThemeSelector({
   disabled = false,
   className,
 }: ThemeSelectorProps) {
+  const fontOptions = useMemo(() => {
+    return FONTS.map((font) => ({ value: font.id, label: font.label }));
+  }, []);
   return (
     <div className={cn('space-y-5', className)}>
       <div className="space-y-2">
@@ -121,19 +126,16 @@ export function ThemeSelector({
         <Label htmlFor="theme-font" className="text-xs">
           Font
         </Label>
-        <select
+        <SearchableSelect
           id="theme-font"
           value={value.font}
           disabled={disabled}
-          onChange={(event) => onChange({ ...value, font: event.target.value })}
-          className="h-7 w-full max-w-xs rounded-md border border-input bg-input/20 px-2 text-xs/relaxed outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {FONTS.map((font) => (
-            <option key={font.id} value={font.id}>
-              {font.label}
-            </option>
-          ))}
-        </select>
+          onChange={(val: string) => onChange({ ...value, font: val })}
+          options={fontOptions}
+          placeholder="Select Font"
+          limitDefaultOptions={false}
+          className="h-7 w-full max-w-xs text-xs/relaxed py-0"
+        />
       </div>
     </div>
   );

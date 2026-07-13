@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Table,
   TableBody,
@@ -72,6 +73,11 @@ export default function TenantCoursesContainer() {
 
   const { data: courses, isLoading, isError } = useCourses(coursesQueryFilters);
   const { data: programs } = usePrograms({ status: 'active' });
+
+  const programOptions = useMemo(() => {
+    return (programs ?? []).map((p) => ({ value: p.id, label: p.name }));
+  }, [programs]);
+
   const { mutateAsync: deleteCourse } = useDeleteCourse();
 
   const handleDelete = useCallback(
@@ -301,18 +307,12 @@ export default function TenantCoursesContainer() {
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
               Program Filter
             </label>
-            <select
+            <SearchableSelect
               value={selectedProgram}
-              onChange={(e) => setSelectedProgram(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus:ring-2 focus:ring-ring disabled:opacity-50"
-            >
-              <option value="">All Programs</option>
-              {programs?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedProgram}
+              options={programOptions}
+              placeholder="All Programs"
+            />
           </div>
         </div>
 
