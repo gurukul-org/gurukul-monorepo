@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useShowInviteMemberModal } from '@/hooks/use-modal';
+import { useRequirePermission } from '@/hooks/use-require-permission';
 import {
   useCancelInvitation,
   useResendInvitation,
@@ -13,7 +14,14 @@ import { useTenantUsers } from '@/services/api/requests/users';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { PERMS } from '@repo/permissions';
+
 export default function TeamContainer() {
+  const allowed = useRequirePermission({
+    anyOf: [PERMS.user.view, PERMS.user.invite],
+    redirectTo: '/settings/profile',
+  });
+
   const showError = useShowApiError();
   const showInviteModal = useShowInviteMemberModal();
 
@@ -58,6 +66,8 @@ export default function TeamContainer() {
       showError(error);
     }
   };
+
+  if (!allowed) return null;
 
   return (
     <div className="p-8">
