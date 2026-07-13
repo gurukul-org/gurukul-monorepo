@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Modal } from '@/components/modals/Modal';
@@ -10,6 +11,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useHideModal } from '@/hooks/use-modal';
 import { useCreateEnrolment } from '@/services/api/requests/enrolments';
@@ -54,7 +56,12 @@ export function EnrolStudentModal({ classId }: EnrolStudentModalProps) {
     status: 'ACTIVE',
   });
 
-  const activeStudents = studentsData?.students ?? [];
+  const studentOptions = useMemo(() => {
+    return (studentsData?.students ?? []).map((student) => ({
+      value: student.id,
+      label: `${student.name ?? 'Unnamed'} (${student.rollNumber})`,
+    }));
+  }, [studentsData?.students]);
 
   const {
     register,
@@ -111,23 +118,15 @@ export function EnrolStudentModal({ classId }: EnrolStudentModalProps) {
             >
               Select Student <span className="text-red-500">*</span>
             </FieldLabel>
-            <select
+            <SearchableSelect
               id="studentProfileId"
-              {...register('studentProfileId')}
+              options={studentOptions}
+              placeholder={
+                isLoadingStudents ? 'Loading students...' : 'Select student...'
+              }
               disabled={isSaving || isLoadingStudents}
-              className="h-10 w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:bg-zinc-100 disabled:opacity-50"
-            >
-              <option value="" disabled>
-                {isLoadingStudents
-                  ? 'Loading students...'
-                  : 'Select student...'}
-              </option>
-              {activeStudents.map((student) => (
-                <option key={student.id} value={student.id}>
-                  {student.name ?? 'Unnamed'} ({student.rollNumber})
-                </option>
-              ))}
-            </select>
+              {...register('studentProfileId')}
+            />
             {errors.studentProfileId && (
               <FieldError>{errors.studentProfileId.message}</FieldError>
             )}
