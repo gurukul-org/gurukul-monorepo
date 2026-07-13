@@ -47,6 +47,17 @@ export function AppSidebar() {
   const { data: profile } = useCurrentUserProfile();
   const { hasPermission } = usePermission();
 
+  const showAllUsers = hasPermission(PERMS.user.view);
+  const showStudents = hasPermission(PERMS.student.view);
+  const showParents = hasPermission(PERMS.parent.view);
+  const showDirectory = showAllUsers || showStudents || showParents;
+
+  const showTerms = hasPermission(PERMS.academicTerm.view);
+  const showPrograms = hasPermission(PERMS.program.view);
+  const showCourses = hasPermission(PERMS.course.view) || hasPermission(PERMS.course.viewOwn);
+  const showClasses = hasPermission(PERMS.class.view) || hasPermission(PERMS.class.viewOwn);
+  const showAcademics = showTerms || showPrograms || showCourses || showClasses;
+
   const [isErpOpen, setIsErpOpen] = useState(pathname.startsWith('/users'));
   const [isAcademicsOpen, setIsAcademicsOpen] = useState(
     pathname.startsWith('/academics'),
@@ -92,152 +103,158 @@ export function AppSidebar() {
           </SidebarMenuItem>
 
           {/* Directory Collapsible Link */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={() => setIsErpOpen((prev) => !prev)}
-              className="w-full justify-start gap-3 transition-colors cursor-pointer"
-            >
-              <Users className="h-4 w-4 shrink-0" />
-              <span className="flex-1 text-left">Directory</span>
-              {isErpOpen ? (
-                <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
-              ) : (
-                <ChevronRight className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+          {showDirectory && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setIsErpOpen((prev) => !prev)}
+                className="w-full justify-start gap-3 transition-colors cursor-pointer"
+              >
+                <Users className="h-4 w-4 shrink-0" />
+                <span className="flex-1 text-left">Directory</span>
+                {isErpOpen ? (
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+                )}
+              </SidebarMenuButton>
+              {isErpOpen && state !== 'collapsed' && (
+                <SidebarMenuSub className="mt-1 ml-4 pl-3 border-l border-sidebar-border flex flex-col gap-1">
+                  {showAllUsers && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === '/users'}
+                        className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                      >
+                        <Link href="/users">
+                          <span>All Users</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  )}
+
+                  {showStudents && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={
+                          pathname === '/users/students' ||
+                          pathname.startsWith('/users/students/')
+                        }
+                        className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                      >
+                        <Link href="/users/students">
+                          <GraduationCap className="h-3.5 w-3.5" />
+                          <span>Students</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  )}
+
+                  {showParents && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={
+                          pathname === '/users/parents' ||
+                          pathname.startsWith('/users/parents/')
+                        }
+                        className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                      >
+                        <Link href="/users/parents">
+                          <Users className="h-3.5 w-3.5" />
+                          <span>Parents</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  )}
+                </SidebarMenuSub>
               )}
-            </SidebarMenuButton>
-            {isErpOpen && state !== 'collapsed' && (
-              <SidebarMenuSub className="mt-1 ml-4 pl-3 border-l border-sidebar-border flex flex-col gap-1">
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton
-                    asChild
-                    isActive={pathname === '/users'}
-                    className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
-                  >
-                    <Link href="/users">
-                      <span>All Users</span>
-                    </Link>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-
-                {hasPermission(PERMS.student.view) && (
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={
-                        pathname === '/users/students' ||
-                        pathname.startsWith('/users/students/')
-                      }
-                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
-                    >
-                      <Link href="/users/students">
-                        <GraduationCap className="h-3.5 w-3.5" />
-                        <span>Students</span>
-                      </Link>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                )}
-
-                {hasPermission(PERMS.parent.view) && (
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={
-                        pathname === '/users/parents' ||
-                        pathname.startsWith('/users/parents/')
-                      }
-                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
-                    >
-                      <Link href="/users/parents">
-                        <Users className="h-3.5 w-3.5" />
-                        <span>Parents</span>
-                      </Link>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                )}
-              </SidebarMenuSub>
-            )}
-          </SidebarMenuItem>
+            </SidebarMenuItem>
+          )}
 
           {/* Academics Collapsible Link */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={() => setIsAcademicsOpen((prev) => !prev)}
-              className="w-full justify-start gap-3 transition-colors cursor-pointer"
-            >
-              <Calendar className="h-4 w-4 shrink-0" />
-              <span className="flex-1 text-left">Academics</span>
-              {isAcademicsOpen ? (
-                <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
-              ) : (
-                <ChevronRight className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+          {showAcademics && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setIsAcademicsOpen((prev) => !prev)}
+                className="w-full justify-start gap-3 transition-colors cursor-pointer"
+              >
+                <Calendar className="h-4 w-4 shrink-0" />
+                <span className="flex-1 text-left">Academics</span>
+                {isAcademicsOpen ? (
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+                )}
+              </SidebarMenuButton>
+              {isAcademicsOpen && state !== 'collapsed' && (
+                <SidebarMenuSub className="mt-1 ml-4 pl-3 border-l border-sidebar-border flex flex-col gap-1">
+                  {showTerms && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname === '/academics/terms'}
+                        className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                      >
+                        <Link href="/academics/terms">
+                          <span>Academic Terms</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  )}
+                  {showPrograms && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={
+                          pathname === '/academics/programs' ||
+                          pathname.startsWith('/academics/programs/')
+                        }
+                        className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                      >
+                        <Link href="/academics/programs">
+                          <span>Academic Programs</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  )}
+                  {showCourses && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={
+                          pathname === '/academics/courses' ||
+                          pathname.startsWith('/academics/courses/')
+                        }
+                        className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                      >
+                        <Link href="/academics/courses">
+                          <span>Courses</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  )}
+                  {showClasses && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={
+                          pathname === '/academics/classes' ||
+                          pathname.startsWith('/academics/classes/')
+                        }
+                        className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                      >
+                        <Link href="/academics/classes">
+                          <span>Classes</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  )}
+                </SidebarMenuSub>
               )}
-            </SidebarMenuButton>
-            {isAcademicsOpen && state !== 'collapsed' && (
-              <SidebarMenuSub className="mt-1 ml-4 pl-3 border-l border-sidebar-border flex flex-col gap-1">
-                {hasPermission(PERMS.academicTerm.view) && (
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={pathname === '/academics/terms'}
-                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
-                    >
-                      <Link href="/academics/terms">
-                        <span>Academic Terms</span>
-                      </Link>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                )}
-                {hasPermission(PERMS.program.view) && (
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={
-                        pathname === '/academics/programs' ||
-                        pathname.startsWith('/academics/programs/')
-                      }
-                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
-                    >
-                      <Link href="/academics/programs">
-                        <span>Academic Programs</span>
-                      </Link>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                )}
-                {hasPermission(PERMS.course.view) && (
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={
-                        pathname === '/academics/courses' ||
-                        pathname.startsWith('/academics/courses/')
-                      }
-                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
-                    >
-                      <Link href="/academics/courses">
-                        <span>Courses</span>
-                      </Link>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                )}
-                {hasPermission(PERMS.class.view) && (
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton
-                      asChild
-                      isActive={
-                        pathname === '/academics/classes' ||
-                        pathname.startsWith('/academics/classes/')
-                      }
-                      className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
-                    >
-                      <Link href="/academics/classes">
-                        <span>Classes</span>
-                      </Link>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                )}
-              </SidebarMenuSub>
-            )}
-          </SidebarMenuItem>
+            </SidebarMenuItem>
+          )}
 
           {/* Settings Link */}
           <SidebarMenuItem>
