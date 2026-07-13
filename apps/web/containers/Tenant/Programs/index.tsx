@@ -24,6 +24,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useShowDeleteModal, useShowProgramModal } from '@/hooks/use-modal';
 import { usePermission } from '@/hooks/use-permission';
+import { useRequirePermission } from '@/hooks/use-require-permission';
 import {
   Program,
   useArchiveProgram,
@@ -53,6 +54,11 @@ import { toast } from 'sonner';
 import { PERMS } from '@repo/permissions';
 
 export default function TenantProgramsContainer() {
+  const allowed = useRequirePermission({
+    permission: PERMS.program.view,
+    redirectTo: '/dashboard',
+  });
+
   const [activeTab, setActiveTab] = useState<string>('active');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -316,6 +322,8 @@ export default function TenantProgramsContainer() {
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  if (!allowed) return null;
 
   return (
     <div className="space-y-6">

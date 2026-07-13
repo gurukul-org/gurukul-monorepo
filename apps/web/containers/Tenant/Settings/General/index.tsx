@@ -4,7 +4,6 @@ import * as React from 'react';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
-import { PermissionGate } from '@/components/permission-gate';
 import { Button } from '@/components/ui/button';
 import {
   Field,
@@ -15,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePermission } from '@/hooks/use-permission';
+import { useRequirePermission } from '@/hooks/use-require-permission';
 import {
   useUpdateTenant,
   useWorkspaceSettings,
@@ -68,6 +68,11 @@ function SettingsSkeleton() {
 }
 
 export default function GeneralContainer() {
+  const allowed = useRequirePermission({
+    permission: PERMS.tenant.view,
+    redirectTo: '/settings/profile',
+  });
+
   const { hasPermission } = usePermission();
   const canEdit = hasPermission(PERMS.tenant.edit);
 
@@ -97,6 +102,8 @@ export default function GeneralContainer() {
     reset({ name: values.name });
   };
 
+  if (!allowed) return null;
+
   return (
     <div>
       <div className="mb-6">
@@ -108,90 +115,73 @@ export default function GeneralContainer() {
         </p>
       </div>
 
-      <PermissionGate
-        permission={PERMS.tenant.view}
-        fallback={
-          <div className="flex flex-col items-center justify-center py-12 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/10 text-center">
-            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-              Access denied
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              You do not have permission to view workspace settings.
-            </p>
-          </div>
-        }
-      >
-        {isLoading ? (
-          <SettingsSkeleton />
-        ) : isError ? (
-          <div className="flex flex-col items-center justify-center py-12 border border-dashed border-red-200 dark:border-red-900/60 rounded-lg bg-rose-50/50 dark:bg-rose-950/10 text-red-600 dark:text-red-400">
-            <p className="text-sm font-semibold">
-              Failed to load workspace settings
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={() => refetch()}
-            >
-              Retry
-            </Button>
-          </div>
-        ) : data ? (
-          <div className="space-y-6">
-            {canEdit ? (
-              <form onSubmit={handleSubmit(onSubmit)}>
-                <FieldGroup>
-                  <Field data-invalid={!!errors.name}>
-                    <FieldLabel>Workspace name</FieldLabel>
-                    <div className="flex items-start gap-2 mt-1">
-                      <div className="flex-1">
-                        <Input
-                          {...register('name')}
-                          disabled={isPending}
-                          aria-invalid={!!errors.name}
-                        />
-                        {errors.name && (
-                          <FieldError>{errors.name.message}</FieldError>
-                        )}
-                      </div>
-                      <Button
-                        type="submit"
-                        size="sm"
-                        disabled={isPending || !isDirty || !isValid}
-                      >
-                        {isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          'Save'
-                        )}
-                      </Button>
+      {isLoading ? (
+        <SettingsSkeleton />
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center py-12 border border-dashed border-red-200 dark:border-red-900/60 rounded-lg bg-rose-50/50 dark:bg-rose-950/10 text-red-600 dark:text-red-400">
+          <p className="text-sm font-semibold">
+            Failed to load workspace settings
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => refetch()}
+          >
+            Retry
+          </Button>
+        </div>
+      ) : data ? (
+        <div className="space-y-6">
+          {canEdit ? (
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <FieldGroup>
+                <Field data-invalid={!!errors.name}>
+                  <FieldLabel>Workspace name</FieldLabel>
+                  <div className="flex items-start gap-2 mt-1">
+                    <div className="flex-1">
+                      <Input
+                        {...register('name')}
+                        disabled={isPending}
+                        aria-invalid={!!errors.name}
+                      />
+                      {errors.name && (
+                        <FieldError>{errors.name.message}</FieldError>
+                      )}
                     </div>
-                  </Field>
-                </FieldGroup>
-              </form>
-            ) : (
-              <SettingsRow label="Workspace name" value={data.name} />
-            )}
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={isPending || !isDirty || !isValid}
+                    >
+                      {isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Save'
+                      )}
+                    </Button>
+                  </div>
+                </Field>
+              </FieldGroup>
+            </form>
+          ) : (
+            <SettingsRow label="Workspace name" value={data.name} />
+          )}
 
-            <div className="rounded-lg border border-zinc-100 dark:border-zinc-800 px-4">
-              <SettingsRow label="Subdomain" value={data.subdomain} />
-              <SettingsRow
-                label="Created"
-                value={new Date(data.createdAt).toLocaleDateString(undefined, {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              />
-              <SettingsRow
-                label="Members"
-                value={data.memberCount.toString()}
-              />
-            </div>
+          <div className="rounded-lg border border-zinc-100 dark:border-zinc-800 px-4">
+            <SettingsRow label="Subdomain" value={data.subdomain} />
+            <SettingsRow
+              label="Created"
+              value={new Date(data.createdAt).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            />
+            <SettingsRow label="Members" value={data.memberCount.toString()} />
           </div>
-        ) : null}
-      </PermissionGate>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -27,6 +27,7 @@ import {
   useShowSuspendMemberModal,
 } from '@/hooks/use-modal';
 import { usePermission } from '@/hooks/use-permission';
+import { useRequirePermission } from '@/hooks/use-require-permission';
 import { useAuthUser } from '@/lib/store/auth';
 import { ModalType } from '@/lib/store/types/modal';
 import {
@@ -92,6 +93,11 @@ function roleBadgeClass(name: string) {
 }
 
 export default function TenantUsersContainer() {
+  const allowed = useRequirePermission({
+    permission: PERMS.user.view,
+    redirectTo: '/dashboard',
+  });
+
   const [limit, setLimit] = useState(25);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>(
@@ -403,6 +409,8 @@ export default function TenantUsersContainer() {
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
   });
+
+  if (!allowed) return null;
 
   return (
     <div className="animate-in fade-in space-y-6 duration-300">

@@ -1,12 +1,16 @@
 'use client';
 
 import * as React from 'react';
+import { useMemo } from 'react';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { usePermission } from '@/hooks/use-permission';
 import { cn } from '@/lib/utils';
 import { KeyRound, Palette, Settings, Shield, User, Users } from 'lucide-react';
+
+import { PERMS } from '@repo/permissions';
 
 interface NavSection {
   label: string;
@@ -45,9 +49,34 @@ export default function SettingsLayoutContainer({
 }) {
   const pathname = usePathname();
   const basePath = '/settings';
+  const { hasPermission } = usePermission();
 
   // Extract the active panel from the pathname (e.g. /settings/profile -> profile)
   const activePanel = pathname.split('/').pop() || 'profile';
+
+  // Filter sections dynamically based on user permissions
+  const filteredSections = useMemo(() => {
+    return NAV_SECTIONS.map((section) => {
+      const items = section.items.filter((item) => {
+        if (item.id === 'team') {
+          return (
+            hasPermission(PERMS.user.view) || hasPermission(PERMS.user.invite)
+          );
+        }
+        if (item.id === 'roles') {
+          return hasPermission(PERMS.role.view);
+        }
+        if (item.id === 'appearance') {
+          return hasPermission(PERMS.appearance.view);
+        }
+        if (item.id === 'general') {
+          return hasPermission(PERMS.tenant.view);
+        }
+        return true; // Profile and Security are always allowed
+      });
+      return { ...section, items };
+    }).filter((section) => section.items.length > 0);
+  }, [hasPermission]);
 
   return (
     <div className="flex gap-8">
@@ -55,7 +84,7 @@ export default function SettingsLayoutContainer({
       <nav className="w-48 shrink-0">
         <h1 className="text-lg font-semibold tracking-tight mb-6">Settings</h1>
         <div className="space-y-6">
-          {NAV_SECTIONS.map((section) => (
+          {filteredSections.map((section) => (
             <div key={section.label}>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2">
                 {section.label}

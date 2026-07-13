@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { useShowProgramModal } from '@/hooks/use-modal';
 import { usePermission } from '@/hooks/use-permission';
+import { useRequirePermission } from '@/hooks/use-require-permission';
 import { ProgramCourse, useProgram } from '@/services/api/requests/programs';
 import {
   ColumnDef,
@@ -45,6 +46,11 @@ interface TenantProgramDetailContainerProps {
 export default function TenantProgramDetailContainer({
   programId,
 }: TenantProgramDetailContainerProps) {
+  const allowed = useRequirePermission({
+    permission: PERMS.program.view,
+    redirectTo: '/dashboard',
+  });
+
   const { data: program, isLoading, isError } = useProgram(programId);
   const { hasPermission } = usePermission();
   const showProgramModal = useShowProgramModal();
@@ -116,6 +122,8 @@ export default function TenantProgramDetailContainer({
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  if (!allowed) return null;
 
   if (isLoading) {
     return (

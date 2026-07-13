@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useShowDeleteModal, useShowRoleModal } from '@/hooks/use-modal';
+import { useRequirePermission } from '@/hooks/use-require-permission';
 import {
   type Role,
   useDeleteRole,
@@ -56,6 +57,11 @@ function RoleCardSkeleton() {
 }
 
 export default function RolesContainer() {
+  const allowed = useRequirePermission({
+    permission: PERMS.role.view,
+    redirectTo: '/settings/profile',
+  });
+
   const router = useRouter();
   const pathname = usePathname();
   const isSettings = pathname.startsWith('/settings');
@@ -71,6 +77,8 @@ export default function RolesContainer() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const isMutating = isDeletingRole;
+
+  if (!allowed) return null;
 
   const handleStartCreate = () => {
     showRoleModal(null);
