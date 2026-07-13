@@ -10,6 +10,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useHideModal } from '@/hooks/use-modal';
 import { useClass } from '@/services/api/requests/classes';
@@ -94,6 +95,14 @@ export function AssignInstructorModal({ classId }: AssignInstructorModalProps) {
     );
   }, [eligible, cls]);
 
+  const instructorOptions = useMemo(() => {
+    return unassignedEligible.map((instructor) => ({
+      value: instructor.membershipId,
+      label: `${instructor.firstName} ${instructor.lastName}`,
+      description: instructor.email,
+    }));
+  }, [unassignedEligible]);
+
   return (
     <Modal
       isOpen={true}
@@ -131,23 +140,13 @@ export function AssignInstructorModal({ classId }: AssignInstructorModalProps) {
                 class.
               </div>
             ) : (
-              <select
+              <SearchableSelect
                 id="tenantMembershipId"
-                {...register('tenantMembershipId')}
+                options={instructorOptions}
+                placeholder="-- Choose an Instructor --"
                 disabled={isSaving}
-                className="w-full h-10 px-3 text-sm rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-shadow"
-              >
-                <option value="">-- Choose an Instructor --</option>
-                {unassignedEligible.map((instructor) => (
-                  <option
-                    key={instructor.membershipId}
-                    value={instructor.membershipId}
-                  >
-                    {instructor.firstName} {instructor.lastName} (
-                    {instructor.email})
-                  </option>
-                ))}
-              </select>
+                {...register('tenantMembershipId')}
+              />
             )}
             {errors.tenantMembershipId && (
               <FieldError>{errors.tenantMembershipId.message}</FieldError>

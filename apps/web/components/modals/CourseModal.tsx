@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Modal } from '@/components/modals/Modal';
@@ -11,6 +12,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { useShowApiError } from '@/hooks/api/use-show-api-error';
 import { useHideModal } from '@/hooks/use-modal';
 import {
@@ -40,6 +42,13 @@ export function CourseModal({ editingCourse }: CourseModalProps) {
   const { data: programs, isLoading: loadingPrograms } = usePrograms({
     status: 'active',
   });
+
+  const programOptions = useMemo(() => {
+    return (programs ?? []).map((p) => ({
+      value: p.id,
+      label: `${p.name} (${p.code})`,
+    }));
+  }, [programs]);
 
   const courseFormSchema = z.object({
     programId: z.string().uuid('Please select an academic program'),
@@ -144,18 +153,12 @@ export function CourseModal({ editingCourse }: CourseModalProps) {
             {/* Program selection */}
             <Field>
               <FieldLabel>Academic Program *</FieldLabel>
-              <select
+              <SearchableSelect
                 disabled={!!editingCourse}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs focus:ring-2 focus:ring-ring disabled:opacity-50"
+                options={programOptions}
+                placeholder="Select Program (e.g. 9th Grade)"
                 {...register('programId')}
-              >
-                <option value="">Select Program (e.g. 9th Grade)</option>
-                {programs?.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.code})
-                  </option>
-                ))}
-              </select>
+              />
               {errors.programId && (
                 <FieldError>{errors.programId.message}</FieldError>
               )}
