@@ -3,6 +3,10 @@
 import { useMemo, useState } from 'react';
 
 import { AccountStatusBadge } from '@/components/AccountStatusBadge';
+import {
+  FilterConfig,
+  FilterPanel,
+} from '@/components/FilterPanel/FilterPanel';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -60,11 +64,36 @@ export default function ParentsContainer() {
   });
 
   const [search, setSearch] = useState('');
-  const [filterNoStudents, setFilterNoStudents] = useState(false);
+  const [filterValues, setFilterValues] = useState<
+    Record<string, { value: string; label: string }[]>
+  >({
+    hygiene: [],
+  });
+
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'hygiene',
+        label: 'Hygiene',
+        type: 'select',
+        options: [
+          { value: 'no_students', label: 'Parents with no linked students' },
+        ],
+        placeholder: 'All Records',
+      },
+    ],
+    [],
+  );
+
+  const handleFilterPanelChange = (newValues: typeof filterValues) => {
+    setFilterValues(newValues);
+  };
 
   const { data, isLoading, isError } = useParents({
     search: search || undefined,
-    filterNoStudents: filterNoStudents || undefined,
+    filterNoStudents:
+      (filterValues.hygiene || []).some((x) => x.value === 'no_students') ||
+      undefined,
   });
 
   const showParentModal = useShowParentModal();
@@ -246,7 +275,7 @@ export default function ParentsContainer() {
       </div>
 
       {/* Filter and Search Panel */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card p-4">
+      <div className="flex flex-col gap-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card p-4">
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -256,21 +285,13 @@ export default function ParentsContainer() {
             className="pl-9 h-10 text-sm focus-visible:ring-primary/20"
           />
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            id="filterNoStudents"
-            type="checkbox"
-            checked={filterNoStudents}
-            onChange={(e) => setFilterNoStudents(e.target.checked)}
-            className="h-4 w-4 rounded border-zinc-300 text-primary focus:ring-primary"
-          />
-          <label
-            htmlFor="filterNoStudents"
-            className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 select-none cursor-pointer"
-          >
-            Show parents with no linked students (Hygiene)
-          </label>
-        </div>
+
+        <FilterPanel
+          feature="parents"
+          configs={filterConfigs}
+          values={filterValues}
+          onChange={handleFilterPanelChange}
+        />
       </div>
 
       {/* Table Data Panel */}

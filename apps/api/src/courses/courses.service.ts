@@ -68,7 +68,9 @@ export class CoursesService {
     };
 
     if (filters?.programId) {
-      whereClause.programId = filters.programId;
+      whereClause.programId = filters.programId.includes(',')
+        ? { in: filters.programId.split(',') }
+        : filters.programId;
     }
 
     if (filters?.search) {

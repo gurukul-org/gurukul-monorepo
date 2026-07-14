@@ -104,6 +104,7 @@ export function useClasses(params?: {
   program?: string;
   course?: string;
   instructor?: string;
+  section?: string;
 }) {
   return useQuery({
     queryKey: [
@@ -112,6 +113,7 @@ export function useClasses(params?: {
       params?.program,
       params?.course,
       params?.instructor,
+      params?.section,
     ],
     queryFn: async () => {
       const { data } = await axios.get<Class[]>('/classes', { params });

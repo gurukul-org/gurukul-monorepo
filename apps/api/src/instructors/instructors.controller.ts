@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -23,6 +24,31 @@ import { InstructorsService } from './instructors.service';
 @Controller('instructors')
 export class InstructorsController {
   constructor(private readonly instructorsService: InstructorsService) {}
+
+  @Get('options')
+  @RequirePermissions(PERMS.instructor.view)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'List paginated instructor options',
+    description:
+      'Returns active instructors formatted for select options with search and pagination.',
+  })
+  async getOptions(
+    @GetCurrentTenant('id') tenantId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = parseInt(limit || '10', 10);
+    return this.instructorsService.getOptions(
+      tenantId,
+      pageNum,
+      limitNum,
+      search,
+    );
+  }
 
   @Get()
   @RequirePermissions(PERMS.instructor.view)

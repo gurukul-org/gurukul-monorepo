@@ -30,6 +30,7 @@ model Tenant {
   parentProfiles   ParentProfile[]
   enrolments       Enrolment[]
   sessions         Session[]
+  savedFilters     SavedFilter[]
 
   @@map("tenants")
 }
@@ -73,6 +74,7 @@ model User {
   createdParents       ParentProfile[]  @relation("ParentCreatedBy")
   updatedParents       ParentProfile[]  @relation("ParentUpdatedBy")
   createdEnrolments    Enrolment[]      @relation("EnrolmentCreatedBy")
+  savedFilters         SavedFilter[]
 
   @@map("users")
 }
@@ -383,4 +385,24 @@ model Session {
 
   @@index([tenantId])
   @@map("sessions")
+}
+
+// =====================================================
+// SAVED FILTERS
+// =====================================================
+model SavedFilter {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String   @db.VarChar(255)
+  feature   String   @db.VarChar(100)
+  filters   Json     @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, feature, name])
+  @@map("saved_filters")
 }

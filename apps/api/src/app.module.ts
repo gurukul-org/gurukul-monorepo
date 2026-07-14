@@ -23,6 +23,7 @@ import { MembersModule } from './members/members.module';
 import { ParentsModule } from './parents/parents.module';
 import { ProgramsModule } from './programs/programs.module';
 import { RolesModule } from './roles/roles.module';
+import { SavedFiltersModule } from './saved-filters/saved-filters.module';
 import { StudentsModule } from './students/students.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { UsersModule } from './users/users.module';
@@ -89,6 +90,7 @@ import { UsersModule } from './users/users.module';
     CoursesModule,
     EnrolmentsModule,
     ParentsModule,
+    SavedFiltersModule,
   ],
   controllers: [AppController],
   providers: [
