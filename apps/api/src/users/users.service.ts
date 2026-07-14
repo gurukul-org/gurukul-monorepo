@@ -519,7 +519,11 @@ export class UsersService {
       where: {
         tenantId,
         deletedAt: null,
-        status: cleanStatus ? cleanStatus : undefined,
+        status: cleanStatus
+          ? cleanStatus.includes(',')
+            ? { in: cleanStatus.split(',') }
+            : cleanStatus
+          : undefined,
       },
       take: take + 1,
       skip: cursor ? 1 : 0,
