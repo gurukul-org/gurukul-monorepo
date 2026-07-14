@@ -75,6 +75,12 @@ export class ClassesController {
     type: String,
     description: 'Instructor Tenant Membership ID',
   })
+  @ApiQuery({
+    name: 'section',
+    required: false,
+    type: String,
+    description: 'Class/Section ID',
+  })
   @ApiOkResponse({ description: 'Classes retrieved successfully.' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
   async findAll(
@@ -83,6 +89,7 @@ export class ClassesController {
     @Query('program') program?: string,
     @Query('course') course?: string,
     @Query('instructor') instructor?: string,
+    @Query('section') section?: string,
   ) {
     if (!tenantId) throw new ForbiddenException('Tenant context required.');
     return this.classesService.findAll(tenantId, {
@@ -90,7 +97,27 @@ export class ClassesController {
       program,
       course,
       instructor,
+      section,
     });
+  }
+
+  @Get('options')
+  @RequirePermissions(PERMS.class.view)
+  @ApiOperation({
+    summary: 'List paginated class section options',
+    description:
+      'Returns class sections formatted for select options with search and pagination.',
+  })
+  async getOptions(
+    @GetCurrentTenant('id') tenantId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = parseInt(limit || '10', 10);
+    return this.classesService.getOptions(tenantId, pageNum, limitNum, search);
   }
 
   @Get(':id')
