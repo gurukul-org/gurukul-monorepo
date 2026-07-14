@@ -4,6 +4,10 @@ import { useCallback, useMemo, useState } from 'react';
 
 import Link from 'next/link';
 
+import {
+  FilterConfig,
+  FilterPanel,
+} from '@/components/FilterPanel/FilterPanel';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,7 +16,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Table,
   TableBody,
@@ -55,7 +58,11 @@ export default function TenantCoursesContainer() {
     redirectTo: '/dashboard',
   });
 
-  const [selectedProgram, setSelectedProgram] = useState<string>('');
+  const [filterValues, setFilterValues] = useState<
+    Record<string, { value: string; label: string }[]>
+  >({
+    program: [],
+  });
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const { hasPermission } = usePermission();
@@ -65,10 +72,11 @@ export default function TenantCoursesContainer() {
 
   const coursesQueryFilters = useMemo(
     () => ({
-      programId: selectedProgram || undefined,
+      programId:
+        (filterValues.program || []).map((x) => x.value).join(',') || undefined,
       search: searchQuery || undefined,
     }),
-    [selectedProgram, searchQuery],
+    [filterValues, searchQuery],
   );
 
   const { data: courses, isLoading, isError } = useCourses(coursesQueryFilters);
@@ -77,6 +85,19 @@ export default function TenantCoursesContainer() {
   const programOptions = useMemo(() => {
     return (programs ?? []).map((p) => ({ value: p.id, label: p.name }));
   }, [programs]);
+
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'program',
+        label: 'Program',
+        type: 'select',
+        options: programOptions,
+        placeholder: 'All Programs',
+      },
+    ],
+    [programOptions],
+  );
 
   const { mutateAsync: deleteCourse } = useDeleteCourse();
 
@@ -256,13 +277,6 @@ export default function TenantCoursesContainer() {
     getCoreRowModel: getCoreRowModel(),
   });
 
-  const clearFilters = () => {
-    setSelectedProgram('');
-    setSearchQuery('');
-  };
-
-  const hasActiveFilters = selectedProgram || searchQuery;
-
   if (!allowed) return null;
 
   return (
@@ -287,42 +301,26 @@ export default function TenantCoursesContainer() {
       </div>
 
       {/* Filters and Controls */}
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-          {/* Search Input */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-              Search Courses
-            </label>
-            <Input
-              placeholder="e.g. Mathematics or MATH101"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 text-xs"
-            />
-          </div>
-
-          {/* Program Filter */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-              Program Filter
-            </label>
-            <SearchableSelect
-              value={selectedProgram}
-              onChange={setSelectedProgram}
-              options={programOptions}
-              placeholder="All Programs"
-            />
-          </div>
+      <div className="space-y-4">
+        {/* Search Input */}
+        <div className="max-w-xs flex flex-col gap-1">
+          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+            Search Courses
+          </label>
+          <Input
+            placeholder="e.g. Mathematics or MATH101"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-9 text-xs"
+          />
         </div>
 
-        {hasActiveFilters && (
-          <div className="flex justify-end pt-2 border-t border-zinc-100 dark:border-zinc-900">
-            <Button variant="ghost" size="xs" onClick={clearFilters}>
-              Clear Filters
-            </Button>
-          </div>
-        )}
+        <FilterPanel
+          feature="courses"
+          configs={filterConfigs}
+          values={filterValues}
+          onChange={setFilterValues}
+        />
       </div>
 
       {/* Table Content */}
