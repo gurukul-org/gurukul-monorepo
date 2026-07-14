@@ -3,6 +3,10 @@
 import { useMemo, useState } from 'react';
 
 import { AccountStatusBadge } from '@/components/AccountStatusBadge';
+import {
+  FilterConfig,
+  FilterPanel,
+} from '@/components/FilterPanel/FilterPanel';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -194,7 +198,11 @@ export default function TenantStudentsContainer() {
   });
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [filterValues, setFilterValues] = useState<
+    Record<string, { value: string; label: string }[]>
+  >({
+    status: [],
+  });
   const [limit, setLimit] = useState(10);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>(
@@ -207,6 +215,25 @@ export default function TenantStudentsContainer() {
       label: s.charAt(0) + s.slice(1).toLowerCase(),
     }));
   }, []);
+
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: statusOptions,
+        placeholder: 'All Statuses',
+      },
+    ],
+    [statusOptions],
+  );
+
+  const handleFilterPanelChange = (newValues: typeof filterValues) => {
+    setFilterValues(newValues);
+    setCursor(undefined);
+    setCursorHistory([]);
+  };
 
   const limitOptions = useMemo(() => {
     return [5, 10, 20, 50].map((size) => ({
@@ -221,7 +248,8 @@ export default function TenantStudentsContainer() {
 
   const { data, isLoading, isError, refetch } = useStudents({
     search: search.trim() || undefined,
-    status: statusFilter || undefined,
+    status:
+      (filterValues.status || []).map((x) => x.value).join(',') || undefined,
     limit,
     cursor,
   });
@@ -253,10 +281,8 @@ export default function TenantStudentsContainer() {
     setCursorHistory([]);
   };
 
-  const handleStatusFilter = (value: string) => {
-    setStatusFilter(value);
-    setCursor(undefined);
-    setCursorHistory([]);
+  const handleStatusFilter = (val: string) => {
+    // legacy status handler unused
   };
 
   const columns = useMemo<ColumnDef<StudentListItem>[]>(
@@ -424,9 +450,9 @@ export default function TenantStudentsContainer() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="flex-1 flex flex-col gap-3">
+          <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search name or roll number..."
@@ -436,16 +462,15 @@ export default function TenantStudentsContainer() {
             />
           </div>
 
-          <SearchableSelect
-            value={statusFilter}
-            onChange={handleStatusFilter}
-            options={statusOptions}
-            placeholder="All Statuses"
-            className="h-9 min-w-36 py-1 text-xs"
+          <FilterPanel
+            feature="students"
+            configs={filterConfigs}
+            values={filterValues}
+            onChange={handleFilterPanelChange}
           />
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-xs shrink-0 pb-1">
           <span className="text-muted-foreground">Rows per page:</span>
           <SearchableSelect
             value={String(limit)}
@@ -484,21 +509,23 @@ export default function TenantStudentsContainer() {
                 No students found
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {search || statusFilter
+                {search ||
+                (filterValues.status && filterValues.status.length > 0)
                   ? 'Try adjusting your search or filter.'
                   : 'Add your first student to get started.'}
               </p>
             </div>
-            {!search && !statusFilter && (
-              <Button
-                size="sm"
-                onClick={() => showStudentModal(null)}
-                className="gap-1.5 mt-2"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Student
-              </Button>
-            )}
+            {!search &&
+              !(filterValues.status && filterValues.status.length > 0) && (
+                <Button
+                  size="sm"
+                  onClick={() => showStudentModal(null)}
+                  className="gap-1.5 mt-2"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Student
+                </Button>
+              )}
           </div>
         ) : (
           <Table>

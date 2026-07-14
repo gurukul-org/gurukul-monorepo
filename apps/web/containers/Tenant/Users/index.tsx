@@ -3,6 +3,10 @@
 import * as React from 'react';
 import { useMemo, useState } from 'react';
 
+import {
+  FilterConfig,
+  FilterPanel,
+} from '@/components/FilterPanel/FilterPanel';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -103,8 +107,11 @@ export default function TenantUsersContainer() {
   const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>(
     [],
   );
-  const [statusFilter, setStatusFilter] =
-    useState<(typeof STATUS_FILTERS)[number]['value']>('ACTIVE');
+  const [filterValues, setFilterValues] = useState<
+    Record<string, { value: string; label: string }[]>
+  >({
+    status: [{ value: 'ACTIVE', label: 'Active' }],
+  });
   const [globalFilter, setGlobalFilter] = useState('');
 
   const statusOptions = useMemo(() => {
@@ -132,8 +139,22 @@ export default function TenantUsersContainer() {
   const { data, isLoading, isError, refetch } = useTenantUsers({
     limit,
     cursor,
-    status: statusFilter,
+    status:
+      (filterValues.status || []).map((x) => x.value).join(',') || undefined,
   });
+
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: statusOptions,
+        placeholder: 'Select Status',
+      },
+    ],
+    [statusOptions],
+  );
 
   const resetPaging = () => {
     setCursor(undefined);
@@ -147,6 +168,15 @@ export default function TenantUsersContainer() {
     }
   };
 
+  const handleFilterPanelChange = (newValues: typeof filterValues) => {
+    setFilterValues(newValues);
+    resetPaging();
+  };
+
+  const handleStatusChange = (val: string) => {
+    // legacy status change unused
+  };
+
   const handlePrevPage = () => {
     const prevHistory = [...cursorHistory];
     const previous = prevHistory.pop();
@@ -156,13 +186,6 @@ export default function TenantUsersContainer() {
 
   const handlePageSizeChange = (newSize: number) => {
     setLimit(newSize);
-    resetPaging();
-  };
-
-  const handleStatusChange = (
-    value: (typeof STATUS_FILTERS)[number]['value'],
-  ) => {
-    setStatusFilter(value);
     resetPaging();
   };
 
@@ -431,34 +454,20 @@ export default function TenantUsersContainer() {
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search name or email..."
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="h-9 pl-9"
-          />
-        </div>
-
-        <div className="flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">Status:</span>
-            <SearchableSelect
-              value={statusFilter}
-              onChange={(val: string) =>
-                handleStatusChange(
-                  val as (typeof STATUS_FILTERS)[number]['value'],
-                )
-              }
-              options={statusOptions}
-              placeholder="Select Status"
-              className="h-9 min-w-32 py-1 text-xs"
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search name or email..."
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="h-9 pl-9"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">Rows:</span>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground font-semibold">Rows:</span>
             <SearchableSelect
               value={String(limit)}
               onChange={(val: string) => handlePageSizeChange(Number(val))}
@@ -468,6 +477,13 @@ export default function TenantUsersContainer() {
             />
           </div>
         </div>
+
+        <FilterPanel
+          feature="users"
+          configs={filterConfigs}
+          values={filterValues}
+          onChange={handleFilterPanelChange}
+        />
       </div>
 
       {/* Table */}
