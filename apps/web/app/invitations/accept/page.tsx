@@ -100,7 +100,8 @@ function AcceptInvitationForm() {
 
     const lowerRoles = validationResult.roles.map((r) => r.toLowerCase());
     const isStudent = lowerRoles.includes('student');
-    const isParent = lowerRoles.includes('parent');
+    const isParent =
+      lowerRoles.includes('parent') || lowerRoles.includes('parents');
 
     if (isStudent && (!rollNumber || !admissionDate)) {
       setError(
@@ -140,7 +141,8 @@ function AcceptInvitationForm() {
 
   const lowerRoles = validationResult.roles.map((r) => r.toLowerCase());
   const isStudent = lowerRoles.includes('student');
-  const isParent = lowerRoles.includes('parent');
+  const isParent =
+    lowerRoles.includes('parent') || lowerRoles.includes('parents');
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
