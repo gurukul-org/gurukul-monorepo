@@ -15,6 +15,7 @@ export type FeatureKey =
   | 'instructor'
   | 'student'
   | 'parent'
+  | 'teacher'
   | 'enrolment'
   | 'fee'
   | 'attendance'
