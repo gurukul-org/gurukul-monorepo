@@ -34,6 +34,7 @@ export enum ModalType {
   EnrolStudentModal,
   BulkEnrolModal,
   AssignInstructorModal,
+  ManageInstructorCoursesModal,
   LinkParentModal,
   EditParentLinkModal,
 }
@@ -66,6 +67,12 @@ export type ModalPayload =
   | { editingParent: ParentListItem | null } // ParentModal
   | { parentId: string } // ParentProfileModal
   | { classId: string } // EnrolStudentModal / BulkEnrolModal / AssignInstructorModal
+  | {
+      classId: string;
+      classInstructorId: string;
+      teacherName: string;
+      currentCourseIds: string[];
+    } // ManageInstructorCoursesModal
   | { membershipId: string; userFullName: string } // RevokeAccessModal
   | {
       title: string;

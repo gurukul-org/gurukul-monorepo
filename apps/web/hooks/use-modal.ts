@@ -234,6 +234,19 @@ export function useShowAssignInstructorModal() {
   );
 }
 
+export function useShowManageInstructorCoursesModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (payload: {
+      classId: string;
+      classInstructorId: string;
+      teacherName: string;
+      currentCourseIds: string[];
+    }) => showModal(ModalType.ManageInstructorCoursesModal, payload),
+    [showModal],
+  );
+}
+
 export function useShowLinkParentModal() {
   const showModal = useShowModal();
   return useCallback(
