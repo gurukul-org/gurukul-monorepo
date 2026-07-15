@@ -1,13 +1,12 @@
 import { PERMS } from '../registry';
 import { DefaultRoleDefinition } from '../types';
 
-// Branch Manager — manages a specific campus/branch.
-// Full access to academics, people, operations, and analytics within their branch.
-// Cannot manage roles or institution-wide settings.
-export const branchManager: DefaultRoleDefinition = {
-  title: 'Branch Manager',
+// Coordinators — high-level academic/administrative coordinator.
+// Full access to academics, people, operations, assessment, library, and reporting.
+export const coordinators: DefaultRoleDefinition = {
+  title: 'Coordinators',
   isAdmin: false,
-  rank: 2,
+  rank: 3,
   scopes: [
     // Dashboard
     PERMS.dashboard.all.id,

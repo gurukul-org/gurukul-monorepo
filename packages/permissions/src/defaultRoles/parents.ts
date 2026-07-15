@@ -1,11 +1,11 @@
 import { PERMS } from '../registry';
 import { DefaultRoleDefinition } from '../types';
 
-// Parent / Guardian — can view linked student's data and communicate with teachers.
-export const parentRole: DefaultRoleDefinition = {
-  title: 'Parent',
+// Parents / Guardian — can view linked student's data and communicate.
+export const parentsRole: DefaultRoleDefinition = {
+  title: 'Parents',
   isAdmin: false,
-  rank: 9,
+  rank: 8,
   scopes: [
     // Dashboard — own
     PERMS.dashboard.viewOwn.id,

@@ -41,14 +41,13 @@ export {
 export type { PermissionDependency } from './helpers/categorize';
 
 export {
-  owner,
-  branchManager,
-  academicDirector,
+  accountOwner,
+  principal,
+  coordinators,
   hod,
-  administrativeOfficer,
-  faculty,
-  staff,
+  classIncharge,
+  teacher,
   studentRole,
-  parentRole,
+  parentsRole,
   DEFAULT_ROLES,
 } from './defaultRoles';
