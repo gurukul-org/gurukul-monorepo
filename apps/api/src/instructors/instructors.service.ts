@@ -53,7 +53,12 @@ export class InstructorsService {
     const eligible = memberships.filter((m) => {
       return m.roles.some((mr) => {
         const roleName = mr.role.name.toLowerCase();
-        if (roleName === 'faculty') return true;
+        if (
+          roleName === 'teacher' ||
+          roleName === 'class incharge' ||
+          roleName === 'faculty'
+        )
+          return true;
         if (mr.role.isAdmin) return true;
         return mr.role.permissions.some(
           (p) => p.permissionId === 'view-own-classes',
@@ -107,7 +112,12 @@ export class InstructorsService {
     // C. Verify instructor eligibility
     const isEligible = membership.roles.some((mr) => {
       const roleName = mr.role.name.toLowerCase();
-      if (roleName === 'faculty') return true;
+      if (
+        roleName === 'teacher' ||
+        roleName === 'class incharge' ||
+        roleName === 'faculty'
+      )
+        return true;
       if (mr.role.isAdmin) return true;
       return mr.role.permissions.some(
         (p) => p.permissionId === 'view-own-classes',
@@ -301,6 +311,8 @@ export class InstructorsService {
         some: {
           role: {
             OR: [
+              { name: { mode: 'insensitive', equals: 'teacher' } },
+              { name: { mode: 'insensitive', equals: 'class incharge' } },
               { name: { mode: 'insensitive', equals: 'faculty' } },
               { isAdmin: true },
               { permissions: { some: { permissionId: 'view-own-classes' } } },

@@ -747,10 +747,6 @@ export class UsersService {
     }
 
     const isTargetAdmin = target.roles.some((r) => r.role.isAdmin);
-    if (isTargetAdmin) {
-      throw new ForbiddenException(`You cannot ${action} an admin.`);
-    }
-
     let callerMinRank = isCallerFounder ? 1 : Infinity;
     if (callerRoles.length > 0) {
       callerMinRank = Math.min(
@@ -758,13 +754,29 @@ export class UsersService {
         ...callerRoles.map((r) => r.role.rank),
       );
     }
+    const callerHasAccountOwner = callerMinRank === 1;
+    const callerIsAdmin = callerRoles.some((mr) => mr.role.isAdmin);
 
     let targetMinRank = Infinity;
     if (target.roles.length > 0) {
       targetMinRank = Math.min(...target.roles.map((r) => r.role.rank));
     }
 
-    if (targetMinRank <= callerMinRank) {
+    if (
+      isTargetAdmin &&
+      !callerHasAccountOwner &&
+      !(callerIsAdmin && targetMinRank > callerMinRank)
+    ) {
+      throw new ForbiddenException(`You cannot ${action} an admin.`);
+    }
+
+    const isAllowed = callerHasAccountOwner
+      ? targetMinRank >= 1
+      : callerIsAdmin
+        ? !isTargetAdmin || targetMinRank > callerMinRank
+        : targetMinRank > callerMinRank;
+
+    if (!isAllowed) {
       throw new ForbiddenException(
         `You cannot ${action} a member with equal or higher privilege than your own.`,
       );
