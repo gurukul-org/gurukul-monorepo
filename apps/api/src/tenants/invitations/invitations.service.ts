@@ -422,7 +422,7 @@ export class InvitationsService {
       }
     }
 
-    if (roleNames.includes('parent')) {
+    if (roleNames.includes('parent') || roleNames.includes('parents')) {
       const parent = await this.prisma.parentProfile.findFirst({
         where: {
           tenantId: membership.tenantId,
@@ -597,7 +597,7 @@ export class InvitationsService {
         }
       }
 
-      if (roleNames.includes('parent')) {
+      if (roleNames.includes('parent') || roleNames.includes('parents')) {
         const parent = await prisma.parentProfile.findFirst({
           where: {
             tenantId: membership.tenantId,

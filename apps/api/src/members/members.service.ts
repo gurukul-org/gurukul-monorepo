@@ -11,9 +11,9 @@ import { PrismaService } from 'nestjs-prisma';
 
 import { AddRolesDto, RemoveRolesDto, ReplaceRolesDto } from './dto';
 
-// The system name of the Owner role seeded at tenant creation.
+// The system name of the Account Owner role seeded at tenant creation.
 // Used to prevent self-demotion.
-const OWNER_ROLE_NAME = 'Owner';
+const OWNER_ROLE_NAME = 'Account Owner';
 
 @Injectable()
 export class MembersService {
@@ -33,11 +33,12 @@ export class MembersService {
     targetMembershipId: string,
     dto: AddRolesDto,
   ): Promise<{ message: string; roles: { id: string; name: string }[] }> {
-    const { targetMembership, callerMinRank } = await this.resolveContext(
-      tenantId,
-      callerMembershipId,
-      targetMembershipId,
-    );
+    const { targetMembership, callerMinRank, callerIsAdmin } =
+      await this.resolveContext(
+        tenantId,
+        callerMembershipId,
+        targetMembershipId,
+      );
 
     // Validate that every requested role belongs to this tenant
     const rolesToAdd = await this.prisma.role.findMany({
@@ -51,11 +52,17 @@ export class MembersService {
     }
 
     // Rank guard: caller can only assign roles with a higher rank number (lower privilege)
-    const callerViolation = rolesToAdd.find((r) => r.rank <= callerMinRank);
+    const callerViolation = rolesToAdd.find((r) => {
+      if (callerMinRank === 1) return false;
+      if (callerIsAdmin) {
+        return r.isAdmin && r.rank <= callerMinRank;
+      }
+      return r.rank <= callerMinRank;
+    });
     if (callerViolation) {
       throw new ForbiddenException(
         `You cannot assign the role "${callerViolation.name}" (rank ${callerViolation.rank}). ` +
-          `Your highest role rank is ${callerMinRank}; you may only assign roles with a higher rank number.`,
+          `Your highest role rank is ${callerMinRank}; you may only assign roles with a higher rank number (lower privilege).`,
       );
     }
 
@@ -114,11 +121,12 @@ export class MembersService {
     targetMembershipId: string,
     dto: RemoveRolesDto,
   ): Promise<{ message: string }> {
-    const { targetMembership, callerMinRank } = await this.resolveContext(
-      tenantId,
-      callerMembershipId,
-      targetMembershipId,
-    );
+    const { targetMembership, callerMinRank, callerIsAdmin } =
+      await this.resolveContext(
+        tenantId,
+        callerMembershipId,
+        targetMembershipId,
+      );
 
     // Verify all role IDs are actually assigned to the target
     const currentRoleIds = new Set(
@@ -152,17 +160,23 @@ export class MembersService {
       );
       if (removingOwnerRole) {
         throw new ForbiddenException(
-          'You cannot remove the Owner role from yourself.',
+          `You cannot remove the ${OWNER_ROLE_NAME} role from yourself.`,
         );
       }
     }
 
     // Rank guard: caller can only remove roles with higher rank number (lower privilege) than their own
-    const callerViolation = rolesToRemove.find((r) => r.rank <= callerMinRank);
+    const callerViolation = rolesToRemove.find((r) => {
+      if (callerMinRank === 1) return false;
+      if (callerIsAdmin) {
+        return r.isAdmin && r.rank <= callerMinRank;
+      }
+      return r.rank <= callerMinRank;
+    });
     if (callerViolation) {
       throw new ForbiddenException(
         `You cannot remove the role "${callerViolation.name}" (rank ${callerViolation.rank}). ` +
-          `Your highest role rank is ${callerMinRank}; you may only manage roles with a higher rank number.`,
+          `Your highest role rank is ${callerMinRank}; you may only manage roles with a higher rank number (lower privilege).`,
       );
     }
 
@@ -209,11 +223,12 @@ export class MembersService {
     targetMembershipId: string,
     dto: ReplaceRolesDto,
   ): Promise<{ message: string; roles: { id: string; name: string }[] }> {
-    const { targetMembership, callerMinRank } = await this.resolveContext(
-      tenantId,
-      callerMembershipId,
-      targetMembershipId,
-    );
+    const { targetMembership, callerMinRank, callerIsAdmin } =
+      await this.resolveContext(
+        tenantId,
+        callerMembershipId,
+        targetMembershipId,
+      );
 
     const currentRoleIds = new Set(
       targetMembership.roles.map((mr) => mr.roleId),
@@ -274,13 +289,19 @@ export class MembersService {
       );
       if (removingOwnerRole) {
         throw new ForbiddenException(
-          'You cannot remove the Owner role from yourself.',
+          `You cannot remove the ${OWNER_ROLE_NAME} role from yourself.`,
         );
       }
     }
 
     // Rank guard on roles being removed
-    const removeViolation = rolesToRemove.find((r) => r.rank <= callerMinRank);
+    const removeViolation = rolesToRemove.find((r) => {
+      if (callerMinRank === 1) return false;
+      if (callerIsAdmin) {
+        return r.isAdmin && r.rank <= callerMinRank;
+      }
+      return r.rank <= callerMinRank;
+    });
     if (removeViolation) {
       throw new ForbiddenException(
         `You cannot remove the role "${removeViolation.name}" (rank ${removeViolation.rank}). ` +
@@ -289,7 +310,13 @@ export class MembersService {
     }
 
     // Rank guard on roles being added
-    const addViolation = rolesToAdd.find((r) => r.rank <= callerMinRank);
+    const addViolation = rolesToAdd.find((r) => {
+      if (callerMinRank === 1) return false;
+      if (callerIsAdmin) {
+        return r.isAdmin && r.rank <= callerMinRank;
+      }
+      return r.rank <= callerMinRank;
+    });
     if (addViolation) {
       throw new ForbiddenException(
         `You cannot assign the role "${addViolation.name}" (rank ${addViolation.rank}). ` +
@@ -379,13 +406,13 @@ export class MembersService {
       include: { role: { select: { rank: true, isAdmin: true } } },
     });
 
-    // isAdmin bypass: admins can manage any role without rank restriction
-    const callerIsAdmin = callerMembershipRoles.some((mr) => mr.role.isAdmin);
-    const callerMinRank = callerIsAdmin
-      ? 0 // Rank 0 beats everything — no role can have rank ≤ 0
-      : callerMembershipRoles.length === 0
+    const callerMinRank =
+      callerMembershipRoles.length === 0
         ? Infinity
         : Math.min(...callerMembershipRoles.map((mr) => mr.role.rank));
+
+    const callerHasAccountOwner = callerMinRank === 1;
+    const callerIsAdmin = callerMembershipRoles.some((mr) => mr.role.isAdmin);
 
     // Load target membership with full role info
     const targetMembership = await this.prisma.tenantMembership.findFirst({
@@ -407,21 +434,32 @@ export class MembersService {
       );
     }
 
-    // Prevent managing a member whose best role rank is equal or higher than caller's
-    // (unless caller is admin)
-    if (!callerIsAdmin) {
-      const targetMinRank =
-        targetMembership.roles.length === 0
-          ? Infinity
-          : Math.min(...targetMembership.roles.map((mr) => mr.role.rank));
+    const targetMinRank =
+      targetMembership.roles.length === 0
+        ? Infinity
+        : Math.min(...targetMembership.roles.map((mr) => mr.role.rank));
 
-      if (targetMinRank <= callerMinRank) {
-        throw new ForbiddenException(
-          'You cannot manage roles for a member with equal or higher privilege than your own.',
-        );
-      }
+    const targetIsAdmin = targetMembership.roles.some((mr) => mr.role.isAdmin);
+
+    // Enforce hierarchy guard
+    let isAllowed = false;
+    if (callerHasAccountOwner) {
+      // Account Owner can manage anyone (including other Account Owners)
+      isAllowed = targetMinRank >= 1;
+    } else if (callerIsAdmin) {
+      // Admins (e.g. Principal) can manage any non-admin, or admin of strictly lower hierarchy (higher rank number)
+      isAllowed = !targetIsAdmin || targetMinRank > callerMinRank;
+    } else {
+      // Non-admins can manage strictly lower hierarchy
+      isAllowed = targetMinRank > callerMinRank;
     }
 
-    return { targetMembership, callerMinRank };
+    if (!isAllowed) {
+      throw new ForbiddenException(
+        'You cannot manage roles for a member with equal or higher privilege than your own.',
+      );
+    }
+
+    return { targetMembership, callerMinRank, callerIsAdmin };
   }
 }

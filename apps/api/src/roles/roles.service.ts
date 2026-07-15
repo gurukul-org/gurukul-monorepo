@@ -3,12 +3,15 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
 
 import { PrismaService } from 'nestjs-prisma';
 
 import {
+  DEFAULT_ROLES,
   FEATURES,
   featuresByEditorCategory,
   isValidPermissionId,
@@ -17,8 +20,233 @@ import {
 import { CreateRoleDto, UpdateRoleDto } from './dto';
 
 @Injectable()
-export class RolesService {
+export class RolesService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(RolesService.name);
+
   constructor(private readonly prisma: PrismaService) {}
+
+  async onApplicationBootstrap() {
+    this.logger.log('Starting default roles synchronization...');
+    try {
+      await this.syncSystemRoles();
+      this.logger.log('Default roles synchronization completed.');
+    } catch (err) {
+      this.logger.error('Failed to sync default roles on startup', err);
+    }
+  }
+
+  async syncSystemRoles() {
+    const tenants = await this.prisma.tenant.findMany({ select: { id: true } });
+    for (const tenant of tenants) {
+      const tenantId = tenant.id;
+
+      // Fetch all roles for this tenant
+      const existingRoles = await this.prisma.role.findMany({
+        where: { tenantId },
+        include: { permissions: true },
+      });
+
+      const roleByName = new Map(existingRoles.map((r) => [r.name, r]));
+
+      // Map old obsolete roles to new default roles
+      const legacyToNewMapping: Record<string, string> = {
+        Owner: 'Account Owner',
+        'Branch Manager': 'Coordinators',
+        'Academic Director': 'Coordinators',
+        'Administrative Officer': 'Coordinators',
+        Faculty: 'Teacher',
+        Staff: 'Coordinators',
+        Parent: 'Parents',
+      };
+
+      const newRoleIdsByName = new Map<string, string>();
+
+      // Create or update default roles
+      for (const def of DEFAULT_ROLES) {
+        let role = roleByName.get(def.title);
+        if (!role) {
+          role = await this.prisma.role.create({
+            data: {
+              tenantId,
+              name: def.title,
+              rank: def.rank,
+              isAdmin: def.isAdmin,
+              isSystemRole: true,
+            },
+            include: { permissions: true },
+          });
+          this.logger.log(
+            `Created default role "${def.title}" for tenant ${tenantId}`,
+          );
+        } else {
+          const needsUpdate =
+            role.rank !== def.rank ||
+            role.isAdmin !== def.isAdmin ||
+            !role.isSystemRole;
+
+          if (needsUpdate) {
+            role = await this.prisma.role.update({
+              where: { id: role.id },
+              data: {
+                rank: def.rank,
+                isAdmin: def.isAdmin,
+                isSystemRole: true,
+              },
+              include: { permissions: true },
+            });
+            this.logger.log(
+              `Updated default role "${def.title}" for tenant ${tenantId}`,
+            );
+          }
+        }
+
+        newRoleIdsByName.set(def.title, role.id);
+
+        // Sync permissions
+        const currentPerms = new Set(
+          role.permissions.map((p) => p.permissionId),
+        );
+        const expectedPerms = new Set<string>(def.scopes);
+
+        const toAdd = def.scopes.filter((p) => !currentPerms.has(p));
+        const toRemove = Array.from(currentPerms).filter(
+          (p) => !expectedPerms.has(p),
+        );
+
+        if (toRemove.length > 0) {
+          await this.prisma.rolePermission.deleteMany({
+            where: {
+              roleId: role.id,
+              permissionId: { in: toRemove },
+            },
+          });
+        }
+        if (toAdd.length > 0) {
+          await this.prisma.rolePermission.createMany({
+            data: toAdd.map((permissionId) => ({
+              roleId: role.id,
+              permissionId,
+            })),
+          });
+        }
+      }
+
+      // Migrate user assignments from old obsolete roles to the new ones
+      for (const [legacyName, newName] of Object.entries(legacyToNewMapping)) {
+        const legacyRole = roleByName.get(legacyName);
+        const newRoleId = newRoleIdsByName.get(newName);
+
+        if (legacyRole && newRoleId && legacyRole.id !== newRoleId) {
+          const assignments = await this.prisma.membershipRole.findMany({
+            where: { roleId: legacyRole.id },
+          });
+
+          for (const assignment of assignments) {
+            const exists = await this.prisma.membershipRole.findFirst({
+              where: {
+                tenantMembershipId: assignment.tenantMembershipId,
+                roleId: newRoleId,
+              },
+            });
+
+            if (!exists) {
+              await this.prisma.membershipRole.create({
+                data: {
+                  tenantMembershipId: assignment.tenantMembershipId,
+                  roleId: newRoleId,
+                  assignedById: assignment.assignedById,
+                },
+              });
+            }
+          }
+
+          // Delete obsolete role assignments
+          await this.prisma.membershipRole.deleteMany({
+            where: { roleId: legacyRole.id },
+          });
+        }
+      }
+
+      // Delete obsolete default system roles
+      const obsoleteRoleNames = Object.keys(legacyToNewMapping).filter(
+        (name) => !newRoleIdsByName.has(name),
+      );
+
+      for (const obsoleteName of obsoleteRoleNames) {
+        const obsoleteRole = roleByName.get(obsoleteName);
+        if (obsoleteRole) {
+          await this.prisma.rolePermission.deleteMany({
+            where: { roleId: obsoleteRole.id },
+          });
+          await this.prisma.role.delete({
+            where: { id: obsoleteRole.id },
+          });
+          this.logger.log(
+            `Deleted obsolete system role "${obsoleteName}" for tenant ${tenantId}`,
+          );
+        }
+      }
+
+      // Ensure the founding member (oldest membership) gets the "Account Owner" role
+      const foundingMembership = await this.prisma.tenantMembership.findFirst({
+        where: { tenantId },
+        orderBy: { createdAt: 'asc' },
+      });
+      const accountOwnerRoleId = newRoleIdsByName.get('Account Owner');
+      if (foundingMembership && accountOwnerRoleId) {
+        const hasAccountOwner = await this.prisma.membershipRole.findFirst({
+          where: {
+            tenantMembershipId: foundingMembership.id,
+            roleId: accountOwnerRoleId,
+          },
+        });
+        if (!hasAccountOwner) {
+          await this.prisma.membershipRole.create({
+            data: {
+              tenantMembershipId: foundingMembership.id,
+              roleId: accountOwnerRoleId,
+            },
+          });
+          this.logger.log(
+            `Assigned Account Owner role to founding member ${foundingMembership.id} for tenant ${tenantId}`,
+          );
+        }
+      }
+
+      // Ensure class instructors (primary = Class Incharge)
+      const classInchargeRoleId = newRoleIdsByName.get('Class Incharge');
+      if (classInchargeRoleId) {
+        const primaryInstructors = await this.prisma.classInstructor.findMany({
+          where: {
+            tenantId,
+            isPrimary: true,
+            deletedAt: null,
+          },
+        });
+
+        for (const instructor of primaryInstructors) {
+          const exists = await this.prisma.membershipRole.findFirst({
+            where: {
+              tenantMembershipId: instructor.tenantMembershipId,
+              roleId: classInchargeRoleId,
+            },
+          });
+
+          if (!exists) {
+            await this.prisma.membershipRole.create({
+              data: {
+                tenantMembershipId: instructor.tenantMembershipId,
+                roleId: classInchargeRoleId,
+              },
+            });
+            this.logger.log(
+              `Assigned Class Incharge role to primary instructor membership ${instructor.tenantMembershipId} for tenant ${tenantId}`,
+            );
+          }
+        }
+      }
+    }
+  }
 
   /**
    * List all roles for a tenant, including their permissions and
@@ -82,7 +310,11 @@ export class RolesService {
    */
   async create(tenantId: string, dto: CreateRoleDto, callerRank: number) {
     // Rank enforcement: caller can only create roles with a lower privilege
-    if (dto.rank <= callerRank) {
+    const callerHasAccountOwner = callerRank === 1;
+    const isCreateAllowed = callerHasAccountOwner
+      ? dto.rank >= 1
+      : dto.rank > callerRank;
+    if (!isCreateAllowed) {
       throw new ForbiddenException(
         `You cannot create a role with rank ${dto.rank}. Your highest role rank is ${callerRank}; new roles must have a higher rank number (lower privilege).`,
       );
@@ -142,7 +374,11 @@ export class RolesService {
     if (!role) throw new NotFoundException('Role not found');
 
     // Caller cannot edit a role with higher or equal privilege
-    if (role.rank <= callerRank) {
+    const callerHasAccountOwner = callerRank === 1;
+    const isUpdateAllowed = callerHasAccountOwner
+      ? role.rank >= 1
+      : role.rank > callerRank;
+    if (!isUpdateAllowed) {
       throw new ForbiddenException(
         'You cannot modify a role with higher or equal privilege than your own.',
       );
@@ -156,10 +392,15 @@ export class RolesService {
     }
 
     // Validate rank if being changed
-    if (dto.rank !== undefined && dto.rank <= callerRank) {
-      throw new ForbiddenException(
-        `You cannot set rank to ${dto.rank}. New rank must be a higher number (lower privilege) than your own rank (${callerRank}).`,
-      );
+    if (dto.rank !== undefined) {
+      const isRankAllowed = callerHasAccountOwner
+        ? dto.rank >= 1
+        : dto.rank > callerRank;
+      if (!isRankAllowed) {
+        throw new ForbiddenException(
+          `You cannot set rank to ${dto.rank}. New rank must be a higher number (lower privilege) than your own rank (${callerRank}).`,
+        );
+      }
     }
 
     // Check name uniqueness if being changed
@@ -231,7 +472,11 @@ export class RolesService {
       );
     }
 
-    if (role.rank <= callerRank) {
+    const callerHasAccountOwner = callerRank === 1;
+    const isDeleteAllowed = callerHasAccountOwner
+      ? role.rank >= 1
+      : role.rank > callerRank;
+    if (!isDeleteAllowed) {
       throw new ForbiddenException(
         'You cannot delete a role with higher or equal privilege than your own.',
       );

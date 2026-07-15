@@ -1,35 +1,32 @@
-import { academicDirector } from './academicDirector';
-import { administrativeOfficer } from './administrativeOfficer';
-import { branchManager } from './branchManager';
-import { faculty } from './faculty';
+import { accountOwner } from './accountOwner';
+import { classIncharge } from './classIncharge';
+import { coordinators } from './coordinators';
 import { hod } from './hod';
-import { owner } from './owner';
-import { parentRole } from './parent';
-import { staff } from './staff';
+import { parentsRole } from './parents';
+import { principal } from './principal';
 import { studentRole } from './student';
+import { teacher } from './teacher';
 
 export {
-  owner,
-  branchManager,
-  academicDirector,
+  accountOwner,
+  principal,
+  coordinators,
   hod,
-  administrativeOfficer,
-  faculty,
-  staff,
+  classIncharge,
+  teacher,
   studentRole,
-  parentRole,
+  parentsRole,
 };
 
 // Aggregated array for seed code that loops over them.
 // Ordered by rank (highest privilege first).
 export const DEFAULT_ROLES = [
-  owner,
-  branchManager,
-  academicDirector,
+  accountOwner,
+  principal,
+  coordinators,
   hod,
-  administrativeOfficer,
-  faculty,
-  staff,
+  classIncharge,
+  teacher,
   studentRole,
-  parentRole,
+  parentsRole,
 ] as const;

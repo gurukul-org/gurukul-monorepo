@@ -1,10 +1,10 @@
 import { FEATURES } from '../registry';
 import { DefaultRoleDefinition } from '../types';
 
-// Owner = every permission in the registry.
-// Programmatically computed so adding a permission can't leave Owner without it.
-export const owner: DefaultRoleDefinition = {
-  title: 'Owner',
+// Account Owner — top-level school owner.
+// Grants every permission in the registry and full administrative rights.
+export const accountOwner: DefaultRoleDefinition = {
+  title: 'Account Owner',
   isAdmin: true,
   rank: 1,
   scopes: Object.values(FEATURES).flatMap((f) =>

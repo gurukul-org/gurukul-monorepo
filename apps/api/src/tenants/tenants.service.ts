@@ -154,15 +154,15 @@ export class TenantsService {
             });
           }
 
-          // Track the Owner role to assign to the founding member
-          if (roleDef.title === 'Owner') {
+          // Track the Account Owner role to assign to the founding member
+          if (roleDef.title === 'Account Owner') {
             ownerRoleId = role.id;
             ownerScopes = roleDef.scopes.map((s) => s as string);
             ownerIsAdmin = roleDef.isAdmin;
           }
         }
 
-        // Assign Owner role to the founding member
+        // Assign Account Owner role to the founding member
         if (ownerRoleId) {
           await tx.membershipRole.create({
             data: {
