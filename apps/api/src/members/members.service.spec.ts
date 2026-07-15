@@ -279,7 +279,7 @@ describe('MembersService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('prevents owner from removing the Owner role from themselves', async () => {
+    it('prevents Account Owner from removing the Account Owner role from themselves', async () => {
       stageContext({
         callerRoles: [{ role: { rank: 1, isAdmin: false } }],
         target: {
@@ -288,7 +288,12 @@ describe('MembersService', () => {
           roles: [
             {
               roleId: 'r-owner',
-              role: { id: 'r-owner', name: 'Owner', rank: 1, isAdmin: false },
+              role: {
+                id: 'r-owner',
+                name: 'Account Owner',
+                rank: 1,
+                isAdmin: false,
+              },
             },
             {
               roleId: 'r-other',

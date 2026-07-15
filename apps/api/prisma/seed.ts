@@ -610,7 +610,7 @@ async function main(): Promise<void> {
   const membershipRows: MembershipRow[] = [];
   const roleAssignments: MembershipRoleRow[] = [];
 
-  // Super Admin (Owner)
+  // Super Admin (Account Owner)
   buildPerson({
     tenantId,
     firstName: 'Super',
@@ -619,7 +619,7 @@ async function main(): Promise<void> {
     phone: null,
     isSuperAdmin: true,
     passwordHash,
-    roleId: roleId('Owner'),
+    roleId: roleId('Account Owner'),
     userRows,
     membershipRows,
     roleAssignments,
@@ -634,7 +634,7 @@ async function main(): Promise<void> {
     phone: '+91-98100-11111',
     isSuperAdmin: false,
     passwordHash,
-    roleId: roleId('Branch Manager'),
+    roleId: roleId('Coordinators'),
     userRows,
     membershipRows,
     roleAssignments,
@@ -647,7 +647,7 @@ async function main(): Promise<void> {
     phone: '+91-98100-11112',
     isSuperAdmin: false,
     passwordHash,
-    roleId: roleId('Administrative Officer'),
+    roleId: roleId('Coordinators'),
     userRows,
     membershipRows,
     roleAssignments,
@@ -703,7 +703,7 @@ async function main(): Promise<void> {
         phone: t.phone,
         isSuperAdmin: false,
         passwordHash,
-        roleId: roleId('Faculty'),
+        roleId: roleId('Teacher'),
         userRows,
         membershipRows,
         roleAssignments,
@@ -721,7 +721,7 @@ async function main(): Promise<void> {
         phone: makePhone(220000 + i),
         isSuperAdmin: false,
         passwordHash,
-        roleId: roleId('Faculty'),
+        roleId: roleId('Teacher'),
         userRows,
         membershipRows,
         roleAssignments,
@@ -777,7 +777,7 @@ async function main(): Promise<void> {
         phone: makePhone(430000 + studentIdx),
         isSuperAdmin: false,
         passwordHash,
-        roleId: roleId('Parent'),
+        roleId: roleId('Parents'),
         userRows,
         membershipRows,
         roleAssignments,
@@ -850,6 +850,24 @@ async function main(): Promise<void> {
   await batchCreate(
     (chunk) => prisma.classInstructor.createMany({ data: chunk }),
     instructorRows,
+  );
+
+  // Seed Class Incharge roles for primary class instructors
+  const primaryMembershipIds = Array.from(
+    new Set(
+      instructorRows
+        .filter((r) => r.isPrimary)
+        .map((r) => r.tenantMembershipId),
+    ),
+  );
+  const classInchargeRoleAssignmentRows = primaryMembershipIds.map((mId) => ({
+    id: randomUUID(),
+    tenantMembershipId: mId,
+    roleId: roleId('Class Incharge'),
+  }));
+  await batchCreate(
+    (chunk) => prisma.membershipRole.createMany({ data: chunk }),
+    classInchargeRoleAssignmentRows,
   );
 
   // ---------- Parent & Student profiles + StudentParent + Enrolments ----------
