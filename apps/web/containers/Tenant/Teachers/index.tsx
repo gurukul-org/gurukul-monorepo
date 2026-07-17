@@ -3,6 +3,10 @@
 import { useMemo, useState } from 'react';
 
 import { AccountStatusBadge } from '@/components/AccountStatusBadge';
+import {
+  FilterConfig,
+  FilterPanel,
+} from '@/components/FilterPanel/FilterPanel';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Table,
   TableBody,
@@ -32,6 +37,8 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import {
+  ChevronLeft,
+  ChevronRight,
   Eye,
   Loader2,
   MoreVertical,
@@ -39,6 +46,8 @@ import {
   ShieldAlert,
   UserCheck,
 } from 'lucide-react';
+
+const TEACHER_STATUSES = ['INVITED', 'ACTIVE', 'SUSPENDED'];
 
 import { PERMS } from '@repo/permissions';
 
@@ -49,10 +58,85 @@ export default function TeachersContainer() {
   });
 
   const [search, setSearch] = useState('');
+  const [filterValues, setFilterValues] = useState<
+    Record<string, { value: string; label: string }[]>
+  >({
+    status: [],
+  });
+  const [limit, setLimit] = useState(10);
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>(
+    [],
+  );
+
+  const statusOptions = useMemo(() => {
+    return TEACHER_STATUSES.map((s) => ({
+      value: s,
+      label: s.charAt(0) + s.slice(1).toLowerCase(),
+    }));
+  }, []);
+
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: statusOptions,
+        placeholder: 'All Statuses',
+      },
+    ],
+    [statusOptions],
+  );
+
+  const limitOptions = useMemo(() => {
+    return [5, 10, 20, 50].map((size) => ({
+      value: String(size),
+      label: String(size),
+    }));
+  }, []);
 
   const { data, isLoading, isError } = useTeachers({
-    search: search || undefined,
+    search: search.trim() || undefined,
+    status:
+      (filterValues.status || []).map((x) => x.value).join(',') || undefined,
+    limit,
+    cursor,
   });
+
+  const handleNextPage = () => {
+    if (data?.nextCursor) {
+      setCursorHistory((prev) => [...prev, cursor]);
+      setCursor(data.nextCursor ?? undefined);
+    }
+  };
+
+  const handlePrevPage = () => {
+    const prev = [...cursorHistory];
+    const previous = prev.pop();
+    setCursorHistory(prev);
+    setCursor(previous);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setLimit(size);
+    setCursor(undefined);
+    setCursorHistory([]);
+  };
+
+  // Reset pagination when the search term changes
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setCursor(undefined);
+    setCursorHistory([]);
+  };
+
+  // Reset pagination when filters change
+  const handleFilterPanelChange = (newValues: typeof filterValues) => {
+    setFilterValues(newValues);
+    setCursor(undefined);
+    setCursorHistory([]);
+  };
 
   const showTeacherProfile = useShowTeacherProfileModal();
 
@@ -146,15 +230,35 @@ export default function TeachersContainer() {
         </div>
       </div>
 
-      {/* Search Panel */}
-      <div className="flex flex-col gap-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card p-4">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email..."
-            className="pl-9 h-10 text-sm focus-visible:ring-primary/20"
+      {/* Search + Filters Panel */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card p-4">
+        <div className="flex-1 flex flex-col gap-3">
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search by name or email..."
+              className="pl-9 h-10 text-sm focus-visible:ring-primary/20"
+            />
+          </div>
+
+          <FilterPanel
+            feature="teachers"
+            configs={filterConfigs}
+            values={filterValues}
+            onChange={handleFilterPanelChange}
+          />
+        </div>
+
+        <div className="flex items-center gap-2 text-xs shrink-0 pb-1">
+          <span className="text-muted-foreground">Rows per page:</span>
+          <SearchableSelect
+            value={String(limit)}
+            onChange={(val: string) => handlePageSizeChange(Number(val))}
+            options={limitOptions}
+            placeholder="Select limit"
+            className="h-9 w-20 py-1 text-xs"
           />
         </div>
       </div>
@@ -213,6 +317,39 @@ export default function TeachersContainer() {
               ))}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!isLoading && !isError && data && (
+        <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-900">
+          <div className="text-xs text-muted-foreground">
+            {cursorHistory.length > 0
+              ? `Page ${cursorHistory.length + 1}`
+              : 'Page 1'}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrevPage}
+              disabled={cursorHistory.length === 0}
+              className="h-8 gap-1"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNextPage}
+              disabled={!data.nextCursor}
+              className="h-8 gap-1"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

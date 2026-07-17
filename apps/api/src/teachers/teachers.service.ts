@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from 'nestjs-prisma';
 
+import { TEACHER_STATUS, TeacherStatus } from './teachers.constants';
+
 const USER_SELECT = {
   id: true,
   firstName: true,
@@ -14,10 +16,16 @@ const TEACHER_ROLE_FILTER = {
     some: {
       role: {
         name: { equals: 'Teacher', mode: 'insensitive' as const },
+        // Only the system Teacher role — a custom tenant role someone happens to
+        // name "teacher" must not leak its members into the directory.
+        isSystemRole: true,
       },
     },
   },
 };
+
+// Hard upper bound on page size so `?limit=100000` can't fetch the whole table.
+const MAX_LIMIT = 100;
 
 @Injectable()
 export class TeachersService {
@@ -26,10 +34,11 @@ export class TeachersService {
   async findAll(
     tenantId: string,
     search?: string,
+    status?: string,
     limit = 20,
     cursor?: string,
   ) {
-    const take = limit > 0 ? limit : 20;
+    const take = Math.min(limit > 0 ? limit : 20, MAX_LIMIT);
 
     const searchFilter = search
       ? {
@@ -43,18 +52,28 @@ export class TeachersService {
         }
       : {};
 
+    const statusFilter = status
+      ? status.includes(',')
+        ? { status: { in: status.split(',') } }
+        : TEACHER_STATUS[status as TeacherStatus]
+          ? { status }
+          : {}
+      : {};
+
     const memberships = await this.prisma.tenantMembership.findMany({
       where: {
         tenantId,
-        status: 'ACTIVE',
         deletedAt: null,
         ...TEACHER_ROLE_FILTER,
+        ...statusFilter,
         ...searchFilter,
       },
       take: take + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
-      orderBy: { user: { firstName: 'asc' } },
+      // firstName is non-unique — add id as a tiebreaker so cursor pagination has
+      // a deterministic total order and can't skip or duplicate rows across pages.
+      orderBy: [{ user: { firstName: 'asc' } }, { id: 'asc' }],
       include: { user: { select: USER_SELECT } },
     });
 
@@ -75,6 +94,7 @@ export class TeachersService {
       where: {
         id: membershipId,
         tenantId,
+        deletedAt: null,
         ...TEACHER_ROLE_FILTER,
       },
       include: {

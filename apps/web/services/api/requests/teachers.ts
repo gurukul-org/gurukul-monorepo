@@ -23,9 +23,25 @@ export interface TeacherDetail {
   updatedAt: string;
 }
 
-export function useTeachers(params?: { search?: string }) {
+export enum TeacherQueryKey {
+  List = 'teachers:list',
+  Detail = 'teachers:detail',
+}
+
+export function useTeachers(params?: {
+  search?: string;
+  status?: string;
+  limit?: number;
+  cursor?: string;
+}) {
   return useQuery({
-    queryKey: ['teachers', params],
+    queryKey: [
+      TeacherQueryKey.List,
+      params?.search,
+      params?.status,
+      params?.limit,
+      params?.cursor,
+    ],
     queryFn: async () => {
       const { data } = await axios.get<{
         teachers: TeacherListItem[];
@@ -38,7 +54,7 @@ export function useTeachers(params?: { search?: string }) {
 
 export function useTeacherDetail(id: string) {
   return useQuery({
-    queryKey: ['teachers', id],
+    queryKey: [TeacherQueryKey.Detail, id],
     queryFn: async () => {
       const { data } = await axios.get<TeacherDetail>(`/teachers/${id}`);
       return data;

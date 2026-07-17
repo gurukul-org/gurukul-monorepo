@@ -20,6 +20,7 @@ import {
 import { PERMS } from '@repo/permissions';
 
 import { GetCurrentTenant, RequirePermissions } from '../common/decorators';
+import { ALL_TEACHER_STATUSES } from './teachers.constants';
 import { TeachersService } from './teachers.service';
 
 @ApiTags('teachers')
@@ -33,19 +34,22 @@ export class TeachersController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get list of teacher profiles' })
   @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, enum: ALL_TEACHER_STATUSES })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'cursor', required: false, type: String })
   async findAll(
     @GetCurrentTenant('id') tenantId: string,
     @Query('search') search?: string,
-    @Query('limit') limit?: number,
+    @Query('status') status?: string,
+    @Query('limit') limit?: string,
     @Query('cursor') cursor?: string,
   ) {
     if (!tenantId) throw new ForbiddenException('Tenant context required.');
     return this.teachersService.findAll(
       tenantId,
       search,
-      limit ? Number(limit) : undefined,
+      status,
+      limit ? parseInt(limit, 10) : undefined,
       cursor,
     );
   }
