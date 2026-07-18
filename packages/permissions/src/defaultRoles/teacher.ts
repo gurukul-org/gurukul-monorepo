@@ -24,6 +24,8 @@ export const teacher: DefaultRoleDefinition = {
     PERMS.grade.view.id,
     PERMS.grade.enter.id,
     PERMS.grade.edit.id,
+    // Homework
+    PERMS.homework.all.id,
     // Library — view
     PERMS.library.view.id,
   ],

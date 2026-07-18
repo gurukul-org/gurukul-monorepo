@@ -28,6 +28,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
+  ClipboardList,
   GraduationCap,
   LayoutDashboard,
   LogOut,
@@ -59,6 +60,9 @@ export function AppSidebar() {
   const showClasses =
     hasPermission(PERMS.class.view) || hasPermission(PERMS.class.viewOwn);
   const showAcademics = showTerms || showPrograms || showCourses || showClasses;
+
+  const showHomework =
+    hasPermission(PERMS.homework.view) || hasPermission(PERMS.homework.viewOwn);
 
   const [isErpOpen, setIsErpOpen] = useState(pathname.startsWith('/users'));
   const [isAcademicsOpen, setIsAcademicsOpen] = useState(
@@ -255,6 +259,22 @@ export function AppSidebar() {
                   )}
                 </SidebarMenuSub>
               )}
+            </SidebarMenuItem>
+          )}
+
+          {/* Homework Link */}
+          {showHomework && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith('/homework')}
+                className="w-full justify-start gap-3 transition-colors"
+              >
+                <Link href="/homework">
+                  <ClipboardList className="h-4 w-4 shrink-0" />
+                  <span>Homework</span>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           )}
 

@@ -3,7 +3,9 @@
 import { useMemo } from 'react';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
+import { HomeworkTable } from '@/components/Homework/HomeworkTable';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   useShowAssignInstructorModal,
   useShowBulkEnrolModal,
@@ -34,6 +37,7 @@ import {
   useUpdateEnrolmentStatus,
   useWithdrawEnrolment,
 } from '@/services/api/requests/enrolments';
+import { useAssignments } from '@/services/api/requests/homework';
 import {
   usePromoteInstructor,
   useRemoveInstructor,
@@ -48,11 +52,13 @@ import {
   ArrowLeft,
   CheckCircle2,
   ChevronRight,
+  ClipboardList,
   Edit,
   GraduationCap,
   Info,
   Loader2,
   MoreVertical,
+  Plus,
   RefreshCw,
   UserMinus,
   Users,
@@ -304,6 +310,8 @@ export default function TenantClassDetailContainer({
     redirectTo: '/dashboard',
   });
 
+  const router = useRouter();
+
   const { hasPermission } = usePermission();
   const showClassModal = useShowClassModal();
   const showEnrolStudentModal = useShowEnrolStudentModal();
@@ -311,6 +319,12 @@ export default function TenantClassDetailContainer({
   const showAssignInstructorModal = useShowAssignInstructorModal();
 
   const { data: cls, isLoading, isError } = useClass(classId);
+
+  const { data: assignments, isLoading: assignmentsLoading } = useAssignments();
+  const isTeacher = hasPermission(PERMS.homework.create);
+  const classAssignments = useMemo(() => {
+    return assignments?.filter((a) => a.classId === classId) || [];
+  }, [assignments, classId]);
 
   // Column definitions for enrolled students table
   const columns = useMemo<ColumnDef<ClassStudent>[]>(
@@ -711,84 +725,155 @@ export default function TenantClassDetailContainer({
           </div>
         </div>
 
-        {/* Enrolled Students Table Card */}
-        <div className="lg:col-span-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 shadow-xs space-y-4 flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
-                <Users className="h-4.5 w-4.5 text-primary shrink-0" />
-                Enrolled Students ({cls.enrolledStudents?.length || 0})
-              </h3>
-              {hasPermission(PERMS.enrolment.create) &&
-                cls.status === 'ACTIVE' && (
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => showBulkEnrolModal(classId)}
-                      className="h-8 text-xs font-semibold"
-                    >
-                      Bulk Enrol
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => showEnrolStudentModal(classId)}
-                      className="h-8 text-xs font-semibold"
-                    >
-                      Enrol Student
-                    </Button>
-                  </div>
-                )}
+        {/* Enrolled Students & Homework Tabs Card */}
+        <div className="lg:col-span-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 shadow-xs flex flex-col justify-between">
+          <Tabs
+            defaultValue="students"
+            className="flex flex-col space-y-4 w-full"
+          >
+            <div className="border-b pb-2">
+              <TabsList className="bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg">
+                <TabsTrigger
+                  value="students"
+                  className="text-xs font-semibold flex items-center gap-1.5 px-3 py-1.5"
+                >
+                  <Users className="h-3.5 w-3.5" /> Enrolled Students (
+                  {cls.enrolledStudents?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="homework"
+                  className="text-xs font-semibold flex items-center gap-1.5 px-3 py-1.5"
+                >
+                  <ClipboardList className="h-3.5 w-3.5" /> Homework &
+                  Assignments ({classAssignments.length})
+                </TabsTrigger>
+              </TabsList>
             </div>
 
-            {!cls.enrolledStudents || cls.enrolledStudents.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-center">
-                <Users className="h-8 w-8 text-zinc-300 dark:text-zinc-700 mb-2" />
-                <span className="text-xs font-semibold">
-                  No students enrolled
-                </span>
-                <span className="text-[10px] text-zinc-400 mt-0.5">
-                  Students can be enrolled in this section from the student
-                  database.
-                </span>
+            <TabsContent
+              value="students"
+              className="space-y-3 outline-none pt-1"
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                  Students enrolled in this section
+                </h4>
+                {hasPermission(PERMS.enrolment.create) &&
+                  cls.status === 'ACTIVE' && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => showBulkEnrolModal(classId)}
+                        className="h-8 text-xs font-semibold"
+                      >
+                        Bulk Enrol
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => showEnrolStudentModal(classId)}
+                        className="h-8 text-xs font-semibold"
+                      >
+                        Enrol Student
+                      </Button>
+                    </div>
+                  )}
               </div>
-            ) : (
-              <div className="overflow-hidden border border-zinc-200 dark:border-zinc-800 rounded-lg max-h-96 overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => (
-                          <TableHead key={header.id}>
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext(),
-                                )}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {table.getRowModel().rows.map((row) => (
-                      <TableRow key={row.id}>
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+
+              {!cls.enrolledStudents || cls.enrolledStudents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-center">
+                  <Users className="h-8 w-8 text-zinc-300 dark:text-zinc-700 mb-2" />
+                  <span className="text-xs font-semibold">
+                    No students enrolled
+                  </span>
+                  <span className="text-[10px] text-zinc-400 mt-0.5">
+                    Students can be enrolled in this section from the student
+                    database.
+                  </span>
+                </div>
+              ) : (
+                <div className="overflow-hidden border border-zinc-200 dark:border-zinc-800 rounded-lg max-h-96 overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                          {headerGroup.headers.map((header) => (
+                            <TableHead key={header.id}>
+                              {header.isPlaceholder
+                                ? null
+                                : flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext(),
+                                  )}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableHeader>
+                    <TableBody>
+                      {table.getRowModel().rows.map((row) => (
+                        <TableRow key={row.id}>
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id}>
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent
+              value="homework"
+              className="space-y-3 outline-none pt-1"
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                  Homework assignments for this class
+                </h4>
+                {isTeacher && cls.status === 'ACTIVE' && (
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-8 text-xs font-semibold"
+                  >
+                    <Link href={`/homework/create?classId=${classId}`}>
+                      <Plus className="h-3.5 w-3.5 mr-1.5" /> Create Homework
+                    </Link>
+                  </Button>
+                )}
               </div>
-            )}
-          </div>
+
+              {assignmentsLoading ? (
+                <div className="text-center py-16 text-zinc-500 animate-pulse flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading class
+                  homework...
+                </div>
+              ) : classAssignments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-center">
+                  <ClipboardList className="h-8 w-8 text-zinc-300 dark:text-zinc-700 mb-2" />
+                  <span className="text-xs font-semibold">
+                    No homework assigned
+                  </span>
+                  <span className="text-[10px] text-zinc-400 mt-0.5">
+                    Assignments created for this class will show up here.
+                  </span>
+                </div>
+              ) : (
+                <HomeworkTable
+                  assignments={classAssignments}
+                  isTeacher={isTeacher}
+                  showClassName={false}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

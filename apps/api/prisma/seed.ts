@@ -312,6 +312,8 @@ function makePhone(index: number): string {
 // ---------- Cleanup ----------
 
 async function cleanup(): Promise<void> {
+  await prisma.assignmentSubmission.deleteMany();
+  await prisma.assignment.deleteMany();
   await prisma.enrolment.deleteMany();
   await prisma.studentParent.deleteMany();
   await prisma.parentProfile.deleteMany();
