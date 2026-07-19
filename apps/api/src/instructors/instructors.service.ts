@@ -75,6 +75,31 @@ export class InstructorsService {
     }));
   }
 
+  // Validate that a set of course ids all belong to the given program
+  private async validateCourseIds(
+    tenantId: string,
+    programId: string,
+    courseIds: string[],
+  ) {
+    if (courseIds.length === 0) return;
+
+    const validCourses = await this.prisma.course.findMany({
+      where: {
+        id: { in: courseIds },
+        tenantId,
+        programId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (validCourses.length !== new Set(courseIds).size) {
+      throw new BadRequestException(
+        'One or more courses do not belong to this class.',
+      );
+    }
+  }
+
   // 2. Assign an instructor to a class
   async assignInstructor(
     tenantId: string,
@@ -87,6 +112,10 @@ export class InstructorsService {
       where: { id: classId, tenantId, deletedAt: null },
     });
     if (!cls) throw new NotFoundException('Class not found.');
+
+    // A2. Validate course ids belong to the class's program
+    const courseIds = [...new Set(dto.courseIds || [])];
+    await this.validateCourseIds(tenantId, cls.programId, courseIds);
 
     // B. Verify membership exists and is active
     const membership = await this.prisma.tenantMembership.findFirst({
@@ -165,27 +194,40 @@ export class InstructorsService {
         });
       }
 
-      if (existing) {
-        // Restore soft-deleted record
-        return tx.classInstructor.update({
-          where: { id: existing.id },
-          data: {
-            deletedAt: null,
-            isPrimary,
+      const classInstructor = existing
+        ? await tx.classInstructor.update({
+            where: { id: existing.id },
+            data: {
+              deletedAt: null,
+              isPrimary,
+              assignedById: userId,
+            },
+          })
+        : await tx.classInstructor.create({
+            data: {
+              tenantId,
+              classId,
+              tenantMembershipId: dto.tenantMembershipId,
+              isPrimary,
+              assignedById: userId,
+            },
+          });
+
+      if (courseIds.length > 0) {
+        await tx.classInstructorCourse.deleteMany({
+          where: { classInstructorId: classInstructor.id },
+        });
+        await tx.classInstructorCourse.createMany({
+          data: courseIds.map((courseId) => ({
+            tenantId,
+            classInstructorId: classInstructor.id,
+            courseId,
             assignedById: userId,
-          },
+          })),
         });
       }
 
-      return tx.classInstructor.create({
-        data: {
-          tenantId,
-          classId,
-          tenantMembershipId: dto.tenantMembershipId,
-          isPrimary,
-          assignedById: userId,
-        },
-      });
+      return classInstructor;
     });
 
     this.logger.log(
@@ -201,6 +243,63 @@ export class InstructorsService {
     );
 
     return assigned;
+  }
+
+  // 2b. Replace the set of courses a class instructor teaches within the class
+  async updateInstructorCourses(
+    tenantId: string,
+    classId: string,
+    userId: string,
+    classInstructorId: string,
+    courseIds: string[],
+  ) {
+    const cls = await this.prisma.class.findFirst({
+      where: { id: classId, tenantId, deletedAt: null },
+    });
+    if (!cls) throw new NotFoundException('Class not found.');
+
+    const assignment = await this.prisma.classInstructor.findFirst({
+      where: { id: classInstructorId, classId, tenantId, deletedAt: null },
+    });
+    if (!assignment)
+      throw new NotFoundException('Instructor assignment not found.');
+
+    const uniqueCourseIds = [...new Set(courseIds)];
+    await this.validateCourseIds(tenantId, cls.programId, uniqueCourseIds);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.classInstructorCourse.deleteMany({
+        where: { classInstructorId },
+      });
+
+      if (uniqueCourseIds.length > 0) {
+        await tx.classInstructorCourse.createMany({
+          data: uniqueCourseIds.map((courseId) => ({
+            tenantId,
+            classInstructorId,
+            courseId,
+            assignedById: userId,
+          })),
+        });
+      }
+    });
+
+    this.logger.log(
+      JSON.stringify({
+        action: 'UPDATE_INSTRUCTOR_COURSES',
+        classId,
+        classInstructorId,
+        courseIds: uniqueCourseIds,
+        actorUserId: userId,
+        tenantId,
+        timestamp: new Date().toISOString(),
+      }),
+    );
+
+    return this.prisma.classInstructorCourse.findMany({
+      where: { classInstructorId, deletedAt: null },
+      include: { course: { select: { id: true, name: true, code: true } } },
+    });
   }
 
   // 3. Promote secondary to primary (demotes current primary)

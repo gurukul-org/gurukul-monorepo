@@ -19,6 +19,7 @@ export const coordinators: DefaultRoleDefinition = {
     // People
     PERMS.student.all.id,
     PERMS.parent.all.id,
+    PERMS.teacher.view.id,
     PERMS.user.view.id,
     PERMS.user.invite.id,
     PERMS.user.edit.id,

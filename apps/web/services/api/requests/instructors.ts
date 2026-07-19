@@ -16,6 +16,7 @@ export interface EligibleInstructor {
 export interface AssignInstructorDto {
   tenantMembershipId: string;
   isPrimary?: boolean;
+  courseIds?: string[];
 }
 
 export enum InstructorQueryKey {
@@ -59,6 +60,32 @@ export function usePromoteInstructor() {
     mutationFn: async ({ classId, id }: { classId: string; id: string }) => {
       const { data } = await axios.patch(
         `/classes/${classId}/instructors/${id}/primary`,
+      );
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: [ClassQueryKey.Detail, variables.classId],
+      });
+    },
+  });
+}
+
+export function useUpdateInstructorCourses() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      classId,
+      id,
+      courseIds,
+    }: {
+      classId: string;
+      id: string;
+      courseIds: string[];
+    }) => {
+      const { data } = await axios.patch(
+        `/classes/${classId}/instructors/${id}/courses`,
+        { courseIds },
       );
       return data;
     },

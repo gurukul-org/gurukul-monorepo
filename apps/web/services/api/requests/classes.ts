@@ -39,6 +39,7 @@ export interface ClassInstructor {
     firstName: string;
     lastName: string;
   } | null;
+  courses: { id: string; name: string; code: string }[];
 }
 
 export interface ClassStudent {

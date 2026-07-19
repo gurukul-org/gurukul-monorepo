@@ -15,6 +15,7 @@ import { EditParentLinkModal } from '@/components/modals/EditParentLinkModal';
 import { EnrolStudentModal } from '@/components/modals/EnrolStudentModal';
 import { InviteMemberModal } from '@/components/modals/InviteMemberModal';
 import { LinkParentModal } from '@/components/modals/LinkParentModal';
+import { ManageInstructorCoursesModal } from '@/components/modals/ManageInstructorCoursesModal';
 import { MemberProfileModal } from '@/components/modals/MemberProfileModal';
 import { ParentModal } from '@/components/modals/ParentModal';
 import { ParentProfileModal } from '@/components/modals/ParentProfileModal';
@@ -23,6 +24,7 @@ import { RoleModal } from '@/components/modals/RoleModal';
 import { StudentModal } from '@/components/modals/StudentModal';
 import { StudentProfileModal } from '@/components/modals/StudentProfileModal';
 import { StudentStatusModal } from '@/components/modals/StudentStatusModal';
+import { TeacherProfileModal } from '@/components/modals/TeacherProfileModal';
 import { useModalPayload, useModalType } from '@/hooks/use-modal';
 import { ModalType } from '@/lib/store/types/modal';
 
@@ -55,8 +57,10 @@ const Modal: { [key in ModalType]?: React.ComponentType<any> } = {
   [ModalType.EnrolStudentModal]: EnrolStudentModal,
   [ModalType.BulkEnrolModal]: BulkEnrolModal,
   [ModalType.AssignInstructorModal]: AssignInstructorModal,
+  [ModalType.ManageInstructorCoursesModal]: ManageInstructorCoursesModal,
   [ModalType.LinkParentModal]: LinkParentModal,
   [ModalType.EditParentLinkModal]: EditParentLinkModal,
+  [ModalType.TeacherProfileModal]: TeacherProfileModal,
 };
 
 export default function ModalDialog() {

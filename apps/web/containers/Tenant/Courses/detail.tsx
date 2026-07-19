@@ -32,6 +32,7 @@ import {
   Info,
   Loader2,
   School,
+  Users,
 } from 'lucide-react';
 
 import { PERMS } from '@repo/permissions';
@@ -147,6 +148,7 @@ export default function TenantCourseDetailContainer({
   }
 
   const sections = course.program.classes || [];
+  const teachers = course.teachers || [];
 
   return (
     <div className="space-y-6">
@@ -284,18 +286,60 @@ export default function TenantCourseDetailContainer({
         </div>
       </div>
 
-      {/* Main Grid Content: Left (Description), Right (Sections list) */}
+      {/* Main Grid Content: Left (Description & Teachers), Right (Sections list) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Description Card */}
-        <div className="lg:col-span-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 shadow-xs space-y-4">
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2 border-b pb-2">
-            <Info className="h-4.5 w-4.5 text-primary shrink-0" />
-            Course Description
-          </h3>
-          <p className="text-xs text-zinc-650 dark:text-zinc-350 leading-relaxed whitespace-pre-line">
-            {course.description ||
-              'No description provided for this course subject.'}
-          </p>
+        <div className="lg:col-span-1 space-y-6">
+          {/* Description Card */}
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2 border-b pb-2">
+              <Info className="h-4.5 w-4.5 text-primary shrink-0" />
+              Course Description
+            </h3>
+            <p className="text-xs text-zinc-650 dark:text-zinc-350 leading-relaxed whitespace-pre-line">
+              {course.description ||
+                'No description provided for this course subject.'}
+            </p>
+          </div>
+
+          {/* Teachers Card */}
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2 border-b pb-2">
+              <Users className="h-4.5 w-4.5 text-primary shrink-0" />
+              Teachers ({teachers.length})
+            </h3>
+            <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+              {teachers.length === 0 ? (
+                <span className="text-xs text-muted-foreground italic block py-4 text-center">
+                  No teachers assigned to this course yet.
+                </span>
+              ) : (
+                teachers.map((teacher) => (
+                  <div
+                    key={`${teacher.membershipId}-${teacher.classId}`}
+                    className="flex items-center gap-2.5 p-2 rounded-lg border hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors overflow-hidden"
+                  >
+                    <div className="h-7 w-7 rounded-full bg-zinc-100 dark:bg-zinc-800 border flex items-center justify-center text-[10px] font-bold uppercase shrink-0">
+                      {teacher.firstName.charAt(0)}
+                    </div>
+                    <div className="flex flex-col overflow-hidden">
+                      <span className="font-semibold text-xs text-zinc-900 dark:text-zinc-150 truncate">
+                        {teacher.firstName} {teacher.lastName}
+                      </span>
+                      <span className="text-[9px] text-zinc-400 truncate">
+                        {teacher.email}
+                      </span>
+                      <Link
+                        href={`/academics/classes/${teacher.classId}`}
+                        className="text-[9px] text-primary hover:underline truncate"
+                      >
+                        {teacher.className}
+                      </Link>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Program Scheduled Classes Card */}

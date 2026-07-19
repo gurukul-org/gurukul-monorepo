@@ -17,6 +17,16 @@ export interface CourseProgram {
   }>;
 }
 
+export interface CourseTeacher {
+  membershipId: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  classId: string;
+  className: string;
+}
+
 export interface Course {
   id: string;
   name: string;
@@ -24,6 +34,7 @@ export interface Course {
   description: string | null;
   credits: number | null;
   program: CourseProgram;
+  teachers: CourseTeacher[];
   createdAt: string;
   updatedAt: string;
   creator?: { id: string; firstName: string; lastName: string } | null;
