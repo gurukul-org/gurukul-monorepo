@@ -26,6 +26,7 @@ import {
   useShowClassModal,
   useShowDeleteModal,
   useShowEnrolStudentModal,
+  useShowManageInstructorCoursesModal,
 } from '@/hooks/use-modal';
 import { usePermission } from '@/hooks/use-permission';
 import { useRequirePermission } from '@/hooks/use-require-permission';
@@ -203,6 +204,7 @@ function TeacherRowActions({
 }) {
   const { hasPermission } = usePermission();
   const showDeleteModal = useShowDeleteModal();
+  const showManageInstructorCoursesModal = useShowManageInstructorCoursesModal();
   const { mutateAsync: promote } = usePromoteInstructor();
   const { mutateAsync: remove } = useRemoveInstructor();
 
@@ -248,8 +250,17 @@ function TeacherRowActions({
     });
   };
 
+  const handleManageCourses = () => {
+    showManageInstructorCoursesModal({
+      classId,
+      classInstructorId: teacher.id,
+      teacherName: `${teacher.firstName} ${teacher.lastName}`,
+      currentCourseIds: teacher.courses.map((c: { id: string }) => c.id),
+    });
+  };
+
   const showActions =
-    (hasPermission(PERMS.instructor.edit) && !teacher.isPrimary) ||
+    hasPermission(PERMS.instructor.edit) ||
     hasPermission(PERMS.instructor.remove);
 
   if (!showActions) return null;
@@ -278,6 +289,15 @@ function TeacherRowActions({
             >
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
               Make Primary
+            </DropdownMenuItem>
+          )}
+          {hasPermission(PERMS.instructor.edit) && (
+            <DropdownMenuItem
+              onClick={handleManageCourses}
+              className="cursor-pointer gap-2"
+            >
+              <GraduationCap className="h-3.5 w-3.5 text-primary" />
+              Manage Courses
             </DropdownMenuItem>
           )}
           {hasPermission(PERMS.instructor.remove) && (
@@ -754,7 +774,28 @@ export default function TenantClassDetailContainer({
                             <span className="text-[9px] text-zinc-400 truncate">
                               {teacher.email}
                             </span>
-                            <span className="text-[8px] text-zinc-400 truncate">
+                            <span className="text-[9px] truncate mt-0.5">
+                              {teacher.courses.length === 0 ? (
+                                <span className="text-zinc-400 italic">
+                                  No course assigned
+                                </span>
+                              ) : (
+                                teacher.courses.map((course, idx) => (
+                                  <span key={course.id}>
+                                    {idx > 0 && (
+                                      <span className="text-zinc-400">, </span>
+                                    )}
+                                    <Link
+                                      href={`/academics/courses/${course.id}`}
+                                      className="text-primary hover:underline"
+                                    >
+                                      {course.name}
+                                    </Link>
+                                  </span>
+                                ))
+                              )}
+                            </span>
+                            <span className="text-[8px] text-zinc-400 truncate mt-0.5">
                               Assigned{' '}
                               {teacher.assignedAt
                                 ? new Date(

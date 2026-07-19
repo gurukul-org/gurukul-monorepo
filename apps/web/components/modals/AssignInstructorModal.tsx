@@ -25,6 +25,7 @@ import { z } from 'zod';
 const assignSchema = z.object({
   tenantMembershipId: z.string().uuid('Please select an instructor.'),
   isPrimary: z.boolean(),
+  courseIds: z.array(z.string().uuid()),
 });
 
 type AssignValues = z.infer<typeof assignSchema>;
@@ -52,14 +53,26 @@ export function AssignInstructorModal({ classId }: AssignInstructorModalProps) {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<AssignValues>({
     resolver: zodResolver(assignSchema),
     defaultValues: {
       tenantMembershipId: '',
       isPrimary: false,
+      courseIds: [],
     },
   });
+
+  const selectedCourseIds = watch('courseIds');
+  const courses = cls?.program.courses || [];
+
+  const toggleCourse = (courseId: string) => {
+    const next = selectedCourseIds.includes(courseId)
+      ? selectedCourseIds.filter((id) => id !== courseId)
+      : [...selectedCourseIds, courseId];
+    setValue('courseIds', next);
+  };
 
   // Automatically check & force isPrimary to true if no instructors are assigned yet
   useEffect(() => {
@@ -75,6 +88,7 @@ export function AssignInstructorModal({ classId }: AssignInstructorModalProps) {
         dto: {
           tenantMembershipId: values.tenantMembershipId,
           isPrimary: values.isPrimary,
+          courseIds: values.courseIds,
         },
       });
       toast.success('Instructor assigned successfully!');
@@ -182,6 +196,40 @@ export function AssignInstructorModal({ classId }: AssignInstructorModalProps) {
                   </span>
                 )}
               </div>
+            </Field>
+          )}
+
+          {/* Course Selection */}
+          {unassignedEligible.length > 0 && (
+            <Field>
+              <FieldLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                Courses Taught (optional)
+              </FieldLabel>
+              {courses.length === 0 ? (
+                <span className="text-[10px] text-muted-foreground italic">
+                  No courses linked to this class&apos;s program.
+                </span>
+              ) : (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto border rounded-lg p-2">
+                  {courses.map((course) => (
+                    <label
+                      key={course.id}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCourseIds.includes(course.id)}
+                        onChange={() => toggleCourse(course.id)}
+                        disabled={isSaving}
+                        className="h-4 w-4 rounded border-zinc-300 text-primary focus:ring-primary/35"
+                      />
+                      <span className="text-xs text-zinc-700 dark:text-zinc-300">
+                        {course.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </Field>
           )}
         </FieldGroup>

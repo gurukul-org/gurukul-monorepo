@@ -20,6 +20,7 @@ export const classIncharge: DefaultRoleDefinition = {
     PERMS.student.editParentLink.id,
     PERMS.parent.view.id,
     PERMS.parent.edit.id,
+    PERMS.teacher.view.id,
     // Operations
     PERMS.enrolment.view.id,
     PERMS.attendance.view.id,
