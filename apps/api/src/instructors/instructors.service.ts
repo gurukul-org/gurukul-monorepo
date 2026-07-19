@@ -53,7 +53,12 @@ export class InstructorsService {
     const eligible = memberships.filter((m) => {
       return m.roles.some((mr) => {
         const roleName = mr.role.name.toLowerCase();
-        if (roleName === 'faculty') return true;
+        if (
+          roleName === 'teacher' ||
+          roleName === 'class incharge' ||
+          roleName === 'faculty'
+        )
+          return true;
         if (mr.role.isAdmin) return true;
         return mr.role.permissions.some(
           (p) => p.permissionId === 'view-own-classes',
@@ -107,7 +112,12 @@ export class InstructorsService {
     // C. Verify instructor eligibility
     const isEligible = membership.roles.some((mr) => {
       const roleName = mr.role.name.toLowerCase();
-      if (roleName === 'faculty') return true;
+      if (
+        roleName === 'teacher' ||
+        roleName === 'class incharge' ||
+        roleName === 'faculty'
+      )
+        return true;
       if (mr.role.isAdmin) return true;
       return mr.role.permissions.some(
         (p) => p.permissionId === 'view-own-classes',
@@ -283,5 +293,75 @@ export class InstructorsService {
     );
 
     return { message: 'Instructor removed from class successfully.' };
+  }
+
+  async getOptions(
+    tenantId: string,
+    page: number,
+    limit: number,
+    search?: string,
+  ) {
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      tenantId,
+      status: 'ACTIVE',
+      deletedAt: null,
+      roles: {
+        some: {
+          role: {
+            OR: [
+              { name: { mode: 'insensitive', equals: 'teacher' } },
+              { name: { mode: 'insensitive', equals: 'class incharge' } },
+              { name: { mode: 'insensitive', equals: 'faculty' } },
+              { isAdmin: true },
+              { permissions: { some: { permissionId: 'view-own-classes' } } },
+            ],
+          },
+        },
+      },
+    };
+
+    if (search) {
+      where.user = {
+        OR: [
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.tenantMembership.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+        orderBy: {
+          user: {
+            firstName: 'asc',
+          },
+        },
+      }),
+      this.prisma.tenantMembership.count({ where }),
+    ]);
+
+    return {
+      items: items.map((m) => ({
+        value: m.id,
+        label: `${m.user.firstName} ${m.user.lastName}`,
+      })),
+      hasMore: skip + items.length < total,
+      total,
+    };
   }
 }

@@ -31,6 +31,7 @@ model Tenant {
   enrolments       Enrolment[]
   sessions         Session[]
   attendanceRecords AttendanceRecord[]
+  savedFilters     SavedFilter[]
 
   @@map("tenants")
 }
@@ -76,6 +77,7 @@ model User {
   createdEnrolments    Enrolment[]      @relation("EnrolmentCreatedBy")
   createdAttendanceRecords AttendanceRecord[] @relation("AttendanceRecordCreatedBy")
   updatedAttendanceRecords AttendanceRecord[] @relation("AttendanceRecordUpdatedBy")
+  savedFilters         SavedFilter[]
 
   @@map("users")
 }
@@ -413,4 +415,24 @@ model AttendanceRecord {
   @@unique([enrolmentId, date])
   @@index([tenantId, date])
   @@map("attendance_records")
+}
+
+// =====================================================
+// SAVED FILTERS
+// =====================================================
+model SavedFilter {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String   @db.VarChar(255)
+  feature   String   @db.VarChar(100)
+  filters   Json     @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, feature, name])
+  @@map("saved_filters")
 }

@@ -19,21 +19,34 @@ export class ClassesService {
       program?: string;
       course?: string;
       instructor?: string;
+      section?: string;
     },
   ) {
     const classes = await this.prisma.class.findMany({
       where: {
+        id: filters.section
+          ? filters.section.includes(',')
+            ? { in: filters.section.split(',') }
+            : filters.section
+          : undefined,
         tenantId,
         deletedAt: null,
-        academicTermId: filters.term || undefined,
-        programId: filters.program || undefined,
+        academicTermId: filters.term
+          ? filters.term.includes(',')
+            ? { in: filters.term.split(',') }
+            : filters.term
+          : undefined,
+        programId: filters.program
+          ? filters.program.includes(',')
+            ? { in: filters.program.split(',') }
+            : filters.program
+          : undefined,
         program: filters.course
           ? {
               courses: {
-                some: {
-                  id: filters.course,
-                  deletedAt: null,
-                },
+                some: filters.course.includes(',')
+                  ? { id: { in: filters.course.split(',') }, deletedAt: null }
+                  : { id: filters.course, deletedAt: null },
               },
               deletedAt: null,
             }
@@ -43,7 +56,9 @@ export class ClassesService {
         instructors: filters.instructor
           ? {
               some: {
-                tenantMembershipId: filters.instructor,
+                tenantMembershipId: filters.instructor.includes(',')
+                  ? { in: filters.instructor.split(',') }
+                  : filters.instructor,
                 deletedAt: null,
               },
             }
@@ -457,5 +472,42 @@ export class ClassesService {
     return this.prisma.class.delete({
       where: { id },
     });
+  }
+
+  async getOptions(
+    tenantId: string,
+    page: number,
+    limit: number,
+    search?: string,
+  ) {
+    const skip = (page - 1) * limit;
+    const where: any = {
+      tenantId,
+      deletedAt: null,
+    };
+    if (search) {
+      where.name = {
+        contains: search,
+        mode: 'insensitive',
+      };
+    }
+    const [items, total] = await Promise.all([
+      this.prisma.class.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          name: true,
+        },
+      }),
+      this.prisma.class.count({ where }),
+    ]);
+    return {
+      items: items.map((c) => ({ value: c.id, label: c.name })),
+      hasMore: skip + items.length < total,
+      total,
+    };
   }
 }

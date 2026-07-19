@@ -1,26 +1,25 @@
 import { PERMS } from '../registry';
 import { DefaultRoleDefinition } from '../types';
 
-// HOD — Head of Department.
-// Manages courses, classes, and instructors. Views students and enrolments.
-// Can mark attendance and manage grades for their department.
-export const hod: DefaultRoleDefinition = {
-  title: 'HoD',
+// Class Incharge — a class teacher responsible for student management,
+// attendance, grades, and parent links for their class.
+export const classIncharge: DefaultRoleDefinition = {
+  title: 'Class Incharge',
   isAdmin: false,
-  rank: 4,
+  rank: 5,
   scopes: [
     // Dashboard
     PERMS.dashboard.view.id,
     // Academics
-    PERMS.academicTerm.view.id,
-    PERMS.program.view.id,
-    PERMS.program.edit.id,
-    PERMS.course.all.id,
-    PERMS.class.all.id,
-    PERMS.instructor.all.id,
-    // People — view
+    PERMS.course.view.id,
+    PERMS.class.view.id,
+    // People
     PERMS.student.view.id,
+    PERMS.student.edit.id,
+    PERMS.student.linkParent.id,
+    PERMS.student.editParentLink.id,
     PERMS.parent.view.id,
+    PERMS.parent.edit.id,
     // Operations
     PERMS.enrolment.view.id,
     PERMS.attendance.view.id,
@@ -30,7 +29,7 @@ export const hod: DefaultRoleDefinition = {
     PERMS.grade.view.id,
     PERMS.grade.enter.id,
     PERMS.grade.edit.id,
-    // Library — view
+    // Library
     PERMS.library.view.id,
   ],
 };

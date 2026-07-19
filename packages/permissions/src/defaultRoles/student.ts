@@ -6,7 +6,7 @@ import { DefaultRoleDefinition } from '../types';
 export const studentRole: DefaultRoleDefinition = {
   title: 'Student',
   isAdmin: false,
-  rank: 8,
+  rank: 7,
   scopes: [
     // Dashboard — own
     PERMS.dashboard.viewOwn.id,

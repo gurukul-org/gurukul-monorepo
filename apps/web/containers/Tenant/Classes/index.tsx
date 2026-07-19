@@ -4,6 +4,10 @@ import { useCallback, useMemo, useState } from 'react';
 
 import Link from 'next/link';
 
+import {
+  FilterConfig,
+  FilterPanel,
+} from '@/components/FilterPanel/FilterPanel';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,7 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Table,
   TableBody,
@@ -40,6 +43,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import axios from 'axios';
 import {
   Archive,
   Calendar,
@@ -60,25 +64,63 @@ export default function TenantClassesContainer() {
     redirectTo: '/dashboard',
   });
 
-  const [selectedTerm, setSelectedTerm] = useState<string>('');
-  const [selectedProgram, setSelectedProgram] = useState<string>('');
-  const [selectedCourse, setSelectedCourse] = useState<string>('');
-  const [selectedInstructor, setSelectedInstructor] = useState<string>('');
+  const [filterValues, setFilterValues] = useState<
+    Record<string, { value: string; label: string }[]>
+  >({
+    term: [],
+    program: [],
+    course: [],
+    section: [],
+    instructor: [],
+  });
 
   const { hasPermission } = usePermission();
   const showClassModal = useShowClassModal();
   const showDeleteModal = useShowDeleteModal();
   const showError = useShowApiError();
 
+  const loadSectionOptions = useCallback(
+    async (search: string, page: number) => {
+      const { data } = await axios.get<{
+        items: { value: string; label: string }[];
+        hasMore: boolean;
+      }>('/classes/options', {
+        params: { page, limit: 10, search },
+      });
+      return data;
+    },
+    [],
+  );
+
+  const loadTeacherOptions = useCallback(
+    async (search: string, page: number) => {
+      const { data } = await axios.get<{
+        items: { value: string; label: string }[];
+        hasMore: boolean;
+      }>('/instructors/options', {
+        params: { page, limit: 10, search },
+      });
+      return data;
+    },
+    [],
+  );
+
   // API query filters
   const classesQueryFilters = useMemo(
     () => ({
-      term: selectedTerm || undefined,
-      program: selectedProgram || undefined,
-      course: selectedCourse || undefined,
-      instructor: selectedInstructor || undefined,
+      term:
+        (filterValues.term || []).map((x) => x.value).join(',') || undefined,
+      program:
+        (filterValues.program || []).map((x) => x.value).join(',') || undefined,
+      course:
+        (filterValues.course || []).map((x) => x.value).join(',') || undefined,
+      instructor:
+        (filterValues.instructor || []).map((x) => x.value).join(',') ||
+        undefined,
+      section:
+        (filterValues.section || []).map((x) => x.value).join(',') || undefined,
     }),
-    [selectedTerm, selectedProgram, selectedCourse, selectedInstructor],
+    [filterValues],
   );
 
   // Queries for data & filters
@@ -86,7 +128,8 @@ export default function TenantClassesContainer() {
   const { data: terms } = useAcademicTerms();
   const { data: programs } = usePrograms({ status: 'active' });
   const { data: courses } = useCourses({
-    programId: selectedProgram || undefined,
+    programId:
+      (filterValues.program || []).map((x) => x.value).join(',') || undefined,
   });
   const { data: instructors } = useInstructors();
 
@@ -102,12 +145,70 @@ export default function TenantClassesContainer() {
     return (courses ?? []).map((c) => ({ value: c.id, label: c.name }));
   }, [courses]);
 
-  const instructorOptions = useMemo(() => {
-    return (instructors ?? []).map((i) => ({
-      value: i.membershipId,
-      label: `${i.firstName} ${i.lastName}`,
-    }));
-  }, [instructors]);
+  const filterConfigs = useMemo<FilterConfig[]>(
+    () => [
+      {
+        key: 'term',
+        label: 'Academic Term',
+        type: 'select',
+        options: termOptions,
+        placeholder: 'All Terms',
+      },
+      {
+        key: 'program',
+        label: 'Program',
+        type: 'select',
+        options: programOptions,
+        placeholder: 'All Programs',
+      },
+      {
+        key: 'course',
+        label: 'Subject/Course',
+        type: 'select',
+        options: courseOptions,
+        placeholder: 'All Courses',
+      },
+      {
+        key: 'section',
+        label: 'Section',
+        type: 'async-select',
+        loadOptions: loadSectionOptions,
+        placeholder: 'All Sections',
+      },
+      {
+        key: 'instructor',
+        label: 'Teacher',
+        type: 'async-select',
+        loadOptions: loadTeacherOptions,
+        placeholder: 'All Teachers',
+      },
+    ],
+    [
+      termOptions,
+      programOptions,
+      courseOptions,
+      loadSectionOptions,
+      loadTeacherOptions,
+    ],
+  );
+
+  const handleFilterPanelChange = useCallback(
+    (newValues: typeof filterValues) => {
+      const currentProgs = (filterValues.program || [])
+        .map((p) => p.value)
+        .sort()
+        .join(',');
+      const newProgs = (newValues.program || [])
+        .map((p) => p.value)
+        .sort()
+        .join(',');
+      if (newProgs !== currentProgs) {
+        newValues.course = [];
+      }
+      setFilterValues(newValues);
+    },
+    [filterValues],
+  );
 
   const { mutateAsync: archiveClass } = useArchiveClass();
   const { mutateAsync: deleteClass } = useDeleteClass();
@@ -386,16 +487,6 @@ export default function TenantClassesContainer() {
     getCoreRowModel: getCoreRowModel(),
   });
 
-  const clearFilters = () => {
-    setSelectedTerm('');
-    setSelectedProgram('');
-    setSelectedCourse('');
-    setSelectedInstructor('');
-  };
-
-  const hasActiveFilters =
-    selectedTerm || selectedProgram || selectedCourse || selectedInstructor;
-
   if (!allowed) return null;
 
   return (
@@ -420,72 +511,12 @@ export default function TenantClassesContainer() {
       </div>
 
       {/* Filters and Controls */}
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
-          {/* Term Filter */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-              Academic Term
-            </label>
-            <SearchableSelect
-              value={selectedTerm}
-              onChange={setSelectedTerm}
-              options={termOptions}
-              placeholder="All Terms"
-            />
-          </div>
-
-          {/* Program Filter */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-              Program
-            </label>
-            <SearchableSelect
-              value={selectedProgram}
-              onChange={(val: string) => {
-                setSelectedProgram(val);
-                setSelectedCourse(''); // reset course selection on program change
-              }}
-              options={programOptions}
-              placeholder="All Programs"
-            />
-          </div>
-
-          {/* Course Filter */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-              Subject/Course
-            </label>
-            <SearchableSelect
-              value={selectedCourse}
-              onChange={setSelectedCourse}
-              options={courseOptions}
-              placeholder="All Courses"
-            />
-          </div>
-
-          {/* Instructor Filter */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-              Class Incharge
-            </label>
-            <SearchableSelect
-              value={selectedInstructor}
-              onChange={setSelectedInstructor}
-              options={instructorOptions}
-              placeholder="All Incharges"
-            />
-          </div>
-        </div>
-
-        {hasActiveFilters && (
-          <div className="flex justify-end pt-2 border-t border-zinc-100 dark:border-zinc-900">
-            <Button variant="ghost" size="xs" onClick={clearFilters}>
-              Clear Filters
-            </Button>
-          </div>
-        )}
-      </div>
+      <FilterPanel
+        feature="classes"
+        configs={filterConfigs}
+        values={filterValues}
+        onChange={handleFilterPanelChange}
+      />
 
       {/* Content */}
       {isLoading ? (

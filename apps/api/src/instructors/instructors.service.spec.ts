@@ -66,7 +66,7 @@ describe('InstructorsService', () => {
   });
 
   describe('findAllEligible', () => {
-    it('returns members with Faculty role or view-own-classes permission', async () => {
+    it('returns members with Teacher role or view-own-classes permission', async () => {
       const mockMemberships = [
         {
           id: 'm-1',
@@ -77,7 +77,7 @@ describe('InstructorsService', () => {
             email: 'alice@example.com',
           },
           roles: [
-            { role: { name: 'Faculty', isAdmin: false, permissions: [] } },
+            { role: { name: 'Teacher', isAdmin: false, permissions: [] } },
           ],
         },
         {
@@ -129,7 +129,7 @@ describe('InstructorsService', () => {
       prisma.class.findFirst.mockResolvedValueOnce({ id: CLASS_ID });
       prisma.tenantMembership.findFirst.mockResolvedValueOnce({
         id: MEMBERSHIP_ID,
-        roles: [{ role: { name: 'Faculty', isAdmin: false, permissions: [] } }],
+        roles: [{ role: { name: 'Teacher', isAdmin: false, permissions: [] } }],
       });
       prisma.classInstructor.findFirst.mockResolvedValueOnce(null);
       prisma.classInstructor.findMany.mockResolvedValueOnce([]); // no instructors currently
@@ -164,7 +164,7 @@ describe('InstructorsService', () => {
       prisma.class.findFirst.mockResolvedValueOnce({ id: CLASS_ID });
       prisma.tenantMembership.findFirst.mockResolvedValueOnce({
         id: MEMBERSHIP_ID,
-        roles: [{ role: { name: 'Faculty', isAdmin: false, permissions: [] } }],
+        roles: [{ role: { name: 'Teacher', isAdmin: false, permissions: [] } }],
       });
       prisma.classInstructor.findFirst.mockResolvedValueOnce({
         id: 'ci-existing',
@@ -181,7 +181,7 @@ describe('InstructorsService', () => {
       prisma.class.findFirst.mockResolvedValueOnce({ id: CLASS_ID });
       prisma.tenantMembership.findFirst.mockResolvedValueOnce({
         id: MEMBERSHIP_ID,
-        roles: [{ role: { name: 'Faculty', isAdmin: false, permissions: [] } }],
+        roles: [{ role: { name: 'Teacher', isAdmin: false, permissions: [] } }],
       });
       prisma.classInstructor.findFirst.mockResolvedValueOnce({
         id: 'ci-existing',

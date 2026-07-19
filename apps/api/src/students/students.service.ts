@@ -84,8 +84,13 @@ export class StudentsService {
         }
       : {};
 
-    const statusFilter =
-      status && STUDENT_STATUS[status as StudentStatus] ? { status } : {};
+    const statusFilter = status
+      ? status.includes(',')
+        ? { status: { in: status.split(',') } }
+        : STUDENT_STATUS[status as StudentStatus]
+          ? { status }
+          : {}
+      : {};
 
     const students = await this.prisma.studentProfile.findMany({
       where: {
