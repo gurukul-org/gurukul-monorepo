@@ -197,6 +197,7 @@ export class ClassesService {
                 },
               },
             },
+
             courseAssignments: {
               where: { deletedAt: null },
               include: {
@@ -567,7 +568,7 @@ export class ClassesService {
     search?: string,
   ) {
     const skip = (page - 1) * limit;
-    const where: any = {
+    const where: Prisma.ClassWhereInput = {
       tenantId,
       deletedAt: null,
     };
