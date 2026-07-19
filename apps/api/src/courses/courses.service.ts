@@ -165,7 +165,50 @@ export class CoursesService {
       throw new NotFoundException('Course not found');
     }
 
-    return course;
+    const teacherAssignments = await this.prisma.classInstructorCourse.findMany(
+      {
+        where: {
+          courseId: id,
+          tenantId,
+          deletedAt: null,
+          classInstructor: {
+            deletedAt: null,
+            class: { deletedAt: null },
+          },
+        },
+        include: {
+          classInstructor: {
+            include: {
+              class: { select: { id: true, name: true } },
+              membership: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      email: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    );
+
+    const teachers = teacherAssignments.map((a) => ({
+      membershipId: a.classInstructor.membership.id,
+      userId: a.classInstructor.membership.user.id,
+      firstName: a.classInstructor.membership.user.firstName,
+      lastName: a.classInstructor.membership.user.lastName,
+      email: a.classInstructor.membership.user.email,
+      classId: a.classInstructor.class.id,
+      className: a.classInstructor.class.name,
+    }));
+
+    return { ...course, teachers };
   }
 
   async update(
