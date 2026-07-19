@@ -19,7 +19,7 @@ model Tenant {
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamp(6)
 
-  memberships            TenantMembership[]
+   memberships            TenantMembership[]
   roles                  Role[]
   academicTerms          AcademicTerm[]
   programs               Program[]
