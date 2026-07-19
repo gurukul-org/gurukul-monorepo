@@ -4,8 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'nestjs-prisma';
 
+import { AttendanceStatus } from '../attendance/dto/attendance-entry.dto';
 import { CreateClassDto, UpdateClassDto } from './dto';
 
 @Injectable()
@@ -272,6 +274,75 @@ export class ClassesService {
         : null,
     }));
 
+    const now = new Date();
+    const todayDate = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+
+    const [todayAttendanceGroups, allAttendanceGroups] = await Promise.all([
+      this.prisma.attendanceRecord.groupBy({
+        by: ['status'],
+        where: {
+          tenantId,
+          enrolment: { classId: id },
+          date: todayDate,
+          deletedAt: null,
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+      this.prisma.attendanceRecord.groupBy({
+        by: ['status'],
+        where: {
+          tenantId,
+          enrolment: { classId: id },
+          date: { gte: cls.academicTerm.startDate, lte: todayDate },
+          deletedAt: null,
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+    ]);
+
+    const toAttendanceMap = (
+      groups: typeof todayAttendanceGroups,
+    ) =>
+      groups.reduce(
+        (acc, g) => {
+          if (g.status && g._count) {
+            acc[g.status] = g._count._all;
+          }
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+    const todayMap = toAttendanceMap(todayAttendanceGroups);
+    const termMap = toAttendanceMap(allAttendanceGroups);
+
+    const todayPresent = todayMap[AttendanceStatus.PRESENT] || 0;
+    const todayAbsent = todayMap[AttendanceStatus.ABSENT] || 0;
+    const todayLeave = todayMap[AttendanceStatus.LEAVE] || 0;
+
+    const totalPresent = termMap[AttendanceStatus.PRESENT] || 0;
+    const totalAbsent = termMap[AttendanceStatus.ABSENT] || 0;
+    const totalLeave = termMap[AttendanceStatus.LEAVE] || 0;
+    const totalRecords = totalPresent + totalAbsent + totalLeave;
+
+    const averageAttendance =
+      totalRecords > 0
+        ? Math.round((totalPresent / totalRecords) * 100)
+        : null;
+
+    const attendanceOverview = {
+      present: todayPresent,
+      absent: todayAbsent,
+      leave: todayLeave,
+      totalStudents: activeEnrolledCount,
+    };
+
     return {
       id: cls.id,
       name: cls.name,
@@ -293,6 +364,8 @@ export class ClassesService {
       },
       instructors: instructorsList,
       enrolledStudents,
+      attendanceOverview,
+      averageAttendance,
       createdAt: cls.createdAt,
       updatedAt: cls.updatedAt,
       creator: cls.creator,
