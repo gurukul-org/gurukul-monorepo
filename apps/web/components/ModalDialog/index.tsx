@@ -24,6 +24,7 @@ import { RoleModal } from '@/components/modals/RoleModal';
 import { StudentModal } from '@/components/modals/StudentModal';
 import { StudentProfileModal } from '@/components/modals/StudentProfileModal';
 import { StudentStatusModal } from '@/components/modals/StudentStatusModal';
+import { TeacherProfileModal } from '@/components/modals/TeacherProfileModal';
 import { useModalPayload, useModalType } from '@/hooks/use-modal';
 import { ModalType } from '@/lib/store/types/modal';
 
@@ -59,6 +60,7 @@ const Modal: { [key in ModalType]?: React.ComponentType<any> } = {
   [ModalType.ManageInstructorCoursesModal]: ManageInstructorCoursesModal,
   [ModalType.LinkParentModal]: LinkParentModal,
   [ModalType.EditParentLinkModal]: EditParentLinkModal,
+  [ModalType.TeacherProfileModal]: TeacherProfileModal,
 };
 
 export default function ModalDialog() {

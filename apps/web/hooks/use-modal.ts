@@ -255,6 +255,15 @@ export function useShowLinkParentModal() {
   );
 }
 
+export function useShowTeacherProfileModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (teacherId: string) =>
+      showModal(ModalType.TeacherProfileModal, { teacherId }),
+    [showModal],
+  );
+}
+
 export function useShowEditParentLinkModal() {
   const showModal = useShowModal();
   return useCallback(

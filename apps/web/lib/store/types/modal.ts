@@ -37,6 +37,7 @@ export enum ModalType {
   ManageInstructorCoursesModal,
   LinkParentModal,
   EditParentLinkModal,
+  TeacherProfileModal,
 }
 
 // Union of every modal's payload shape. Each member should ideally
@@ -66,6 +67,7 @@ export type ModalPayload =
     } // EditParentLinkModal
   | { editingParent: ParentListItem | null } // ParentModal
   | { parentId: string } // ParentProfileModal
+  | { teacherId: string } // TeacherProfileModal
   | { classId: string } // EnrolStudentModal / BulkEnrolModal / AssignInstructorModal
   | {
       classId: string;
