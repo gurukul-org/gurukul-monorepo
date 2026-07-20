@@ -26,6 +26,8 @@ export default function CreateHomeworkPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialClassId = searchParams.get('classId') || '';
+  const isFromClass = Boolean(initialClassId);
+  const backUrl = isFromClass ? `/academics/classes/${initialClassId}` : '/homework';
 
   const createAssignment = useCreateAssignment();
   const { data: classes, isLoading: classesLoading } = useClasses();
@@ -112,7 +114,7 @@ export default function CreateHomeworkPage() {
       });
 
       toast.success('Assignment created successfully!');
-      router.push('/homework');
+      router.push(backUrl);
     } catch (err) {
       toast.error('Failed to create assignment.');
     }
@@ -123,8 +125,8 @@ export default function CreateHomeworkPage() {
       {/* Header */}
       <div className="flex items-center gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-800">
         <Button asChild size="sm" variant="ghost">
-          <Link href="/homework">
-            <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to list
+          <Link href={backUrl}>
+            <ArrowLeft className="h-4 w-4 mr-1.5" /> {isFromClass ? 'Back to class' : 'Back to list'}
           </Link>
         </Button>
         <div>
@@ -143,12 +145,24 @@ export default function CreateHomeworkPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Target Class Selector */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="classSelect">Target Class/Section</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="classSelect">Target Class/Section</Label>
+              {isFromClass && (
+                <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200/60 dark:border-amber-900/60">
+                  Fixed (Selected from class)
+                </span>
+              )}
+            </div>
             <select
               id="classSelect"
               value={classId}
               onChange={(e) => setClassId(e.target.value)}
-              className="w-full text-sm rounded-md border border-zinc-200 dark:border-zinc-800 px-3 py-2 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700"
+              disabled={isFromClass}
+              className={`w-full text-sm rounded-md border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700 ${
+                isFromClass
+                  ? 'bg-zinc-100 dark:bg-zinc-900/80 opacity-90 cursor-not-allowed border-zinc-300 dark:border-zinc-700 font-medium'
+                  : 'bg-white dark:bg-zinc-950'
+              }`}
             >
               <option value="">-- Select Class --</option>
               {classes?.map((cls) => (
@@ -157,6 +171,11 @@ export default function CreateHomeworkPage() {
                 </option>
               ))}
             </select>
+            {isFromClass && (
+              <p className="text-[11px] text-zinc-500">
+                Class selection is locked because assignment creation was initiated from the class module.
+              </p>
+            )}
           </div>
 
           {/* Maximum Marks */}
@@ -347,7 +366,7 @@ export default function CreateHomeworkPage() {
         {/* Submit */}
         <div className="flex justify-end gap-3 border-t border-zinc-100 dark:border-zinc-800 pt-6">
           <Button asChild variant="outline">
-            <Link href="/homework">Cancel</Link>
+            <Link href={backUrl}>Cancel</Link>
           </Button>
           <Button
             type="submit"

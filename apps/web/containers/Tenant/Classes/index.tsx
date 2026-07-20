@@ -411,6 +411,7 @@ export default function TenantClassesContainer() {
           const cls = row.original;
           const canEdit = hasPermission(PERMS.class.edit);
           const canDelete = hasPermission(PERMS.class.delete);
+          const canCreateHomework = hasPermission(PERMS.homework.create);
           const isDeletable = cls.enrolledCount === 0;
 
           return (
@@ -431,6 +432,15 @@ export default function TenantClassesContainer() {
                       View Details
                     </Link>
                   </DropdownMenuItem>
+
+                  {canCreateHomework && cls.status === 'ACTIVE' && (
+                    <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link href={`/homework/create?classId=${cls.id}`}>
+                        <Plus className="mr-2 h-4 w-4 opacity-70" />
+                        Create Homework
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
 
                   {canEdit && cls.status === 'ACTIVE' && (
                     <DropdownMenuItem
