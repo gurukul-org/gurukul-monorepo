@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -9,7 +9,9 @@ import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { usePermission } from '@/hooks/use-permission';
 import { useRequirePermission } from '@/hooks/use-require-permission';
+import { useAuthUser } from '@/lib/store/auth';
 import { useClasses } from '@/services/api/requests/classes';
 import { useCreateAssignment } from '@/services/api/requests/homework';
 import { ArrowLeft } from 'lucide-react';
@@ -29,8 +31,36 @@ export default function CreateHomeworkPage() {
   const isFromClass = Boolean(initialClassId);
   const backUrl = isFromClass ? `/academics/classes/${initialClassId}` : '/homework';
 
+  const user = useAuthUser();
+  const { isAdmin } = usePermission();
+
+  const classQueryParams = useMemo(() => {
+    if (isAdmin || isFromClass) return undefined;
+    return user?.membershipId ? { instructor: user.membershipId } : undefined;
+  }, [isAdmin, isFromClass, user?.membershipId]);
+
   const createAssignment = useCreateAssignment();
-  const { data: classes, isLoading: classesLoading } = useClasses();
+  const { data: classes, isLoading: classesLoading } = useClasses(classQueryParams);
+
+  // Filter classes so non-admin teachers only see classes they have access to as an instructor
+  const availableClasses = useMemo(() => {
+    if (!classes) return [];
+    if (isAdmin) return classes.filter((c) => c.status === 'ACTIVE');
+
+    return classes.filter((cls) => {
+      // Retain pre-selected class if coming from a specific class view
+      if (cls.id === initialClassId) return true;
+      if (cls.status !== 'ACTIVE') return false;
+
+      const isPrimary =
+        cls.primaryInstructor?.membershipId === user?.membershipId ||
+        cls.primaryInstructor?.userId === user?.sub;
+      const isInstructor = cls.instructors?.some(
+        (i) => i.membershipId === user?.membershipId || i.userId === user?.sub,
+      );
+      return isPrimary || isInstructor;
+    });
+  }, [classes, isAdmin, initialClassId, user?.membershipId, user?.sub]);
 
   // Helper to generate safe client-side unique IDs
   const generateId = () => {
@@ -157,25 +187,39 @@ export default function CreateHomeworkPage() {
               id="classSelect"
               value={classId}
               onChange={(e) => setClassId(e.target.value)}
-              disabled={isFromClass}
+              disabled={isFromClass || availableClasses.length === 0}
               className={`w-full text-sm rounded-md border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-700 ${
-                isFromClass
+                isFromClass || availableClasses.length === 0
                   ? 'bg-zinc-100 dark:bg-zinc-900/80 opacity-90 cursor-not-allowed border-zinc-300 dark:border-zinc-700 font-medium'
                   : 'bg-white dark:bg-zinc-950'
               }`}
             >
-              <option value="">-- Select Class --</option>
-              {classes?.map((cls) => (
+              <option value="">
+                {classesLoading
+                  ? 'Loading classes...'
+                  : availableClasses.length === 0
+                  ? '-- No Assigned Classes Found --'
+                  : '-- Select Class --'}
+              </option>
+              {availableClasses.map((cls) => (
                 <option key={cls.id} value={cls.id}>
                   {cls.name} ({cls.academicTerm.name})
                 </option>
               ))}
             </select>
-            {isFromClass && (
+            {isFromClass ? (
               <p className="text-[11px] text-zinc-500">
                 Class selection is locked because assignment creation was initiated from the class module.
               </p>
-            )}
+            ) : !isAdmin && availableClasses.length === 0 && !classesLoading ? (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                No assigned active classes found. You must be assigned as an instructor to a class section to create homework.
+              </p>
+            ) : !isAdmin ? (
+              <p className="text-[11px] text-zinc-500">
+                Only classes where you are assigned as an instructor are displayed.
+              </p>
+            ) : null}
           </div>
 
           {/* Maximum Marks */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -26,7 +26,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { usePermission } from '@/hooks/use-permission';
 import { useRequirePermission } from '@/hooks/use-require-permission';
+import { useAuthUser } from '@/lib/store/auth';
 import { useClasses } from '@/services/api/requests/classes';
 import {
   StudentSubmissionListItem,
@@ -57,8 +59,34 @@ export default function SubmissionsPage() {
   const initialClassId = searchParams.get('classId') || '';
   const initialAssignmentId = searchParams.get('assignmentId') || '';
 
-  const { data: classes, isLoading: classesLoading } = useClasses();
+  const user = useAuthUser();
+  const { isAdmin } = usePermission();
+
+  const classQueryParams = useMemo(() => {
+    if (isAdmin) return undefined;
+    return user?.membershipId ? { instructor: user.membershipId } : undefined;
+  }, [isAdmin, user?.membershipId]);
+
+  const { data: classes, isLoading: classesLoading } = useClasses(classQueryParams);
   const { data: assignments, isLoading: assignmentsLoading } = useAssignments();
+
+  // Filter classes so non-admin teachers only see their assigned classes
+  const availableClasses = useMemo(() => {
+    if (!classes) return [];
+    if (isAdmin) return classes;
+
+    return classes.filter((cls) => {
+      if (cls.id === initialClassId) return true;
+
+      const isPrimary =
+        cls.primaryInstructor?.membershipId === user?.membershipId ||
+        cls.primaryInstructor?.userId === user?.sub;
+      const isInstructor = cls.instructors?.some(
+        (i) => i.membershipId === user?.membershipId || i.userId === user?.sub,
+      );
+      return isPrimary || isInstructor;
+    });
+  }, [classes, isAdmin, initialClassId, user?.membershipId, user?.sub]);
 
   // Selection state
   const [selectedClassId, setSelectedClassId] = useState(initialClassId);
@@ -227,8 +255,14 @@ export default function SubmissionsPage() {
             onChange={(e) => handleClassChange(e.target.value)}
             className="w-full text-sm rounded-md border border-zinc-200 dark:border-zinc-800 px-3 py-2 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 focus:outline-none"
           >
-            <option value="">-- Select Class --</option>
-            {classes?.map((cls) => (
+            <option value="">
+              {classesLoading
+                ? 'Loading classes...'
+                : availableClasses.length === 0
+                ? '-- No Assigned Classes Found --'
+                : '-- Select Class --'}
+            </option>
+            {availableClasses.map((cls) => (
               <option key={cls.id} value={cls.id}>
                 {cls.name} ({cls.academicTerm.name})
               </option>
