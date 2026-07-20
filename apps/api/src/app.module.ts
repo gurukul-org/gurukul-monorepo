@@ -12,6 +12,7 @@ import { Pool } from 'pg';
 import { AcademicTermsModule } from './academic-terms/academic-terms.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AssignmentsModule } from './assignments/assignments.module';
 import { ClassesModule } from './classes/classes.module';
 import { AtGuard } from './common/guards/at.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -93,6 +94,7 @@ import { UsersModule } from './users/users.module';
     ParentsModule,
     TeachersModule,
     SavedFiltersModule,
+    AssignmentsModule,
   ],
   controllers: [AppController],
   providers: [

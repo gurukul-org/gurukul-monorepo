@@ -19,19 +19,21 @@ model Tenant {
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamp(6)
 
-  memberships            TenantMembership[]
-  roles                  Role[]
-  academicTerms          AcademicTerm[]
-  programs               Program[]
-  courses                Course[]
-  classes                Class[]
-  classInstructors       ClassInstructor[]
+  memberships      TenantMembership[]
+  roles            Role[]
+  academicTerms    AcademicTerm[]
+  programs         Program[]
+  courses          Course[]
+  classes          Class[]
+  classInstructors ClassInstructor[]
   classInstructorCourses ClassInstructorCourse[]
-  studentProfiles        StudentProfile[]
-  parentProfiles         ParentProfile[]
-  enrolments             Enrolment[]
-  sessions               Session[]
-  savedFilters           SavedFilter[]
+  studentProfiles  StudentProfile[]
+  parentProfiles   ParentProfile[]
+  enrolments       Enrolment[]
+  sessions         Session[]
+  savedFilters     SavedFilter[]
+  assignments      Assignment[]
+  submissions      AssignmentSubmission[]
 
   @@map("tenants")
 }
@@ -77,6 +79,8 @@ model User {
   updatedParents       ParentProfile[]  @relation("ParentUpdatedBy")
   createdEnrolments    Enrolment[]      @relation("EnrolmentCreatedBy")
   savedFilters         SavedFilter[]
+  createdAssignments   Assignment[]     @relation("AssignmentCreatedBy")
+  markedSubmissions    AssignmentSubmission[] @relation("SubmissionMarkedBy")
 
   @@map("users")
 }
@@ -255,6 +259,7 @@ model Class {
   updater      User?             @relation("ClassUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
   instructors  ClassInstructor[]
   enrolments   Enrolment[]
+  assignments  Assignment[]
 
   @@index([tenantId, academicTermId])
   @@map("classes")
@@ -328,6 +333,7 @@ model StudentProfile {
   updater    User?             @relation("StudentUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
   parents    StudentParent[]
   enrolments Enrolment[]
+  submissions AssignmentSubmission[]
 
   @@unique([tenantId, rollNumber])
   @@map("student_profiles")
@@ -432,3 +438,55 @@ model SavedFilter {
   @@unique([tenantId, userId, feature, name])
   @@map("saved_filters")
 }
+
+// =====================================================
+// HOMEWORK / ASSIGNMENTS
+// =====================================================
+model Assignment {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  classId     String    @map("class_id") @db.Uuid
+  title       String    @db.VarChar(255)
+  description String?   @db.Text
+  startDate   DateTime  @map("start_date") @db.Timestamp(6)
+  endDate     DateTime  @map("end_date") @db.Timestamp(6) // Deadline
+  marks       Int
+  questions   Json      @db.JsonB // Format: Array of question objects [{ id: string, text: string }]
+  createdById String?   @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class       Class                @relation(fields: [classId], references: [id], onDelete: Cascade)
+  creator     User?                @relation("AssignmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  submissions AssignmentSubmission[]
+
+  @@index([tenantId, classId])
+  @@map("assignments")
+}
+
+model AssignmentSubmission {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  assignmentId     String    @map("assignment_id") @db.Uuid
+  studentProfileId String    @map("student_profile_id") @db.Uuid
+  answers          Json      @db.JsonB // Format: Array of answers [{ questionId: string, value: string }]
+  status           String    @db.VarChar(50) // "SUBMITTED" or "MARKED"
+  score            Int?
+  remarks          String?   @db.Text
+  submittedAt      DateTime  @default(now()) @map("submitted_at") @db.Timestamp(6)
+  markedById       String?   @map("marked_by") @db.Uuid
+  markedAt         DateTime? @map("marked_at") @db.Timestamp(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignment     Assignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  markedBy       User?          @relation("SubmissionMarkedBy", fields: [markedById], references: [id], onDelete: SetNull)
+
+  @@unique([assignmentId, studentProfileId])
+  @@map("assignment_submissions")
+}
+

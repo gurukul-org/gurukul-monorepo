@@ -8,6 +8,7 @@ import { dashboardFeature } from './dashboard';
 import { enrolmentFeature } from './enrolment';
 import { feeFeature } from './fee';
 import { gradeFeature } from './grade';
+import { homeworkFeature } from './homework';
 import { instructorFeature } from './instructor';
 import { libraryFeature } from './library';
 import { parentFeature } from './parent';
@@ -39,6 +40,7 @@ export const FEATURES: Readonly<Record<FeatureKey, FeatureDefinition>> = {
   role: roleFeature,
   tenant: tenantFeature,
   appearance: appearanceFeature,
+  homework: homeworkFeature,
   report: reportFeature,
 };
 
@@ -185,6 +187,16 @@ export const PERMS = {
     all: FEATURES.appearance.all,
     view: p('appearance', 'view-appearance'),
     edit: p('appearance', 'edit-appearance'),
+  },
+  homework: {
+    all: FEATURES.homework.all,
+    view: p('homework', 'view-homework'),
+    viewOwn: p('homework', 'view-own-homework'),
+    create: p('homework', 'create-homework'),
+    edit: p('homework', 'edit-homework'),
+    delete: p('homework', 'delete-homework'),
+    submit: p('homework', 'submit-homework'),
+    mark: p('homework', 'mark-homework'),
   },
   report: {
     all: FEATURES.report.all,
