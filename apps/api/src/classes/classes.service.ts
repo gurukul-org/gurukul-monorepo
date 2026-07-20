@@ -195,6 +195,18 @@ export class ClassesService {
                 },
               },
             },
+            courseAssignments: {
+              where: { deletedAt: null },
+              include: {
+                course: {
+                  select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                  },
+                },
+              },
+            },
           },
         },
         enrolments: {
@@ -270,6 +282,7 @@ export class ClassesService {
             lastName: i.assignedBy.lastName,
           }
         : null,
+      courses: i.courseAssignments.map((ca) => ca.course),
     }));
 
     return {

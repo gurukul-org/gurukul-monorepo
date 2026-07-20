@@ -13,6 +13,9 @@ type PrismaMock = {
   class: {
     findFirst: jest.Mock;
   };
+  course: {
+    findMany: jest.Mock;
+  };
   tenantMembership: {
     findMany: jest.Mock;
     findFirst: jest.Mock;
@@ -23,6 +26,11 @@ type PrismaMock = {
     create: jest.Mock;
     update: jest.Mock;
     updateMany: jest.Mock;
+  };
+  classInstructorCourse: {
+    findMany: jest.Mock;
+    deleteMany: jest.Mock;
+    createMany: jest.Mock;
   };
   $transaction: jest.Mock;
 };
@@ -41,6 +49,9 @@ describe('InstructorsService', () => {
       class: {
         findFirst: jest.fn(),
       },
+      course: {
+        findMany: jest.fn(),
+      },
       tenantMembership: {
         findMany: jest.fn(),
         findFirst: jest.fn(),
@@ -51,6 +62,11 @@ describe('InstructorsService', () => {
         create: jest.fn(),
         update: jest.fn(),
         updateMany: jest.fn(),
+      },
+      classInstructorCourse: {
+        findMany: jest.fn(),
+        deleteMany: jest.fn(),
+        createMany: jest.fn(),
       },
       $transaction: jest.fn((cb) => cb(prisma)),
     };
@@ -231,6 +247,129 @@ describe('InstructorsService', () => {
           tenantMembershipId: MEMBERSHIP_ID,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('assigns courses to the instructor when courseIds are provided', async () => {
+      prisma.class.findFirst.mockResolvedValueOnce({
+        id: CLASS_ID,
+        programId: 'program-123',
+      });
+      prisma.tenantMembership.findFirst.mockResolvedValueOnce({
+        id: MEMBERSHIP_ID,
+        roles: [{ role: { name: 'Teacher', isAdmin: false, permissions: [] } }],
+      });
+      prisma.course.findMany.mockResolvedValueOnce([
+        { id: 'course-1' },
+        { id: 'course-2' },
+      ]);
+      prisma.classInstructor.findFirst.mockResolvedValueOnce(null);
+      prisma.classInstructor.findMany.mockResolvedValueOnce([]);
+      prisma.classInstructor.create.mockResolvedValueOnce({
+        id: 'ci-123',
+        isPrimary: true,
+      });
+
+      await service.assignInstructor(TENANT_ID, CLASS_ID, USER_ID, {
+        tenantMembershipId: MEMBERSHIP_ID,
+        courseIds: ['course-1', 'course-2'],
+      });
+
+      expect(prisma.classInstructorCourse.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            tenantId: TENANT_ID,
+            classInstructorId: 'ci-123',
+            courseId: 'course-1',
+            assignedById: USER_ID,
+          },
+          {
+            tenantId: TENANT_ID,
+            classInstructorId: 'ci-123',
+            courseId: 'course-2',
+            assignedById: USER_ID,
+          },
+        ],
+      });
+    });
+
+    it('rejects course ids that do not belong to the class program', async () => {
+      prisma.class.findFirst.mockResolvedValueOnce({
+        id: CLASS_ID,
+        programId: 'program-123',
+      });
+      prisma.tenantMembership.findFirst.mockResolvedValueOnce({
+        id: MEMBERSHIP_ID,
+        roles: [{ role: { name: 'Teacher', isAdmin: false, permissions: [] } }],
+      });
+      prisma.course.findMany.mockResolvedValueOnce([{ id: 'course-1' }]);
+
+      await expect(
+        service.assignInstructor(TENANT_ID, CLASS_ID, USER_ID, {
+          tenantMembershipId: MEMBERSHIP_ID,
+          courseIds: ['course-1', 'course-not-in-program'],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('updateInstructorCourses', () => {
+    it('replaces the course set for a class instructor', async () => {
+      prisma.class.findFirst.mockResolvedValueOnce({
+        id: CLASS_ID,
+        programId: 'program-123',
+      });
+      prisma.classInstructor.findFirst.mockResolvedValueOnce({
+        id: 'ci-123',
+        classId: CLASS_ID,
+      });
+      prisma.course.findMany.mockResolvedValueOnce([{ id: 'course-1' }]);
+      prisma.classInstructorCourse.findMany.mockResolvedValueOnce([
+        {
+          id: 'cic-1',
+          course: { id: 'course-1', name: 'Math', code: 'MATH101' },
+        },
+      ]);
+
+      const result = await service.updateInstructorCourses(
+        TENANT_ID,
+        CLASS_ID,
+        USER_ID,
+        'ci-123',
+        ['course-1'],
+      );
+
+      expect(prisma.classInstructorCourse.deleteMany).toHaveBeenCalledWith({
+        where: { classInstructorId: 'ci-123' },
+      });
+      expect(prisma.classInstructorCourse.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            tenantId: TENANT_ID,
+            classInstructorId: 'ci-123',
+            courseId: 'course-1',
+            assignedById: USER_ID,
+          },
+        ],
+      });
+      expect(result).toHaveLength(1);
+    });
+
+    it('throws if the instructor assignment does not exist', async () => {
+      prisma.class.findFirst.mockResolvedValueOnce({
+        id: CLASS_ID,
+        programId: 'program-123',
+      });
+      prisma.classInstructor.findFirst.mockResolvedValueOnce(null);
+
+      await expect(
+        service.updateInstructorCourses(
+          TENANT_ID,
+          CLASS_ID,
+          USER_ID,
+          'ci-missing',
+          [],
+        ),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

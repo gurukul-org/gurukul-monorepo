@@ -16,6 +16,7 @@ import { programFeature } from './program';
 import { reportFeature } from './report';
 import { roleFeature } from './role';
 import { studentFeature } from './student';
+import { teacherFeature } from './teacher';
 import { tenantFeature } from './tenant';
 import { userFeature } from './user';
 
@@ -29,6 +30,7 @@ export const FEATURES: Readonly<Record<FeatureKey, FeatureDefinition>> = {
   instructor: instructorFeature,
   student: studentFeature,
   parent: parentFeature,
+  teacher: teacherFeature,
   enrolment: enrolmentFeature,
   fee: feeFeature,
   attendance: attendanceFeature,
@@ -119,6 +121,10 @@ export const PERMS = {
     edit: p('parent', 'edit-parents'),
     delete: p('parent', 'delete-parents'),
     invite: p('parent', 'invite-parents'),
+  },
+  teacher: {
+    all: FEATURES.teacher.all,
+    view: p('teacher', 'view-teachers'),
   },
   enrolment: {
     all: FEATURES.enrolment.all,

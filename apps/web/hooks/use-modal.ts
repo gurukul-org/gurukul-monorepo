@@ -234,10 +234,32 @@ export function useShowAssignInstructorModal() {
   );
 }
 
+export function useShowManageInstructorCoursesModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (payload: {
+      classId: string;
+      classInstructorId: string;
+      teacherName: string;
+      currentCourseIds: string[];
+    }) => showModal(ModalType.ManageInstructorCoursesModal, payload),
+    [showModal],
+  );
+}
+
 export function useShowLinkParentModal() {
   const showModal = useShowModal();
   return useCallback(
     (studentId: string) => showModal(ModalType.LinkParentModal, { studentId }),
+    [showModal],
+  );
+}
+
+export function useShowTeacherProfileModal() {
+  const showModal = useShowModal();
+  return useCallback(
+    (teacherId: string) =>
+      showModal(ModalType.TeacherProfileModal, { teacherId }),
     [showModal],
   );
 }

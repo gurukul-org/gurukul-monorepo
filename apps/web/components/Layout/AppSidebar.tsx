@@ -33,6 +33,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  UserCheck,
   Users,
 } from 'lucide-react';
 
@@ -51,7 +52,9 @@ export function AppSidebar() {
   const showAllUsers = hasPermission(PERMS.user.view);
   const showStudents = hasPermission(PERMS.student.view);
   const showParents = hasPermission(PERMS.parent.view);
-  const showDirectory = showAllUsers || showStudents || showParents;
+  const showTeachers = hasPermission(PERMS.teacher.view);
+  const showDirectory =
+    showAllUsers || showStudents || showParents || showTeachers;
 
   const showTerms = hasPermission(PERMS.academicTerm.view);
   const showPrograms = hasPermission(PERMS.program.view);
@@ -170,6 +173,24 @@ export function AppSidebar() {
                         <Link href="/users/parents">
                           <Users className="h-3.5 w-3.5" />
                           <span>Parents</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  )}
+
+                  {showTeachers && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={
+                          pathname === '/users/teachers' ||
+                          pathname.startsWith('/users/teachers/')
+                        }
+                        className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                      >
+                        <Link href="/users/teachers">
+                          <UserCheck className="h-3.5 w-3.5" />
+                          <span>Teachers</span>
                         </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>

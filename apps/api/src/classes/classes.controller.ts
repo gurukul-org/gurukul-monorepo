@@ -30,7 +30,10 @@ import {
   GetCurrentUserId,
   RequirePermissions,
 } from '../common/decorators';
-import { AssignInstructorDto } from '../instructors/dto';
+import {
+  AssignInstructorDto,
+  UpdateInstructorCoursesDto,
+} from '../instructors/dto';
 import { InstructorsService } from '../instructors/instructors.service';
 import { ClassesService } from './classes.service';
 import { CreateClassDto, UpdateClassDto } from './dto';
@@ -266,6 +269,33 @@ export class ClassesController {
       classId,
       userId,
       id,
+    );
+  }
+
+  @Patch(':classId/instructors/:id/courses')
+  @RequirePermissions(PERMS.instructor.edit)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update the courses an instructor teaches in this class',
+    description:
+      'Replaces the set of courses (from the class program) this instructor teaches within this class.',
+  })
+  @ApiOkResponse({ description: 'Instructor courses updated successfully.' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions.' })
+  async updateInstructorCourses(
+    @GetCurrentTenant('id') tenantId: string,
+    @GetCurrentUserId() userId: string,
+    @Param('classId', ParseUUIDPipe) classId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateInstructorCoursesDto,
+  ) {
+    if (!tenantId) throw new ForbiddenException('Tenant context required.');
+    return this.instructorsService.updateInstructorCourses(
+      tenantId,
+      classId,
+      userId,
+      id,
+      dto.courseIds,
     );
   }
 

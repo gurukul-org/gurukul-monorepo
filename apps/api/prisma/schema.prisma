@@ -26,6 +26,7 @@ model Tenant {
   courses          Course[]
   classes          Class[]
   classInstructors ClassInstructor[]
+  classInstructorCourses ClassInstructorCourse[]
   studentProfiles  StudentProfile[]
   parentProfiles   ParentProfile[]
   enrolments       Enrolment[]
@@ -55,12 +56,13 @@ model User {
   updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   deletedAt              DateTime? @map("deleted_at") @db.Timestamp(6)
 
-  memberships         TenantMembership[] @relation("UserMemberships")
-  invitedMemberships  TenantMembership[] @relation("InvitedBy")
-  createdMemberships  TenantMembership[] @relation("MembershipCreatedBy")
-  updatedMemberships  TenantMembership[] @relation("MembershipUpdatedBy")
-  assignedRoles       MembershipRole[]   @relation("AssignedBy")
-  assignedInstructors ClassInstructor[]  @relation("InstructorAssignedBy")
+  memberships               TenantMembership[]      @relation("UserMemberships")
+  invitedMemberships        TenantMembership[]      @relation("InvitedBy")
+  createdMemberships        TenantMembership[]      @relation("MembershipCreatedBy")
+  updatedMemberships        TenantMembership[]      @relation("MembershipUpdatedBy")
+  assignedRoles             MembershipRole[]        @relation("AssignedBy")
+  assignedInstructors       ClassInstructor[]       @relation("InstructorAssignedBy")
+  assignedInstructorCourses ClassInstructorCourse[] @relation("InstructorCourseAssignedBy")
 
   // Audit Relations
   createdAcademicTerms AcademicTerm[]   @relation("AcademicTermCreatedBy")
@@ -226,10 +228,11 @@ model Course {
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   deletedAt   DateTime? @map("deleted_at") @db.Timestamp(6)
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
-  creator User?   @relation("CourseCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
-  updater User?   @relation("CourseUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  tenant                Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  program               Program                 @relation(fields: [programId], references: [id], onDelete: Cascade)
+  creator               User?                   @relation("CourseCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  updater               User?                   @relation("CourseUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+  instructorAssignments ClassInstructorCourse[]
 
   @@unique([tenantId, code])
   @@map("courses")
@@ -276,13 +279,36 @@ model ClassInstructor {
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   deletedAt          DateTime? @map("deleted_at") @db.Timestamp(6)
 
-  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  class      Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
-  membership TenantMembership @relation(fields: [tenantMembershipId], references: [id], onDelete: Cascade)
-  assignedBy User?            @relation("InstructorAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class             Class                   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  membership        TenantMembership        @relation(fields: [tenantMembershipId], references: [id], onDelete: Cascade)
+  assignedBy        User?                   @relation("InstructorAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  courseAssignments ClassInstructorCourse[]
 
   @@unique([classId, tenantMembershipId])
   @@map("class_instructors")
+}
+
+// =====================================================
+// CLASS INSTRUCTOR COURSES
+// =====================================================
+model ClassInstructorCourse {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  classInstructorId String    @map("class_instructor_id") @db.Uuid
+  courseId          String    @map("course_id") @db.Uuid
+  assignedById      String?   @map("assigned_by") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamp(6)
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  classInstructor ClassInstructor @relation(fields: [classInstructorId], references: [id], onDelete: Cascade)
+  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assignedBy      User?           @relation("InstructorCourseAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@unique([classInstructorId, courseId])
+  @@map("class_instructor_courses")
 }
 
 // =====================================================
@@ -340,11 +366,11 @@ model ParentProfile {
 // STUDENT <-> PARENT RELATION
 // =====================================================
 model StudentParent {
-  studentProfileId        String    @map("student_profile_id") @db.Uuid
-  parentProfileId         String    @map("parent_profile_id") @db.Uuid
-  relationship            String    @db.VarChar(50)
-  relationshipDescription String?   @map("relationship_description") @db.VarChar(255)
-  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  studentProfileId        String   @map("student_profile_id") @db.Uuid
+  parentProfileId         String   @map("parent_profile_id") @db.Uuid
+  relationship            String   @db.VarChar(50)
+  relationshipDescription String?  @map("relationship_description") @db.VarChar(255)
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   student StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
   parent  ParentProfile  @relation(fields: [parentProfileId], references: [id], onDelete: Cascade)

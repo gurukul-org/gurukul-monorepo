@@ -23,6 +23,9 @@ describe('CoursesService', () => {
     class: {
       count: jest.fn(),
     },
+    classInstructorCourse: {
+      findMany: jest.fn(),
+    },
   };
 
   beforeEach(async () => {
@@ -131,6 +134,58 @@ describe('CoursesService', () => {
           code: 'MATH102',
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('findOne', () => {
+    it('attaches teachers scoped by class-course assignments', async () => {
+      prisma.course.findFirst.mockResolvedValue({
+        id: 'course-1',
+        name: 'Mathematics',
+        program: { id: 'program-1', name: 'Science', code: 'SCI', classes: [] },
+      });
+      prisma.classInstructorCourse.findMany.mockResolvedValue([
+        {
+          classInstructor: {
+            class: { id: 'class-1', name: 'Class A' },
+            membership: {
+              id: 'membership-1',
+              user: {
+                id: 'user-1',
+                firstName: 'Jane',
+                lastName: 'Doe',
+                email: 'jane@example.com',
+              },
+            },
+          },
+        },
+      ]);
+
+      const result = await service.findOne('tenant-1', 'course-1');
+
+      expect(prisma.classInstructorCourse.findMany).toHaveBeenCalledWith({
+        where: {
+          courseId: 'course-1',
+          tenantId: 'tenant-1',
+          deletedAt: null,
+          classInstructor: {
+            deletedAt: null,
+            class: { deletedAt: null },
+          },
+        },
+        include: expect.any(Object),
+      });
+      expect(result.teachers).toEqual([
+        {
+          membershipId: 'membership-1',
+          userId: 'user-1',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          email: 'jane@example.com',
+          classId: 'class-1',
+          className: 'Class A',
+        },
+      ]);
     });
   });
 
