@@ -25,12 +25,14 @@ import { useRequestLogout } from '@/services/api/requests/auth';
 import { useCurrentTenant } from '@/services/api/requests/tenants';
 import { useCurrentUserProfile } from '@/services/api/requests/users';
 import {
+  BellRing,
   Calendar,
   ChevronDown,
   ChevronRight,
   GraduationCap,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Settings,
   UserCheck,
   Users,
@@ -62,6 +64,15 @@ export function AppSidebar() {
   const showClasses =
     hasPermission(PERMS.class.view) || hasPermission(PERMS.class.viewOwn);
   const showAcademics = showTerms || showPrograms || showCourses || showClasses;
+
+  const showNotices =
+    hasPermission(PERMS.notice.createClass) ||
+    hasPermission(PERMS.notice.viewAll);
+
+  const showAnnouncements =
+    hasPermission(PERMS.announcement.create) ||
+    hasPermission(PERMS.announcement.approve) ||
+    hasPermission(PERMS.announcement.viewAll);
 
   const [isErpOpen, setIsErpOpen] = useState(pathname.startsWith('/users'));
   const [isAcademicsOpen, setIsAcademicsOpen] = useState(
@@ -276,6 +287,38 @@ export function AppSidebar() {
                   )}
                 </SidebarMenuSub>
               )}
+            </SidebarMenuItem>
+          )}
+
+          {/* Notices Link */}
+          {showNotices && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === '/notices' || pathname.startsWith('/notices/')}
+                className="w-full justify-start gap-3 transition-colors"
+              >
+                <Link href="/notices">
+                  <Megaphone className="h-4 w-4 shrink-0" />
+                  <span>Notices</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+
+          {/* Announcements Link */}
+          {showAnnouncements && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === '/announcements' || pathname.startsWith('/announcements/')}
+                className="w-full justify-start gap-3 transition-colors"
+              >
+                <Link href="/announcements">
+                  <BellRing className="h-4 w-4 shrink-0 text-amber-500" />
+                  <span>Announcements</span>
+                </Link>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           )}
 
