@@ -226,13 +226,24 @@ export class NoticesService {
         ],
       };
     } else {
-      // Student / Parent: sees school-wide + class notices for enrolled classes
-      // Find studentProfile for this user
+      // Student / Parent: sees school-wide + class notices for enrolled classes (self or wards)
       const studentEnrolments = await this.prisma.enrolment.findMany({
         where: {
           tenantId,
           status: 'ACTIVE',
-          student: { tenantMembershipId: membershipId },
+          student: {
+            deletedAt: null,
+            OR: [
+              { tenantMembershipId: membershipId },
+              {
+                parents: {
+                  some: {
+                    parent: { tenantMembershipId: membershipId },
+                  },
+                },
+              },
+            ],
+          },
           deletedAt: null,
         },
         select: { classId: true },

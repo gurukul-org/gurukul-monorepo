@@ -67,16 +67,23 @@ export function AppSidebar() {
 
   const showNotices =
     hasPermission(PERMS.notice.createClass) ||
-    hasPermission(PERMS.notice.viewAll);
+    hasPermission(PERMS.notice.viewAll) ||
+    hasPermission(PERMS.notice.view);
 
   const showAnnouncements =
     hasPermission(PERMS.announcement.create) ||
     hasPermission(PERMS.announcement.approve) ||
-    hasPermission(PERMS.announcement.viewAll);
+    hasPermission(PERMS.announcement.viewAll) ||
+    hasPermission(PERMS.announcement.view);
+
+  const showCommunications = showNotices || showAnnouncements;
 
   const [isErpOpen, setIsErpOpen] = useState(pathname.startsWith('/users'));
   const [isAcademicsOpen, setIsAcademicsOpen] = useState(
     pathname.startsWith('/academics'),
+  );
+  const [isCommunicationsOpen, setIsCommunicationsOpen] = useState(
+    pathname.startsWith('/notices') || pathname.startsWith('/announcements'),
   );
 
   return (
@@ -290,35 +297,58 @@ export function AppSidebar() {
             </SidebarMenuItem>
           )}
 
-          {/* Notices Link */}
-          {showNotices && (
+          {/* Notices & Announcements Collapsible Link */}
+          {showCommunications && (
             <SidebarMenuItem>
               <SidebarMenuButton
-                asChild
-                isActive={pathname === '/notices' || pathname.startsWith('/notices/')}
-                className="w-full justify-start gap-3 transition-colors"
+                onClick={() => setIsCommunicationsOpen((prev) => !prev)}
+                className="w-full justify-start gap-3 transition-colors cursor-pointer"
               >
-                <Link href="/notices">
-                  <Megaphone className="h-4 w-4 shrink-0" />
-                  <span>Notices</span>
-                </Link>
+                <Megaphone className="h-4 w-4 shrink-0" />
+                <span className="flex-1 text-left">Notices & Announcements</span>
+                {isCommunicationsOpen ? (
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" />
+                )}
               </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
-
-          {/* Announcements Link */}
-          {showAnnouncements && (
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === '/announcements' || pathname.startsWith('/announcements/')}
-                className="w-full justify-start gap-3 transition-colors"
-              >
-                <Link href="/announcements">
-                  <BellRing className="h-4 w-4 shrink-0 text-amber-500" />
-                  <span>Announcements</span>
-                </Link>
-              </SidebarMenuButton>
+              {isCommunicationsOpen && state !== 'collapsed' && (
+                <SidebarMenuSub className="mt-1 ml-4 pl-3 border-l border-sidebar-border flex flex-col gap-1">
+                  {showNotices && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={
+                          pathname === '/notices' || pathname.startsWith('/notices/')
+                        }
+                        className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                      >
+                        <Link href="/notices">
+                          <Megaphone className="h-3.5 w-3.5" />
+                          <span>Class Notices</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  )}
+                  {showAnnouncements && (
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={
+                          pathname === '/announcements' ||
+                          pathname.startsWith('/announcements/')
+                        }
+                        className="w-full justify-start gap-2 py-1 px-2 text-xs rounded-md cursor-pointer"
+                      >
+                        <Link href="/announcements">
+                          <BellRing className="h-3.5 w-3.5" />
+                          <span>School Announcements</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  )}
+                </SidebarMenuSub>
+              )}
             </SidebarMenuItem>
           )}
 
